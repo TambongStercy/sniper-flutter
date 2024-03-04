@@ -18,7 +18,7 @@ class Wallet extends StatefulWidget {
 }
 
 class _WalletState extends State<Wallet> {
-  int balance = 0;
+  double balance = 0;
   String email = '';
   bool showSpinner = true;
   List<Map<String, dynamic>> transactions = [];
@@ -26,7 +26,7 @@ class _WalletState extends State<Wallet> {
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
-    balance = prefs.getInt('balance') ?? 0;
+    balance = prefs.getDouble('balance') ?? 0;
     email = prefs.getString('email') ?? '';
     transactions = await getTransactions();
     print('transactions');
@@ -63,56 +63,65 @@ class _WalletState extends State<Wallet> {
   }
 
   Future<void>? getInfos() async {
-    await initSharedPref();
+    try {
+      await initSharedPref();
 
-    final token = prefs.getString('token');
+      final token = prefs.getString('token');
 
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
 
-    final url = Uri.parse('$getUpdates?email=$email');
+      final url = Uri.parse('$getUpdates?email=$email');
 
-    final response = await http.get(url, headers: headers);
+      final response = await http.get(url, headers: headers);
 
-    final jsonResponse = jsonDecode(response.body);
+      final jsonResponse = jsonDecode(response.body);
 
-    // final myToken = jsonResponse['token'];
+      // final myToken = jsonResponse['token'];
 
-    final user = jsonResponse['user'];
+      final user = jsonResponse['user'];
+      final msg = jsonResponse['message'];
 
-    final region = user['region'];
-    email = user['email'] ?? '';
-    final phone = user['phoneNumber'].toString();
-    final userCode = user['code'];
-    balance = user['balance'];
-    final name = user['name'] ?? '';
-    final isSubscribed = user['isSubscribed'] ?? false;
-    final gottenTransactions = user['transactions'] ?? [];
+      final region = user['region'];
+      email = user['email'] ?? '';
+      final phone = user['phoneNumber'].toString();
+      final userCode = user['code'];
+      balance = user['balance'].toDouble();
+      final name = user['name'] ?? '';
+      final isSubscribed = user['isSubscribed'] ?? false;
+      final gottenTransactions = user['transactions'] ?? [];
 
-    // print(user['transactions'] ?? {});
-    // print(user);
-    print(transactions);
-
-    if (response.statusCode == 200) {
-      prefs.setString('name', name);
-      prefs.setString('email', email);
-      prefs.setString('region', region);
-      prefs.setString('phone', phone);
-      prefs.setString('code', userCode);
-      prefs.setInt('balance', balance);
-      prefs.setBool('isSubscribed', isSubscribed);
-      await saveTransactionList(gottenTransactions);
-      transactions = await getTransactions();
-
-      setState(() {});
-
-      print('all good');
+      // print(user['transactions'] ?? {});
+      // print(user);
       print(transactions);
-    } else {
-      // Handle errors,
-      print('something went wrong');
+
+      if (response.statusCode == 200) {
+        prefs.setString('name', name);
+        prefs.setString('email', email);
+        prefs.setString('region', region);
+        prefs.setString('phone', phone);
+        prefs.setString('code', userCode);
+        prefs.setDouble('balance', balance);
+        prefs.setBool('isSubscribed', isSubscribed);
+        await saveTransactionList(gottenTransactions);
+        transactions = await getTransactions();
+
+        setState(() {});
+
+        print('all good');
+        print(transactions);
+      } else {
+        String title = 'Error';
+        showPopupMessage(context, title, msg);
+        print('something went wrong');
+      }
+    } on Exception catch (e) {
+        print('something went wrong: $e');
+        String title = 'Error';
+        showPopupMessage(context, title, 'An Error occured please contact developers');
+        print('something went wrong');
     }
   }
 

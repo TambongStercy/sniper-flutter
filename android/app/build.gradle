@@ -68,6 +68,11 @@ android {
             storePassword keystoreProperties['storePassword']
         }
     }
+
+    buildFeatures {
+        dataBinding true
+    }
+
     buildTypes {
         release {
             signingConfig signingConfigs.release

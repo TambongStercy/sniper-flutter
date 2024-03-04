@@ -7,7 +7,7 @@ class CustomCarousel extends StatefulWidget {
   });
 
   final List<Widget> slides;
-  
+
   @override
   State<CustomCarousel> createState() => _CustomCarouselState();
 }
@@ -16,7 +16,7 @@ class _CustomCarouselState extends State<CustomCarousel> {
   List<Widget> indicators(imagesLength, currentIndex, pageController) {
     return List<Widget>.generate(imagesLength, (index) {
       return InkWell(
-        onTap: (){
+        onTap: () {
           pageController.jumpToPage(index);
         },
         child: Container(
@@ -44,15 +44,13 @@ class _CustomCarouselState extends State<CustomCarousel> {
 
   int activePage = 0;
 
-  List<Widget> get slides => widget.slides; 
+  List<Widget> get slides => widget.slides;
 
   @override
   Widget build(BuildContext context) {
     PageController pageController =
         PageController(viewportFraction: 0.8, initialPage: 0);
 
-
-    
     return Container(
       height: 600.0,
       child: Column(
@@ -60,18 +58,19 @@ class _CustomCarouselState extends State<CustomCarousel> {
           Expanded(
             child: Container(
               child: PageView.builder(
-                  itemCount: slides.length,
-                  pageSnapping: true,
-                  controller: pageController,
-                  onPageChanged: (page) {
-                    setState(() {
-                      activePage = page;
-                    });
-                  },
-                  itemBuilder: (context, pagePosition) {
-                    bool active = pagePosition == activePage;
-                    return slider(slides, pagePosition, active);
-                  }),
+                itemCount: slides.length,
+                pageSnapping: true,
+                controller: pageController,
+                onPageChanged: (page) {
+                  setState(() {
+                    activePage = page;
+                  });
+                },
+                itemBuilder: (context, pagePosition) {
+                  bool active = pagePosition == activePage;
+                  return slider(slides, pagePosition, active);
+                },
+              ),
             ),
           ),
           Row(

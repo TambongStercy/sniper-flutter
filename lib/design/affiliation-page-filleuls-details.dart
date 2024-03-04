@@ -70,9 +70,11 @@ class Filleuls extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: directUsers.map((user) {
                                 return FilleulsCard(
+                                  isSub: user['isSubscribed'],
+                                  url: user['url'],
                                   buffer: user['avatar'],
                                   name: user['name'],
-                                  email: user['email'],
+                                  email: user['email'].toString(),
                                 );
                               }).toList(),
                              ),
@@ -107,9 +109,11 @@ class Filleuls extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: indirectUsers.map((user) {
                                 return FilleulsCard(
+                                  isSub: user['isSubscribed'],
+                                  url: user['url'],
                                   buffer: user['avatar'],
                                   name: user['name'],
-                                  email: user['email'],
+                                  email: user['email'].toString(),
                                 );
                               }).toList(),
                             ),

@@ -264,7 +264,7 @@ class _HomeState extends State<Home> {
                       margin: EdgeInsets.fromLTRB(
                           7 * fem, 0 * fem, 0 * fem, 9 * fem),
                       child: Text(
-                        'Rejoindre la communauter',
+                        'Rejoindre la communauté',
                         style: SafeGoogleFont(
                           'Montserrat',
                           fontSize: 16 * ffem,

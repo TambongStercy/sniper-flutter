@@ -9,27 +9,33 @@ import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/accueil.dart';
-import 'package:snipper_frontend/design/email-oublier.dart';
-import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 
-class Connexion extends StatefulWidget {
-  static const id = 'connexion';
+// ignore: must_be_immutable
+class NewPassword extends StatefulWidget {
+  static const id = 'NewPassword';
 
-  const Connexion({super.key});
+  NewPassword({
+    super.key,
+    required this.email,
+  });
+
+  String email;
 
   @override
-  State<Connexion> createState() => _ConnexionState();
+  State<NewPassword> createState() => _NewPasswordState();
 }
 
-class _ConnexionState extends State<Connexion> {
-  String email = '';
+class _NewPasswordState extends State<NewPassword> {
+  String get email => widget.email;
   String token = '';
   String? avatar = '';
   bool isSubscribed = false;
+  String otp = '';
 
   String password = '';
 
@@ -38,15 +44,22 @@ class _ConnexionState extends State<Connexion> {
 
   late SharedPreferences prefs;
 
-  Future<bool> loginUser(context) async {
-    if (password.isNotEmpty && email.isNotEmpty) {
+  Future<bool> changeAndValidate(context) async {
+    print(otp);
+    print(password);
+    print(email);
+    if (password.isNotEmpty &&
+        email.isNotEmpty &&
+        otp.isNotEmpty &&
+        otp.length == 4) {
       final regBody = {
         'email': email,
-        'password': password,
+        'newPassword': password,
+        'otp': int.parse(otp),
       };
 
       final response = await http.post(
-        Uri.parse(login),
+        Uri.parse(validatefOTP),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(regBody),
       );
@@ -63,8 +76,7 @@ class _ConnexionState extends State<Connexion> {
       final msg = jsonResponse['message'];
 
       final userCode = user['code'];
-      final balance = user['balance'].toDouble();
-      print(balance);
+      final balance = user['balance'];
       final id = user['id'];
       avatar = !kIsWeb ? user['avatar'] : user['url'];
       isSubscribed = user['isSubscribed'] ?? false;
@@ -86,7 +98,7 @@ class _ConnexionState extends State<Connexion> {
         prefs.setString('phone', phone);
         prefs.setString('code', userCode);
         prefs.setString('avatar', avatar ?? '');
-        prefs.setDouble('balance', balance);
+        prefs.setInt('balance', balance);
         prefs.setBool('isSubscribed', isSubscribed);
 
         await initializeOneSignal(id);
@@ -99,8 +111,8 @@ class _ConnexionState extends State<Connexion> {
         return false;
       }
     } else {
-      String msg = "Veuillez remplir toutes les informations demandées.";
-      String title = "Information incomplète.";
+      String msg = 'Please fill in all information asked';
+      String title = 'Information not complete';
       showPopupMessage(context, title, msg);
       return false;
     }
@@ -141,7 +153,7 @@ class _ConnexionState extends State<Connexion> {
 
       if (response.statusCode == 200) {
         print(avatarUrl);
-        final imageBytes = (imageData);
+        final imageBytes = imageData;
         String fileName = generateUniqueFileName('pp', 'jpg');
         // String fileName = 'Your Picture.jpg';
         String folder = 'Profile Pictures';
@@ -159,6 +171,43 @@ class _ConnexionState extends State<Connexion> {
       }
     } catch (e) {
       print(e);
+    }
+  }
+
+  Future<void> sendFOTP(context) async {
+    if (email.isNotEmpty) {
+      final regBody = {
+        'email': email,
+      };
+
+      final response = await http.post(
+        Uri.parse(sendfOTP),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(regBody),
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+
+      final msg = jsonResponse['message'];
+
+      if (response.statusCode == 200) {
+        String title = 'Code Sent';
+        showPopupMessage(context, title, msg);
+
+        // Navigator.push(context, MaterialPageRoute(builder: ((context) => ));
+
+        return;
+      } else {
+        // String msg = 'Please Try again';
+        String title = 'Something went wrong';
+        showPopupMessage(context, title, msg);
+        return;
+      }
+    } else {
+      String msg = 'Please fill in all information asked';
+      String title = 'Information not complete';
+      showPopupMessage(context, title, msg);
+      return;
     }
   }
 
@@ -200,7 +249,7 @@ class _ConnexionState extends State<Connexion> {
                         21.17 * fem,
                       ),
                       width: 771.27 * fem,
-                      height: 275.83 * fem,
+                      // height: 275.83 * fem,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -224,7 +273,7 @@ class _ConnexionState extends State<Connexion> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Connexion',
+                              'Modifier et Valider le mot de passe',
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -238,7 +287,7 @@ class _ConnexionState extends State<Connexion> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Créez un compte pour développez votre réseau et augmentez vos revenus',
+                              'Entrez le code OTP envoyé à $email et votre nouveau mot de passe',
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -257,16 +306,30 @@ class _ConnexionState extends State<Connexion> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          CustomTextField(
-                            hintText: 'Email',
-                            type: 4,
-                            value: email,
-                            onChange: (val) {
-                              email = val;
+                          _fieldTitle(fem, ffem, 'Code OTP'),
+                          OtpTextField(
+                            numberOfFields: 4,
+                            borderColor: Color(0xFF512DA8),
+                            fieldWidth: 50.0,
+                            margin: EdgeInsets.only(right: 8.0),
+                            //set to true to show as box or false to show as dash
+                            showFieldAsBox: true,
+                            //runs when a code is typed in
+                            onCodeChanged: (String code) {
+                              print(code);
+                              // otp = code;
                             },
+                            //runs when every textfield is filled
+                            onSubmit: (String verificationCode) {
+                              otp = verificationCode;
+                              print('submit');
+                            }, // end onSubmit
+                          ),
+                          SizedBox(
+                            height: 20 * fem,
                           ),
                           CustomTextField(
-                            hintText: 'Mot de passe',
+                            hintText: 'Nouveau mot de passe',
                             type: 3,
                             value: password,
                             onChange: (val) {
@@ -277,7 +340,7 @@ class _ConnexionState extends State<Connexion> {
                             height: 20 * fem,
                           ),
                           ReusableButton(
-                            title: 'Connexion',
+                            title: 'Valider',
                             lite: false,
                             onPress: () async {
                               try {
@@ -285,7 +348,8 @@ class _ConnexionState extends State<Connexion> {
                                   showSpinner = true;
                                 });
 
-                                final hasLogged = await loginUser(context);
+                                final hasLogged =
+                                    await changeAndValidate(context);
 
                                 if (hasLogged) {
                                   // ignore: use_build_context_synchronously
@@ -333,49 +397,44 @@ class _ConnexionState extends State<Connexion> {
                           SizedBox(
                             height: 20 * fem,
                           ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.popAndPushNamed(
-                                context,
-                                Inscription.id,
-                              );
-                            },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                            ),
-                            child: Text(
-                              'Pas de compte ? Inscription',
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 16 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5 * ffem / fem,
-                                color: Color(0xff25313c),
-                              ),
-                            ),
-                          ),
                           SizedBox(
                             height: 10 * fem,
                           ),
-                          TextButton(
-                            onPressed: () {
-                              // Navigate to email of forgotten password page
-                              Navigator.pushNamed(
-                                context,
-                                EmailOublie.id,
-                              );
-                            },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                            ),
-                            child: Text(
-                              'Mot de passe oublié?',
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 16 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5 * ffem / fem,
-                                color: Color(0xff25313c),
+                          Center(
+                            child: TextButton(
+                              onPressed: () async {
+                                try {
+                                  setState(() {
+                                    showSpinner = true;
+                                  });
+
+                                  await sendFOTP(context);
+
+                                  setState(() {
+                                    showSpinner = false;
+                                  });
+                                } catch (e) {
+                                  String msg = e.toString();
+                                  String title = 'Error';
+                                  showPopupMessage(context, title, msg);
+                                  print(e);
+                                  setState(() {
+                                    showSpinner = false;
+                                  });
+                                }
+                              },
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: Text(
+                                'Renvoyer le code OTP',
+                                style: SafeGoogleFont(
+                                  'Montserrat',
+                                  fontSize: 16 * ffem,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.5 * ffem / fem,
+                                  color: limeGreen,
+                                ),
                               ),
                             ),
                           ),
@@ -387,6 +446,23 @@ class _ConnexionState extends State<Connexion> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Container _fieldTitle(double fem, double ffem, String title) {
+    return Container(
+      margin: EdgeInsets.fromLTRB(49 * fem, 0 * fem, 49 * fem, 5 * fem),
+      child: Text(
+        title,
+        style: SafeGoogleFont(
+          'Montserrat',
+          fontSize: 14 * ffem,
+          fontWeight: FontWeight.w700,
+          height: 1.3333333333 * ffem / fem,
+          letterSpacing: 0.400000006 * fem,
+          color: Color(0xff6d7d8b),
         ),
       ),
     );

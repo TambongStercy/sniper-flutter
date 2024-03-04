@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
@@ -26,7 +27,7 @@ class _ProfileModState extends State<ProfileMod> {
 
     id = prefs.getString('id');
     token = prefs.getString('token');
-    email = prefs.getString('email');
+    email = prefs.getString('email') ?? '';
     name = prefs.getString('name');
     region = prefs.getString('region');
     code = prefs.getString('code');
@@ -54,7 +55,7 @@ class _ProfileModState extends State<ProfileMod> {
   }
 
   String? id;
-  String? email;
+  String email = '';
   String? name;
   String? region;
   String phone = '';
@@ -66,17 +67,19 @@ class _ProfileModState extends State<ProfileMod> {
 
   Future<void> modifyUser(context) async {
     try {
-      if (email!.isNotEmpty &&
+      if (email.isNotEmpty &&
           name!.isNotEmpty &&
           region!.isNotEmpty &&
           phone.isNotEmpty &&
           code!.isNotEmpty) {
+        final sendPone = countryCode + phone;
+
         final regBody = {
           'id': id,
           'email': email,
           'name': name,
           'region': region,
-          'phone': phone,
+          'phone': sendPone,
           'code': code,
           'token': token,
         };
@@ -86,28 +89,32 @@ class _ProfileModState extends State<ProfileMod> {
           'Content-Type': 'application/json',
         };
 
-        await http.post(
+        final response = await http.post(
           Uri.parse(update),
           headers: headers,
           body: jsonEncode(regBody),
         );
 
-        const msg = 'modifications completed successfully';
-        const title = 'Success';
+        final jsonResponse = jsonDecode(response.body);
 
-        final sendPone = countryCode + phone;
+        // const msg = 'modifications completed successfully';
+
+        final title = (response.statusCode == 200) ? 'Success' : 'Error';
+        final msg = jsonResponse['message'];
+
+        print(sendPone);
 
         prefs.setString('phone', sendPone);
         code != null ? prefs.setString('code', code!) : print('');
         name != null ? prefs.setString('name', name!) : print('');
-        email != null ? prefs.setString('email', email!) : print('');
+        email != '' ? prefs.setString('email', email) : print('');
         region != null ? prefs.setString('region', region!) : print('');
 
         showPopupMessage(context, title, msg);
         print(msg);
       } else {
-        String msg = 'Please fill in all information asked';
-        String title = 'Information not complete';
+        String msg = "Veuillez remplir toutes les informations demandées.";
+        String title = "Information incomplète.";
         showPopupMessage(context, title, msg);
         print(msg);
       }
@@ -129,22 +136,47 @@ class _ProfileModState extends State<ProfileMod> {
       final request = http.MultipartRequest('POST', url);
 
       request.headers['Authorization'] = 'Bearer $token';
-      request.fields['email'] = email!;
+      request.fields['email'] = email;
 
-      request.files.add(await http.MultipartFile.fromPath('file', path));
+      // String webFileName = generateUniqueFileName('pp', 'jpg');
+      final avatarName = kIsWeb
+          ? generateUniqueFileName('pp', 'jpg')
+          : Uri.file(path).pathSegments.last;
+
+      if (kIsWeb) {
+        print('filePath is fileBytes but in String form');
+
+        final fileBytes = base64.decode(path);
+
+        request.files.add(http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: avatarName,
+        ));
+      } else {
+        request.files.add(await http.MultipartFile.fromPath('file', path));
+      }
 
       final response = await request.send();
 
       if (response.statusCode == 200) {
-        String fileName = generateUniqueFileName('pp', 'jpg');
-        String folder = 'Profile Pictures';
+        String permanentPath = '';
 
-        final permanentPath = await saveFileLocally(folder, fileName, path);
+        if (kIsWeb) {
+          permanentPath = '${host}Profile Pictures/$email/$avatarName';
+        } else {
+          avatarName;
+          String folder = 'Profile Pictures';
 
-        await deleteFile(avatar);
-
+          permanentPath = await saveFileLocally(folder, avatarName, path);
+        }
         avatar = permanentPath;
+
         prefs.setString('avatar', permanentPath);
+
+        print(avatar);
+
+        setState(() {});
       } else {
         print('request failed with status: ${response.statusCode}');
         // ignore: use_build_context_synchronously
@@ -240,7 +272,12 @@ class _ProfileModState extends State<ProfileMod> {
 
                                     if (result == null) return;
 
-                                    final filePath = result.files.first.path!;
+                                    List<int>? fileBytes =
+                                        result.files.single.bytes;
+
+                                    final filePath = kIsWeb
+                                        ? base64.encode(fileBytes!)
+                                        : result.files.first.path!;
 
                                     print('filePath : $filePath');
 
@@ -285,24 +322,24 @@ class _ProfileModState extends State<ProfileMod> {
                             ),
                           ],
                         ),
-                        SizedBox(
-                          height: 15 * fem,
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label(fem, ffem, 'Email'),
-                            CustomTextField(
-                              hintText: '',
-                              onChange: (val) {
-                                email = val;
-                              },
-                              margin: 0,
-                              value: email,
-                              type: 4,
-                            ),
-                          ],
-                        ),
+                        // SizedBox(
+                        //   height: 15 * fem,
+                        // ),
+                        // Column(
+                        //   crossAxisAlignment: CrossAxisAlignment.start,
+                        //   children: [
+                        //     _label(fem, ffem, 'Email'),
+                        //     CustomTextField(
+                        //       hintText: '',
+                        //       onChange: (val) {
+                        //         email = val;
+                        //       },
+                        //       margin: 0,
+                        //       value: email,
+                        //       type: 4,
+                        //     ),
+                        //   ],
+                        // ),
                         SizedBox(
                           height: 15 * fem,
                         ),

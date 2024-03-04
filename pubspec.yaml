@@ -51,8 +51,9 @@ dependencies:
   video_player: ^2.8.2
   another_carousel_pro: ^1.0.2
   permission_handler: ^9.2.0
+  flutter_otp_text_field: ^1.1.1
   # flutter_launcher_icons: ^0.13.1
-  # contacts_service: ^0.6.3
+  contacts_service: ^0.6.3
   # vcard_maintained: ^0.0.1+1
 
 dev_dependencies:
@@ -87,6 +88,7 @@ flutter:
     - assets/design/images/
     - assets/assets/images/
     - assets/videos/
+    - assets/videos/Sniper business center contacts.vcf
     - assets/slides/
 
   # An image asset can refer to one or more resolution-specific "variants", see

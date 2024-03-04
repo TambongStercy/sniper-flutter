@@ -102,8 +102,6 @@ class _AffiliationState extends State<Affiliation> {
     }
   }
 
-
-
   Future<void> parseVCF(String filePath) async {
     String vcfData = await File(filePath).readAsString();
     print(vcfData);
@@ -125,13 +123,20 @@ class _AffiliationState extends State<Affiliation> {
     final directL = directUsers.length;
     final indirectL = indirectUsers.length;
 
-    final basic =
-        max((directL / basicRequirements), (indirectL / basicRequirements)) *
-            100;
+    final directSubL =
+        directUsers.where((user) => user['isSubscribed'] == true).length;
+    final indirectSubL =
+        indirectUsers.where((user) => user['isSubscribed'] == true).length;
+
+    final basic = max((directSubL / basicRequirements),
+            (indirectSubL / basicRequirements)) *
+        100;
     final pro =
-        max((directL / proRequirements), (indirectL / proRequirements)) * 100;
-    final gold =
-        max((directL / goldRequirements), (indirectL / goldRequirements)) * 100;
+        max((directSubL / proRequirements), (indirectSubL / proRequirements)) *
+            100;
+    final gold = max((directSubL / goldRequirements),
+            (indirectSubL / goldRequirements)) *
+        100;
 
     return SimpleScaffold(
       title: 'Vos Affiliates',
@@ -311,7 +316,7 @@ class _AffiliationState extends State<Affiliation> {
                                             ),
                                           ),
                                           Text(
-                                            (directUsers.length.toString()),
+                                            (directL.toString()),
                                             style: SafeGoogleFont(
                                               'Montserrat',
                                               fontSize: 20 * ffem,
@@ -333,7 +338,7 @@ class _AffiliationState extends State<Affiliation> {
                                             margin: EdgeInsets.fromLTRB(0 * fem,
                                                 0 * fem, 29 * fem, 1 * fem),
                                             child: Text(
-                                              'Nombre de filleuls direct: ',
+                                              'Nombre de filleuls indirect: ',
                                               style: SafeGoogleFont(
                                                 'Montserrat',
                                                 fontSize: 12 * ffem,
@@ -347,7 +352,7 @@ class _AffiliationState extends State<Affiliation> {
                                             ),
                                           ),
                                           Text(
-                                            (indirectUsers.length.toString()),
+                                            (indirectL.toString()),
                                             style: SafeGoogleFont(
                                               'Montserrat',
                                               fontSize: 20 * ffem,

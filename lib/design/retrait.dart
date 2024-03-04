@@ -26,7 +26,7 @@ class _RetraitState extends State<Retrait> {
   String email = '';
   String countryCode = '237';
   String countryCode2 = 'CM';
-  int balance = 0;
+  double balance = 0;
   bool isSubscribed = false;
 
   bool showSpinner = false;
@@ -50,9 +50,9 @@ class _RetraitState extends State<Retrait> {
 
     token = prefs.getString('token') ?? '';
     email = prefs.getString('email') ?? '';
-    balance = prefs.getInt('balance') ?? 0;
+    balance = prefs.getDouble('balance') ?? 0;
     phone = prefs.getString('phone') ?? '';
-    isSubscribed = prefs.getBool('isSubscribed')??false;
+    isSubscribed = prefs.getBool('isSubscribed') ?? false;
 
     final country = getCountryFromPhoneNumber(phone);
 
@@ -70,31 +70,33 @@ class _RetraitState extends State<Retrait> {
     try {
       if (phone.isNotEmpty && amount.isNotEmpty) {
         final intAmt = int.parse(amount);
-        final fee = intAmt * 0.02;
+        final fee = intAmt * 0.05;
+
+        final sendPone = countryCode + phone;
 
         if(!isSubscribed){
           String msg =
-              'Votre compte n\'es pas abonné ';
-          String title = 'Pas Abonné';
+              'Vous n\'etes pas abonner😔';
+          String title = 'Erreur';
           return showPopupMessage(context, title, msg);
         }
 
         if (intAmt > balance || balance < (intAmt + fee)) {
           String msg =
-              'Votre compte n\'as pas assez d\'argent pour effectuer un retrait';
+              'Votre compte n\'as pas assez d\'argent pour effectuer un retrait 😔';
           String title = 'Solde Insuffisant';
           return showPopupMessage(context, title, msg);
         }
 
-        if (intAmt < 50) {
-          String msg = 'Vous devez retire au moins 50 FCFA';
-          String title = 'Somme trop petit';
+        if (intAmt < 250) {
+          String msg = 'Le montant est trop faible pour effectuer un retrait.(minimum 250 XFA)';
+          String title = 'Montant trop faible';
           return showPopupMessage(context, title, msg);
         }
 
         final regBody = {
           'email': email,
-          'phone': phone,
+          'phone': sendPone,
           'amount': amount,
           'operator': dropdownValue,
         };
@@ -109,29 +111,31 @@ class _RetraitState extends State<Retrait> {
           headers: headers,
           body: jsonEncode(regBody),
         );
+        final jsonResponse = jsonDecode(response.body);
+        final msg = jsonResponse['message'];
 
         if (response.statusCode == 200) {
-          final msg = 'you successfully withdrawed $amount from your wallet';
+          // final msg = 'you successfully withdrawed $amount from your wallet';
           const title = 'Success';
 
           showPopupMessage(context, title, msg);
         } else {
-          const msg = 'an error occured please try again later';
-          const title = 'Error';
+          // const msg = 'an error occured please try again later';
+          const title = 'Erreur';
 
           showPopupMessage(context, title, msg);
         }
 
         // print(msg);
       } else {
-        String msg = 'Please fill in all information asked';
-        String title = 'Information not complete';
+        String msg = "Veuillez remplir toutes les informations demandées.";
+        String title = "Information incomplète.";
         showPopupMessage(context, title, msg);
         print(msg);
       }
     } catch (e) {
-      String msg = e.toString();
-      String title = 'Error';
+      String msg = 'Une erreur s\'est produite. Veuillez réessayer ou contacter l\'administrateur';
+      String title = 'Erreur';
       print(msg);
       showPopupMessage(context, title, msg);
     }

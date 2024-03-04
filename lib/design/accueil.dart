@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
@@ -16,6 +17,7 @@ import 'package:snipper_frontend/design/notifications.dart';
 import 'package:snipper_frontend/design/portfeuille.dart';
 import 'package:snipper_frontend/design/profile-info.dart';
 import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/design/splash1.dart';
 import 'package:snipper_frontend/utils.dart';
 
 class Accueil extends StatefulWidget {
@@ -29,6 +31,7 @@ class _AccueilState extends State<Accueil> {
   int _selectedIndex = 0;
   late List<Widget> _pages;
 
+  String avatar = '';
   String token = '';
   String id = '';
   String email = '';
@@ -86,6 +89,7 @@ class _AccueilState extends State<Accueil> {
     token = prefs.getString('token') ?? '';
     email = prefs.getString('email') ?? '';
     name = prefs.getString('name') ?? '';
+    avatar = prefs.getString('avatar') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
   }
 
@@ -118,11 +122,12 @@ class _AccueilState extends State<Accueil> {
     // final myToken = jsonResponse['token'];
 
     final user = jsonResponse['user'];
+    final msg = jsonResponse['message'];
 
     final region = user['region'];
     final phone = user['phoneNumber'].toString();
     final userCode = user['code'];
-    final balance = user['balance'];
+    final balance = user['balance'].toDouble();;
     name = user['name'] ?? name;
     isSubscribed = user['isSubscribed'] ?? false;
 
@@ -132,7 +137,7 @@ class _AccueilState extends State<Accueil> {
       prefs.setString('region', region);
       prefs.setString('phone', phone);
       prefs.setString('code', userCode);
-      prefs.setInt('balance', balance);
+      prefs.setDouble('balance', balance);
       prefs.setBool('isSubscribed', isSubscribed);
       notifCount = 0;
       print('isSubscribed = $isSubscribed');
@@ -143,6 +148,45 @@ class _AccueilState extends State<Accueil> {
 
       print('all good');
     } else {
+      final error = jsonResponse['error'];
+
+      if (error != null && error == 'Access denied') {
+        String title = "Erreur. Accès refusé.";
+        showPopupMessage(context, title, msg);
+
+        if (!kIsWeb) {
+          await deleteFile(avatar);
+          await unInitializeOneSignal();
+        }
+
+        prefs.setString('token', '');
+        prefs.setString('id', '');
+        prefs.setString('email', '');
+        prefs.setString('name', '');
+        prefs.setString('token', '');
+        prefs.setString('region', '');
+        prefs.setString('phone', '');
+        prefs.setString('code', '');
+        prefs.setString('avatar', '');
+        prefs.setDouble('balance', 0);
+        prefs.setBool('isSubscribed', false);
+        await deleteNotifications();
+        await deleteTransactions();
+
+        // String logoutMsg = 'You where successfully logged out';
+        // String logoutTitle = 'Logout';
+
+        // showPopupMessage(context, logoutTitle, logoutMsg);
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Scene(),
+          ),
+          (route) => false,
+        );
+      }
+
       // Handle errors,
       print('something went wrong');
     }
@@ -228,27 +272,32 @@ class _AccueilState extends State<Accueil> {
               });
             },
           ),
-          IconButton(
-            icon: Icon(Icons.notifications_rounded),
-            color: Colors.white,
-            onPressed: () {
-              Navigator.pushNamed(context, Notifications.id).then((value) {
-                if (mounted) {
-                  setState(() {
-                    initSharedPref();
-                  });
-                }
-              });
-            },
-          ),
+          if (!kIsWeb)
+            IconButton(
+              icon: Icon(Icons.notifications_rounded),
+              color: Colors.white,
+              onPressed: () {
+                Navigator.pushNamed(context, Notifications.id).then((value) {
+                  if (mounted) {
+                    setState(() {
+                      initSharedPref();
+                    });
+                  }
+                });
+              },
+            ),
         ],
       ),
       body: ModalProgressHUD(
         inAsyncCall: showSpinner,
-        child: Expanded(
-          child: SingleChildScrollView(
-            child: _pages[_selectedIndex],
-          ),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: _pages[_selectedIndex],
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: Container(

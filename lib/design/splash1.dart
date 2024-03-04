@@ -15,65 +15,63 @@ class Scene extends StatelessWidget {
     double ffem = fem * 0.97;
 
     Widget silde(image, title, subtitle) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            // autogroupi3zy65f (NBwhYrM9PLamQGEWiii3zy)
-            margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 11 * fem, 19 * fem),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  // undrawsharelinkre54rx1oEy (16:943)
-                  margin:
-                      EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 34 * fem),
-                  width: 300 * fem,
-                  height: 300 * fem,
-                  child: Image.asset(
-                    image,
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 11 * fem, 19 * fem),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    margin:
+                        EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 34 * fem),
                     width: 300 * fem,
-                    height: 208 * fem,
-                  ),
-                ),
-                Container(
-                  // rseautage39K (12:45)
-                  margin:
-                      EdgeInsets.fromLTRB(24 * fem, 0 * fem, 0 * fem, 0 * fem),
-                  child: Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: SafeGoogleFont(
-                      'Montserrat',
-                      fontSize: 20 * ffem,
-                      fontWeight: FontWeight.w800,
-                      height: 1 * ffem / fem,
-                      color: Color(0xfff49101),
+                    height: 300 * fem,
+                    child: Image.asset(
+                      image,
+                      width: 300 * fem,
+                      height: 208 * fem,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            // bienvenuesursniperbusinesscent (12:46)
-            margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 5 * fem),
-            constraints: BoxConstraints(
-              maxWidth: 300 * fem,
-            ),
-            child: Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: SafeGoogleFont(
-                'Montserrat',
-                fontSize: 13 * ffem,
-                fontWeight: FontWeight.w400,
-                height: 1.4 * ffem / fem,
-                color: Color(0xff7e7e7e),
+                  Container(
+                    margin:
+                        EdgeInsets.fromLTRB(24 * fem, 0 * fem, 0 * fem, 0 * fem),
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: SafeGoogleFont(
+                        'Montserrat',
+                        fontSize: 20 * ffem,
+                        fontWeight: FontWeight.w800,
+                        height: 1 * ffem / fem,
+                        color: Color(0xfff49101),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            Container(
+              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 5 * fem),
+              constraints: BoxConstraints(
+                maxWidth: 300 * fem,
+              ),
+              child: Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: SafeGoogleFont(
+                  'Montserrat',
+                  fontSize: 13 * ffem,
+                  fontWeight: FontWeight.w400,
+                  height: 1.4 * ffem / fem,
+                  color: Color(0xff7e7e7e),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     }
 

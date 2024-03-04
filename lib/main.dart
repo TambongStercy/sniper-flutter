@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/affiliation-page.dart';
 import 'package:snipper_frontend/design/connexion.dart';
+import 'package:snipper_frontend/design/email-oublier.dart';
 import 'package:snipper_frontend/design/fiche-contact.dart';
 import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/notifications.dart';
@@ -68,6 +69,7 @@ class _MyAppState extends State<MyApp> {
         FicheContact.id: (context) => FicheContact(),
         Subscrition.id: (context) => Subscrition(),
         PpUpload.id: (context) => PpUpload(),
+        EmailOublie.id: (context) => EmailOublie(),
       },
       title: 'Flutter',
       debugShowCheckedModeBanner: false,

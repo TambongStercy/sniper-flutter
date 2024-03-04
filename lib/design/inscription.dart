@@ -46,15 +46,15 @@ class _InscriptionState extends State<Inscription> {
   late SharedPreferences prefs;
 
   Future<void> registerUser(context) async {
-    print(name);
-    print(pw);
-    print(name);
-    print(email);
-    print(pw);
-    print(pwconfirm);
-    print(whatsapp);
-    print(countryCode);
-    print(city);
+    // print(name);
+    // print(pw);
+    // print(name);
+    // print(email);
+    // print(pw);
+    // print(pwconfirm);
+    // print(whatsapp);
+    // print(countryCode);
+    // print(city);
 
     if (name.isNotEmpty &&
         pw.isNotEmpty &&
@@ -64,8 +64,8 @@ class _InscriptionState extends State<Inscription> {
         pwconfirm.isNotEmpty &&
         whatsapp.isNotEmpty &&
         countryCode.isNotEmpty &&
-        city.isNotEmpty) {
-      print('1');
+        city.isNotEmpty&&
+        code.isNotEmpty) {
 
       final regBody = {
         'name': name,
@@ -77,29 +77,29 @@ class _InscriptionState extends State<Inscription> {
         'code': code,
       };
 
-      print('2');
 
       final response = await http.post(
         Uri.parse(registration),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(regBody),
       );
-      print('3');
+
       print(response.body);
 
       final jsonResponse = jsonDecode(response.body);
 
       final myToken = jsonResponse['token'];
       final user = jsonResponse['user'];
+      final msg = jsonResponse['message'];
 
       final userCode = user['code'];
       final balance = user['balance'];
       final id = user['id'];
       isSubscribed = user['isSubscribed'] ?? false;
 
-      print(user);
 
-      if (myToken != null) {
+      if ( response.statusCode == 200 && myToken != null ) {
+        
         prefs.setString('id', id);
         prefs.setString('email', email);
         prefs.setString('name', name);
@@ -113,18 +113,21 @@ class _InscriptionState extends State<Inscription> {
 
         await initializeOneSignal(id);
 
+        String title = 'Erreur';
+        showPopupMessage(context, title, msg);
+
         Navigator.pushNamed(
           context,
           PpUpload.id,
         );
       } else {
-        String msg = 'Please Try again';
-        String title = 'Something went wrong';
+        // String msg = 'Erreur';
+        String title = 'Erreur';
         showPopupMessage(context, title, msg);
       }
     } else {
-      String msg = 'Please fill in all information asked';
-      String title = 'Information not complete';
+        String msg = "Veuillez remplir toutes les informations demandées.";
+        String title = "Information incomplète.";
       showPopupMessage(context, title, msg);
     }
   }
@@ -232,7 +235,7 @@ class _InscriptionState extends State<Inscription> {
                               ),
                               _fieldTitle(fem, ffem, 'Email'),
                               CustomTextField(
-                                hintText: 'Ex: Jeanpierre@gmai.com',
+                                hintText: 'Ex: Jeanpierre@gmail.com',
                                 type: 4,
                                 value: email,
                                 onChange: (val) {

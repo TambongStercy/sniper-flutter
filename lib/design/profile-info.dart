@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
@@ -12,8 +13,10 @@ import 'package:snipper_frontend/design/profile-modify.dart';
 import 'package:snipper_frontend/design/splash1.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
-// import 'package:contacts_service/contacts_service.dart';
-// import 'package:vcard_maintained/vcard_maintained.dart';
+import 'package:flutter/services.dart' show rootBundle;
+
+import 'package:path_provider/path_provider.dart';
+import 'package:contacts_service/contacts_service.dart';
 
 class Profile extends StatefulWidget {
   static const id = 'profile';
@@ -97,54 +100,57 @@ class _ProfileState extends State<Profile> {
   String avatar = '';
   bool isSubscribed = false;
 
-  // Future<void> addContacts(List<VCard> vCards) async {
-  //   for (VCard vCard in vCards) {
-  //     // Extract information from vCard and create a Contact object
-  //     Contact newContact = Contact(
-  //       givenName: vCard.firstName,
-  //       familyName: vCard.lastName,
-  //       phones: _getPhones(vCard),
-  //       emails: _getEmails(vCard),
-  //       // Add other properties as needed
-  //     );
+  Future<String?> downloadVCF(BuildContext context) async {
+    try {
+      if (kIsWeb) {
+        String msg =
+            'Cette fonctionnalité n\'est pas encore disponible sur web.';
+        String title = 'Erreur';
+        showPopupMessage(context, title, msg);
+        return null;
+      }
 
-  //     // ContactsService.getContacts();
+      // print(token);
+      // print(email);
 
-  //     // Use addContact to add the new contact
-  //     await ContactsService.addContact(newContact);
-  //   }
-  // }
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
 
-  // List<Item> _getPhones(VCard vCard) {
-  //   return [
-  //     if (vCard.cellPhone != null)
-  //       Item(label: 'mobile', value: vCard.cellPhone),
-  //     if (vCard.pagerPhone != null)
-  //       Item(label: 'pager', value: vCard.pagerPhone),
-  //     if (vCard.homePhone != null) Item(label: 'home', value: vCard.homePhone),
-  //     if (vCard.workPhone != null) Item(label: 'work', value: vCard.workPhone),
-  //     if (vCard.otherPhone != null)
-  //       Item(label: 'other', value: vCard.otherPhone),
-  //   ];
-  // }
+      final url = Uri.parse('$downloadVcf?email=$email');
 
-  // List<Item> _getEmails(VCard vCard) {
-  //   return [
-  //     if (vCard.email != null) Item(label: 'email', value: vCard.email),
-  //     if (vCard.workEmail != null) Item(label: 'work', value: vCard.workEmail),
-  //     if (vCard.otherEmail != null)
-  //       Item(label: 'other', value: vCard.otherEmail),
-  //   ];
-  // }
+      final response = await http.get(url, headers: headers);
 
-  // Future<List<VCard>> parseVCF(String filePath) async {
-  //   String vcfData = await File(filePath).readAsString();
-  //   return VCard.fromMap(vcfData);
-  // }
+      final jsonResponse = jsonDecode(response.body);
 
-  Future<void> parseVCF(String filePath) async {
-    String vcfData = await File(filePath).readAsString();
-    print(vcfData);
+      final imageData = jsonResponse['vcfData'];
+      final msg = jsonResponse['message'];
+
+      if (response.statusCode == 200) {
+        final imageBytes = base64Decode(imageData);
+        if (kIsWeb) {
+          return null;
+        }
+        print(imageData);
+        // String fileName = generateUniqueFileName('pp', 'vcf');
+        String fileName = 'contacts.vcf';
+        String folder = 'VCF Files';
+
+        final permanentPath =
+            await saveFileBytesLocally(folder, fileName, imageBytes);
+
+        return permanentPath;
+      } else {
+        String title = 'Error';
+        showPopupMessage(context, title, msg);
+        // Handle errors, e.g., image not found
+        print('VCF request failed with status code ${response.statusCode}');
+      }
+    } catch (e) {
+      print(e);
+    }
+    return null;
   }
 
   @override
@@ -169,6 +175,22 @@ class _ProfileState extends State<Profile> {
     }
   }
 
+  refreshPageRemove() {
+    if (mounted) {
+      setState(() {
+        showSpinner = false;
+      });
+    }
+  }
+
+  refreshPageWait() {
+    if (mounted) {
+      setState(() {
+        showSpinner = true;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     double baseWidth = 390;
@@ -184,7 +206,8 @@ class _ProfileState extends State<Profile> {
         decoration: BoxDecoration(
           color: Color(0xffffffff),
         ),
-        child: Column(
+        child:  email != null && email!= ''?
+        Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Column(
@@ -209,7 +232,7 @@ class _ProfileState extends State<Profile> {
                     ? TextButton(
                         onPressed: () {},
                         child: const Text(
-                          'abonnée',
+                          'actif',
                           style: TextStyle(fontSize: 13),
                         ),
                       )
@@ -273,15 +296,36 @@ class _ProfileState extends State<Profile> {
                   ),
                   ProfileButton(
                     title: 'Acceder aux informations de fichier de contact',
-                    onPress: () {
-                      // Navigator.pushNamed(context, FicheContact.id);
-                      if (isSubscribed) {
-                        launchURL(downloadContacts);
-                        // parseVCF('assets/slides/test.vcf');
-                      } else {
-                        String msg = 'Vous n\'etes pas abonner';
-                        String title = 'Erreur';
+                    onPress: () async {
+                      try {
+                        if (isSubscribed) {
+                          refreshPageWait();
+                          if (kIsWeb) {
+                            launchURL('${downloadContacts}?email=$email');
+                          } else {
+                            final path = await downloadVCF(context);
+
+                            print(path);
+
+                            refreshPageRemove();
+                            if (path == null) {
+                              return print('Error somewhere');
+                            }
+
+                            final contacts = await readVcfFile(path);
+                            await saveContacts(contacts);
+                          }
+                        } else {
+                          String msg = 'Vous n\'êtes pas abonné😔';
+                          String title = 'Erreur';
+                          showPopupMessage(context, title, msg);
+                        }
+                      } catch (e) {
+                        String msg = 'An Error occured😥';
+                        String title = 'Error';
                         showPopupMessage(context, title, msg);
+                        print(e);
+                        refreshPageRemove();
                       }
                     },
                     iconImage: Container(
@@ -300,10 +344,16 @@ class _ProfileState extends State<Profile> {
                     height: 15 * fem,
                   ),
                   ProfileButton(
-                    title: 'Rejoindre la communauter SBC sur WhatsApp',
+                    title: 'Rejoindre la communauté SBC sur WhatsApp',
                     onPress: () {
-                      launchURL(
-                          'https://chat.whatsapp.com/HRDMAQ60yMC1cHIT5Zu3o2');
+                      if (isSubscribed) {
+                        launchURL(
+                          'https://chat.whatsapp.com/F1YT6Wy9xvS0HYbGFQeT6z');
+                      } else {
+                        String msg = 'Vous n\'etes pas abonné😔';
+                        String title = 'Erreur';
+                        showPopupMessage(context, title, msg);
+                      }
                     },
                     iconImage: Container(
                       margin: EdgeInsets.fromLTRB(
@@ -351,7 +401,9 @@ class _ProfileState extends State<Profile> {
                 ],
               ),
             ),
-            SizedBox(height: 40,),
+            SizedBox(
+              height: 40,
+            ),
             Container(
               margin: EdgeInsets.fromLTRB(1 * fem, 0 * fem, 0 * fem, 0 * fem),
               width: 339 * fem,
@@ -383,10 +435,15 @@ class _ProfileState extends State<Profile> {
               ),
             ),
           ],
-        ),
+        ): 
+        const SizedBox(),
+      
       ),
     );
   }
+
+  int contactsLength = 0;
+  int percSaved = 0;
 
   void popUntilAndPush(BuildContext context) {
     Navigator.popUntil(context, (route) => route.isFirst);
@@ -395,6 +452,132 @@ class _ProfileState extends State<Profile> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => Scene()),
+    );
+  }
+
+  Future<String> getVcfFilePath() async {
+    // Get the directory where you can store the VCF file
+    Directory appDocDir = await getApplicationDocumentsDirectory();
+    String vcfPath = '${appDocDir.path}/contacts.vcf';
+    return vcfPath;
+  }
+
+  Future<List<Contact>> readVcfFile(String vcfPath) async {
+    File file = File(vcfPath);
+    if (await file.exists()) {
+      String content = await file.readAsString();
+      return parseVcfContent(content);
+    } else {
+      throw Exception('VCF file not found');
+    }
+  }
+
+  Future<List<Contact>> readVcfFileFromAsset(String vcfPath) async {
+    // as Uint8List ;
+    // File file = File(vcfPath);
+
+    final content = await rootBundle.loadString(vcfPath);
+    // String content = await file.readAsString();
+    return parseVcfContent(content);
+    // if (await file.exists()) {
+    // } else {
+    //   throw Exception('VCF file not found');
+    // }
+  }
+
+  List<Contact> parseVcfContent(String content) {
+    List<Contact> contacts = [];
+    List<String> lines = LineSplitter.split(content).toList();
+    Contact? contact;
+
+    for (String line in lines) {
+      if (line.startsWith('BEGIN:VCARD')) {
+        contact = Contact();
+        contact.phones = [];
+        contact.displayName = '';
+        continue;
+      }
+
+      if (contact == null) {
+        // Skip lines if 'BEGIN:VCARD' is not encountered
+        continue;
+      }
+
+      if (line.startsWith('FN')) {
+        // Parse display name
+        final realName = line.split(':')[1].replaceFirst(' SBC', '');
+        contact.displayName = realName;
+        contact.suffix = realName;
+        contact.familyName = 'SBC';
+      }
+
+      if (line.startsWith('TEL')) {
+        // Parse phone number
+        String phoneNumber = line.split(':')[1];
+        contact.phones?.add(Item(label: 'mobile', value: phoneNumber));
+      }
+
+      if (line.startsWith('END:VCARD')) {
+        contacts.add(contact);
+        contact = null; // Reset contact after adding to the list
+      }
+    }
+
+    return contacts;
+  }
+
+  Future<void> saveContacts(List<Contact> importedContacts) async {
+    percSaved = 0;
+    contactsLength = importedContacts.length;
+
+    showLoaderDialog(context);
+
+    final isGranted = await requestContactPermission();
+
+    if (!isGranted) {
+      Navigator.pop(context);
+      String msg = 'L\'access a vos contacts a ete refuser';
+      String title = 'Erreur';
+      showPopupMessage(context, title, msg);
+      return;
+    }
+
+    print('SBC contacts saving....');
+    for (Contact contact in importedContacts) {
+      percSaved++;
+      await ContactsService.addContact(contact);
+    }
+
+    Navigator.pop(context);
+
+    String msg =
+        'Les $contactsLength contacts de la SBC ont été enregistrés avec succès san répétition.';
+    String title = 'Félicitations 🥳';
+    showPopupMessage(context, title, msg);
+  }
+
+  showLoaderDialog(BuildContext context) {
+    AlertDialog alert = AlertDialog(
+      title: Text('Enregistrement des contacts'),
+      content: Container(
+        height: 70,
+        child: Column(
+          children: [
+            Container(
+              margin: EdgeInsets.only(bottom: 0),
+              child: Text('Cela peut prendre près d\'une minute ou plus.'),
+            ),
+            LinearProgressIndicator(),
+          ],
+        ),
+      ),
+    );
+    showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
     );
   }
 }

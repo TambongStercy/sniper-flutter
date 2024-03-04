@@ -1,14 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
-
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl_phone_field/countries.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -114,23 +116,28 @@ TextStyle SafeGoogleFont(
 
 Future<String> saveFileLocally(
     String folder, String fileName, String path) async {
-  Directory appDocumentsDirectory = await getApplicationDocumentsDirectory();
-  String filePath = '${appDocumentsDirectory.path}/$folder/$fileName';
+  String filePath = '';
 
-  final imageDirectory = Directory('${appDocumentsDirectory.path}/$folder');
-  if (!imageDirectory.existsSync()) {
-    imageDirectory.createSync(recursive: true);
+  if (kIsWeb) {
+    // Set web-specific directory
+    filePath = 'assets/$folder/$fileName';
+    print('This should never happen');
+    return filePath;
+  } else {
+    Directory appDocumentsDirectory = await getApplicationDocumentsDirectory();
+    filePath = '${appDocumentsDirectory.path}/$folder/$fileName';
+    final imageDirectory = Directory('${appDocumentsDirectory.path}/$folder');
+    if (!imageDirectory.existsSync()) {
+      imageDirectory.createSync(recursive: true);
+    }
   }
 
   final fileBytes = await readFileBytes(path);
 
-  File file = File(filePath);
-
-  if (file.existsSync()) {
+  if (ppExist(filePath)) {
     await deleteFile(filePath);
   }
-
-  await file.writeAsBytes(fileBytes);
+  await saveBytesToMobile(filePath, fileBytes);
 
   print('File saved to: $filePath');
 
@@ -139,28 +146,60 @@ Future<String> saveFileLocally(
 
 Future<String> saveFileBytesLocally(
     String folder, String fileName, List<int> fileBytes) async {
-  Directory appDocumentsDirectory = await getApplicationDocumentsDirectory();
-  String filePath = '${appDocumentsDirectory.path}/$folder/$fileName';
+  String filePath = '';
 
-  final imageDirectory = Directory('${appDocumentsDirectory.path}/$folder');
-  if (!imageDirectory.existsSync()) {
-    imageDirectory.createSync(recursive: true);
+  if (kIsWeb) {
+    // Set web-specific directory
+    filePath = 'assets/$folder/$fileName';
+
+    print('This should never happen');
+    await (filePath);
+  } else {
+    Directory appDocumentsDirectory = await getApplicationDocumentsDirectory();
+    filePath = '${appDocumentsDirectory.path}/$folder/$fileName';
+
+    await saveBytesToMobile(filePath, fileBytes);
   }
-
-  File file = File(filePath);
-  await file.writeAsBytes(fileBytes);
 
   print('File saved to: $filePath');
 
   return filePath;
 }
 
-Future<String> mobilePathGetter(String simplePath) async {
-  Directory appDocumentsDirectory = await getApplicationDocumentsDirectory();
-  return '${appDocumentsDirectory.path}/$simplePath';
+String saveBytesToMobile(String filePath, List<int> fileBytes) {
+  // Split the file path using the '/' delimiter
+  List<String> pathSegments = filePath.split('/');
+
+  // Remove the last element (file name) from the list
+  pathSegments.removeLast();
+
+  // Join the remaining segments to obtain the directory path
+  String directoryPath = pathSegments.join('/');
+
+  // Create a directory to this file
+  final imageDirectory = Directory(directoryPath);
+  if (!imageDirectory.existsSync()) {
+    imageDirectory.createSync(recursive: true);
+  }
+
+  File file = File(filePath);
+
+  file.writeAsBytesSync(fileBytes);
+
+  return filePath;
 }
 
-Future<List<int>> readFileBytes(String filePath) async {
+Future<String> mobilePathGetter(String simplePath) async {
+  if (kIsWeb) {
+    // Set web-specific directory
+    return 'assets/$simplePath';
+  } else {
+    Directory appDocumentsDirectory = await getApplicationDocumentsDirectory();
+    return '${appDocumentsDirectory.path}/$simplePath';
+  }
+}
+
+Future<List<int>> readFileBytesMobile(String filePath) async {
   try {
     File file = File(filePath);
 
@@ -176,11 +215,30 @@ Future<List<int>> readFileBytes(String filePath) async {
   }
 }
 
+Future<List<int>> readFileBytes(String filePath) async {
+  try {
+    return readFileBytesMobile(filePath);
+  } catch (error) {
+    print('Error reading file: $error');
+    return [];
+  }
+}
+
 bool ppExist(String path) {
-  return path.isNotEmpty && File(path).existsSync();
+  if (kIsWeb) {
+    return path.isNotEmpty;
+  } else {
+    return path.isNotEmpty && File(path).existsSync();
+  }
 }
 
 ImageProvider<Object> profileImage(String avatarPath) {
+  if (kIsWeb) {
+    print('avatarPath please call setState: $avatarPath');
+
+    return NetworkImage((avatarPath));
+  }
+
   if (ppExist(avatarPath)) {
     print('avatarPath please call setState: $avatarPath');
 
@@ -196,32 +254,37 @@ ImageProvider<Object> profileImage(String avatarPath) {
 
 Future<void> deleteFile(String filePath) async {
   try {
-    final file = File(filePath);
-
-    if (await file.exists()) {
-      await file.delete();
-      print('File deleted successfully');
+    if (kIsWeb) {
+      print('is on web');
     } else {
-      print('File does not exist');
+      final file = File(filePath);
+
+      if (await file.exists()) {
+        await file.delete();
+        print('File deleted successfully');
+      } else {
+        print('File does not exist');
+      }
     }
   } catch (e) {
     print('Error deleting file: $e');
   }
 }
 
-Future<void> launchURL(String url) async {
+void launchURL(String url) {
   final uri = Uri.parse(url);
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri);
-  } else {
-    throw 'Could not launch $url';
-  }
+  launchUrl(uri);
+  // if (canLaunchUrl(uri)) {
+  // } else {
+  //   throw 'Could not launch $url';
+  // }
 }
 
 //Initialize notification handleing
 Future<void> initializeOneSignal(String extId) async {
-
-
+  if (kIsWeb) {
+    return;
+  }
   OneSignal.initialize(onesignalAppId);
 
   /// notification external id
@@ -235,6 +298,9 @@ Future<void> initializeOneSignal(String extId) async {
 }
 
 void addCallbackOnNotif(callback) {
+  if (kIsWeb) {
+    return;
+  }
   print('adding callback');
   OneSignal.Notifications.removeForegroundWillDisplayListener(callback);
 
@@ -243,6 +309,9 @@ void addCallbackOnNotif(callback) {
 }
 
 Future<void> unInitializeOneSignal() async {
+  if (kIsWeb) {
+    return;
+  }
   OneSignal.Notifications.removeForegroundWillDisplayListener(
       duringNotification);
 
@@ -389,7 +458,7 @@ Future<List<Map<String, dynamic>>> getTransactions() async {
         .cast<Map<String, dynamic>>()
         .toList();
 
-    return userTransactions;
+    return userTransactions.take(20).toList();
   } else {
     // If the JSON string is null, return an empty list
     return [];
@@ -405,4 +474,23 @@ String formatTime(DateTime dateTime) {
   formattedTime += (dateTime.hour < 12) ? 'AM' : 'PM';
 
   return formattedTime;
+}
+
+Future<bool> requestContactPermission() async {
+
+  if(await Permission.contacts.isGranted){
+    print('Contact permission already granted');
+    return true;
+  }
+
+  var status = await Permission.contacts.request();
+  if (status.isGranted) {
+    // Permission granted, you can now proceed to read contacts
+    print('Contact permission granted');
+    return true;
+  } else {
+    // Permission denied
+    print('Contact permission denied');
+    return false;
+  }
 }

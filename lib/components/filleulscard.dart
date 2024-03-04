@@ -11,18 +11,26 @@ class FilleulsCard extends StatelessWidget {
     this.buffer = '',
     required this.name,
     required this.email,
+    required this.url,
+    required this.isSub,
   });
 
   final String? image;
   final String buffer;
   final String name;
   final String email;
+  final String url;
+  final bool isSub;
 
   ImageProvider<Object> _imageBuffer() {
     if (buffer != '') {
       final Uint8List bytes = Uint8List.fromList(base64.decode(buffer));
 
       return MemoryImage(bytes);
+    }
+
+    if (url != '') {
+      return NetworkImage(url);
     }
 
     return const AssetImage(
@@ -39,7 +47,7 @@ class FilleulsCard extends StatelessWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 10.0),
       width: double.infinity,
-      height: 70 * fem,
+      height: 60 * fem,
       decoration: BoxDecoration(
         color: Color(0xfff9f9f9),
         borderRadius: BorderRadius.circular(4 * fem),
@@ -47,8 +55,8 @@ class FilleulsCard extends StatelessWidget {
       child: ListTile(
         leading: Container(
           margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 15 * fem, 0 * fem),
-          width: 40 * fem,
-          height: 40 * fem,
+          width: 30 * fem,
+          height: 30 * fem,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20 * fem),
             image: DecorationImage(
@@ -57,6 +65,15 @@ class FilleulsCard extends StatelessWidget {
             ),
           ),
         ),
+        trailing: isSub
+            ? TextButton(
+                onPressed: () {},
+                child: const Text(
+                  'actif',
+                  style: TextStyle(fontSize: 13),
+                ),
+              )
+            : const SizedBox(),
         title: Text(
           name,
           style: SafeGoogleFont(

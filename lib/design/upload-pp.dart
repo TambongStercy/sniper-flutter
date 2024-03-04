@@ -1,6 +1,9 @@
 // ignore_for_file: sort_child_properties_last
-import 'dart:io';
+// import 'dart:io';
 
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -29,12 +32,16 @@ class _PpUploadState extends State<PpUpload> {
     prefs = await SharedPreferences.getInstance();
 
     token = prefs.getString('token');
-    email = prefs.getString('email');
+    email = prefs.getString('email') ?? '';
     avatar = prefs.getString('avatar') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
+
+    print('token: $token');
+    print('email: $email');
+    print('avatar: $avatar');
   }
 
-  String? email;
+  String email = '';
   String? token;
   String avatar = '';
   bool isSubscribed = false;
@@ -49,19 +56,40 @@ class _PpUploadState extends State<PpUpload> {
       final request = http.MultipartRequest('POST', url);
 
       request.headers['Authorization'] = 'Bearer $token';
-      request.fields['email'] = email!;
+      request.fields['email'] = email;
 
-      request.files.add(await http.MultipartFile.fromPath('file', path));
+      // String webFileName = generateUniqueFileName('pp', 'jpg');
+      final avatarName = kIsWeb
+          ? generateUniqueFileName('pp', 'jpg')
+          : Uri.file(path).pathSegments.last;
+
+      if (kIsWeb) {
+        print('filePath is fileBytes but in String form');
+
+        final fileBytes = base64.decode(path);
+
+        request.files.add(http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: avatarName,
+        ));
+      } else {
+        request.files.add(await http.MultipartFile.fromPath('file', path));
+      }
 
       final response = await request.send();
 
       if (response.statusCode == 200) {
-        String fileName = generateUniqueFileName('pp','jpg');
-        // String fileName = 'Your Picture.jpg';
-        String folder = 'Profile Pictures';
+        String permanentPath = '';
 
-        final permanentPath = await saveFileLocally(folder, fileName, path);
+        if (kIsWeb) {
+          permanentPath = '${host}Profile Pictures/$email/$avatarName';
+        } else {
+          avatarName;
+          String folder = 'Profile Pictures';
 
+          permanentPath = await saveFileLocally(folder, avatarName, path);
+        }
         avatar = permanentPath;
 
         prefs.setString('avatar', permanentPath);
@@ -91,8 +119,14 @@ class _PpUploadState extends State<PpUpload> {
 
   @override
   void initState() {
-    initSharedPref();
     super.initState();
+    // Create anonymous function:
+    () async {
+      await initSharedPref();
+      setState(() {
+        // Update your UI with the desired changes.
+      });
+    }();
   }
 
   @override
@@ -190,7 +224,12 @@ class _PpUploadState extends State<PpUpload> {
                                   showSpinner = true;
                                 });
 
-                                final filePath = result.files.first.path!;
+                                List<int>? fileBytes =
+                                    result.files.single.bytes;
+
+                                final filePath = kIsWeb
+                                    ? base64.encode(fileBytes!)
+                                    : result.files.first.path!;
 
                                 print('filePath : $filePath');
 
@@ -219,7 +258,7 @@ class _PpUploadState extends State<PpUpload> {
                                       size: 120.0,
                                     )
                                   : null,
-                              backgroundImage: _profileImage(),
+                              backgroundImage: profileImage(avatar),
                               backgroundColor: Colors.blueGrey[100],
                             ),
                           ),
@@ -263,14 +302,5 @@ class _PpUploadState extends State<PpUpload> {
         ),
       ),
     );
-  }
-
-  ImageProvider<Object>? _profileImage() {
-    if (ppExist(avatar)) {
-      // Check if the user's profile picture path is not empty and the file exists.
-      return FileImage(File(avatar));
-    }
-    // Return the default profile picture from the asset folder.
-    return null;
   }
 }
