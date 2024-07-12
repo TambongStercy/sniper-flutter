@@ -8,6 +8,7 @@ import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
+import 'package:snipper_frontend/design/modify-email.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 
@@ -66,6 +67,8 @@ class _ProfileModState extends State<ProfileMod> {
   String countryCode2 = 'CM';
 
   Future<void> modifyUser(context) async {
+    String msg = '';
+    String error = '';
     try {
       if (email.isNotEmpty &&
           name!.isNotEmpty &&
@@ -97,18 +100,18 @@ class _ProfileModState extends State<ProfileMod> {
 
         final jsonResponse = jsonDecode(response.body);
 
-        // const msg = 'modifications completed successfully';
+        msg = jsonResponse['message'] ?? '';
+        error = jsonResponse['error'] ?? '';
 
         final title = (response.statusCode == 200) ? 'Success' : 'Error';
-        final msg = jsonResponse['message'];
 
         print(sendPone);
 
         prefs.setString('phone', sendPone);
-        code != null ? prefs.setString('code', code!) : print('');
-        name != null ? prefs.setString('name', name!) : print('');
-        email != '' ? prefs.setString('email', email) : print('');
-        region != null ? prefs.setString('region', region!) : print('');
+        if (code != null) prefs.setString('code', code!);
+        if (name != null) prefs.setString('name', name!);
+        if (email != '') prefs.setString('email', email);
+        if (region != null) prefs.setString('region', region!);
 
         showPopupMessage(context, title, msg);
         print(msg);
@@ -119,9 +122,8 @@ class _ProfileModState extends State<ProfileMod> {
         print(msg);
       }
     } catch (e) {
-      String msg = e.toString();
-      String title = 'Error';
-      print(msg);
+      print(e);
+      String title = error;
       showPopupMessage(context, title, msg);
     }
   }
@@ -138,7 +140,6 @@ class _ProfileModState extends State<ProfileMod> {
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['email'] = email;
 
-      // String webFileName = generateUniqueFileName('pp', 'jpg');
       final avatarName = kIsWeb
           ? generateUniqueFileName('pp', 'jpg')
           : Uri.file(path).pathSegments.last;
@@ -182,7 +183,7 @@ class _ProfileModState extends State<ProfileMod> {
         // ignore: use_build_context_synchronously
         showPopupMessage(
           context,
-          'Error',
+          'Erreur',
           'An error occured please try again later',
         );
       }
@@ -258,6 +259,21 @@ class _ProfileModState extends State<ProfileMod> {
                                   ),
                                 ),
                               ),
+                              Container(
+                                margin: EdgeInsets.fromLTRB(
+                                    0 * fem, 0 * fem, 0 * fem, 7 * fem), 
+                                child: Text(
+                                  email,
+                                  style: SafeGoogleFont(
+                                    'Montserrat',
+                                    fontSize: 12 * ffem,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.3333333333 * ffem / fem,
+                                    letterSpacing: 0.400000006 * fem,
+                                    color: Color(0xff6d7d8b),
+                                  ),
+                                ),
+                              ),
                               SizedBox(
                                 height: 20.0 * fem,
                               ),
@@ -322,24 +338,6 @@ class _ProfileModState extends State<ProfileMod> {
                             ),
                           ],
                         ),
-                        // SizedBox(
-                        //   height: 15 * fem,
-                        // ),
-                        // Column(
-                        //   crossAxisAlignment: CrossAxisAlignment.start,
-                        //   children: [
-                        //     _label(fem, ffem, 'Email'),
-                        //     CustomTextField(
-                        //       hintText: '',
-                        //       onChange: (val) {
-                        //         email = val;
-                        //       },
-                        //       margin: 0,
-                        //       value: email,
-                        //       type: 4,
-                        //     ),
-                        //   ],
-                        // ),
                         SizedBox(
                           height: 15 * fem,
                         ),
@@ -422,6 +420,16 @@ class _ProfileModState extends State<ProfileMod> {
                                 showSpinner = false;
                               });
                             }
+                          },
+                        ),
+                        SizedBox(
+                          height: 15 * fem,
+                        ),
+                        ReusableButton(
+                          title: 'Modifier l\'adresse e-mail',
+                          lite: false,
+                          onPress: () async {
+                            Navigator.pushNamed(context, ModifyEmail.id);
                           },
                         ),
                       ],

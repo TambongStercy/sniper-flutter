@@ -23,6 +23,53 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
       };
 }
 
+
+
+class ArcClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    var path = new Path();
+    path.lineTo(0.0, size.height / 2 + 30);
+
+    var firstControlPoint = new Offset(size.width / 5, size.height);
+    var firstPoint = new Offset(size.width / 2, size.height);
+    path.quadraticBezierTo(firstControlPoint.dx, firstControlPoint.dy,
+        firstPoint.dx, firstPoint.dy);
+    var secondControlPoint =
+        new Offset(size.width - (size.width / 5), size.height);
+    var secondPoint = new Offset(size.width, size.height / 2 + 30);
+    path.quadraticBezierTo(secondControlPoint.dx, secondControlPoint.dy,
+        secondPoint.dx, secondPoint.dy);
+    path.lineTo(size.width, 0.0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+
+var bgGradient = new LinearGradient(
+  colors: [const Color(0xFF9BFBC1), const Color(0xFFF3F9A7)],
+  tileMode: TileMode.clamp,
+  begin: Alignment.bottomCenter,
+  end: Alignment.topCenter,
+  stops: [0.0, 1.0],
+);
+
+var btnGradient = new LinearGradient(
+  colors: [const Color(0xFF37ecba), const Color(0xFF72afd3)], 
+  tileMode: TileMode.clamp,
+  begin: Alignment.bottomCenter,
+  end: Alignment.topCenter,
+  stops: [0.0, 1.0],
+);
+
+
+
+
+
 void showPopupMessage(BuildContext context, String title, String msg) {
   showDialog(
     context: context,
@@ -458,7 +505,7 @@ Future<List<Map<String, dynamic>>> getTransactions() async {
         .cast<Map<String, dynamic>>()
         .toList();
 
-    return userTransactions.take(20).toList();
+    return userTransactions.reversed.take(20).toList();
   } else {
     // If the JSON string is null, return an empty list
     return [];
@@ -494,3 +541,17 @@ Future<bool> requestContactPermission() async {
     return false;
   }
 }
+
+
+String formatAmount(int amount) {
+  if (amount >= 1000000000) {
+    return '${(amount / 1000000000).toStringAsFixed(1)}B';
+  } else if (amount >= 1000000) {
+    return '${(amount / 1000000).toStringAsFixed(1)}M';
+  } else if (amount >= 1000) {
+    return '${(amount / 1000).toStringAsFixed(1)}K';
+  } else {
+    return amount.toString();
+  }
+}
+

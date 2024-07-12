@@ -39,68 +39,78 @@ class _ConnexionState extends State<Connexion> {
   late SharedPreferences prefs;
 
   Future<bool> loginUser(context) async {
-    if (password.isNotEmpty && email.isNotEmpty) {
-      final regBody = {
-        'email': email,
-        'password': password,
-      };
+    String msg = '';
 
-      final response = await http.post(
-        Uri.parse(login),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
+    try {
+      if (password.isNotEmpty && email.isNotEmpty) {
+        final regBody = {
+          'email': email,
+          'password': password,
+        };
 
-      final jsonResponse = jsonDecode(response.body);
+        final response = await http.post(
+          Uri.parse(login),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(regBody),
+        );
 
-      final myToken = jsonResponse['token'];
+        final jsonResponse = jsonDecode(response.body);
+        msg = jsonResponse['message']??'';
 
-      final user = jsonResponse['user'];
+        if (response.statusCode == 200) {
+          final myToken = jsonResponse['token'];
+          final user = jsonResponse['user'];
 
-      final name = user['name'];
-      final region = user['region'];
-      final phone = user['phoneNumber'].toString();
-      final msg = jsonResponse['message'];
+          final name = user['name'];
+          final region = user['region'];
+          final phone = user['phoneNumber'].toString();
 
-      final userCode = user['code'];
-      final balance = user['balance'].toDouble();
-      print(balance);
-      final id = user['id'];
-      avatar = !kIsWeb ? user['avatar'] : user['url'];
-      isSubscribed = user['isSubscribed'] ?? false;
+          final userCode = user['code'];
+          final balance = user['balance'].toDouble();
 
-      if (response.statusCode == 200 && myToken != null) {
-        if ((avatar != null || avatar != '') && !kIsWeb) {
-          avatar = await mobilePathGetter('Profile Pictures/Your Picture.jpg');
-          hasPP = true;
+          final id = user['id'];
+          avatar = !kIsWeb ? user['avatar'] : user['url'];
+          isSubscribed = user['isSubscribed'] ?? false;
+          if ((avatar != null || avatar != '') && !kIsWeb) {
+            avatar =
+                await mobilePathGetter('Profile Pictures/Your Picture.jpg');
+            hasPP = true;
+          } else if(avatar != null || avatar != ''){
+            hasPP = true;
+          }else{
+            hasPP = false;
+          }
+
+          token = myToken;
+          prefs.setString('id', id);
+          prefs.setString('token', myToken);
+          prefs.setString('email', email);
+          prefs.setString('name', name);
+          prefs.setString('region', region);
+          prefs.setString('phone', phone);
+          prefs.setString('code', userCode);
+          prefs.setString('avatar', avatar ?? '');
+          prefs.setDouble('balance', balance);
+          prefs.setBool('isSubscribed', isSubscribed);
+
+          await initializeOneSignal(id);
+
+          return true;
         } else {
-          hasPP = false;
+          String title = 'Erreur';
+          showPopupMessage(context, title, msg);
+          return false;
         }
-
-        token = myToken;
-        prefs.setString('id', id);
-        prefs.setString('token', myToken);
-        prefs.setString('email', email);
-        prefs.setString('name', name);
-        prefs.setString('region', region);
-        prefs.setString('phone', phone);
-        prefs.setString('code', userCode);
-        prefs.setString('avatar', avatar ?? '');
-        prefs.setDouble('balance', balance);
-        prefs.setBool('isSubscribed', isSubscribed);
-
-        await initializeOneSignal(id);
-
-        return true;
       } else {
-        // String msg = 'Please Try again';
-        String title = 'Something went wrong';
+        String msg = "Veuillez remplir toutes les informations demandées.";
+        String title = "Information incomplète.";
         showPopupMessage(context, title, msg);
         return false;
       }
-    } else {
-      String msg = "Veuillez remplir toutes les informations demandées.";
-      String title = "Information incomplète.";
+    } catch (e) {
+      print(e);
+      print('Print an error occured pls be carefull when trying to login');
+      String title = 'Erreur';
       showPopupMessage(context, title, msg);
       return false;
     }
@@ -238,7 +248,7 @@ class _ConnexionState extends State<Connexion> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Créez un compte pour développez votre réseau et augmentez vos revenus',
+                              'Créez un compte pour développez votre réseau et augmentez vos revenus😊',
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -320,8 +330,9 @@ class _ConnexionState extends State<Connexion> {
                                   showSpinner = false;
                                 });
                               } catch (e) {
-                                String msg = e.toString();
-                                String title = 'Error';
+                                String msg =
+                                    'Impossible de se connecter. Veuillez réessayer ou contacter les développeurs';
+                                String title = 'Erreur';
                                 showPopupMessage(context, title, msg);
                                 print(e);
                                 setState(() {

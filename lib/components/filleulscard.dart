@@ -47,16 +47,16 @@ class FilleulsCard extends StatelessWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 10.0),
       width: double.infinity,
-      height: 60 * fem,
       decoration: BoxDecoration(
         color: Color(0xfff9f9f9),
         borderRadius: BorderRadius.circular(4 * fem),
       ),
       child: ListTile(
+        contentPadding: EdgeInsets.fromLTRB(20 * fem, 0 * fem, 20 * fem, 0 * fem),
         leading: Container(
-          margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 15 * fem, 0 * fem),
-          width: 30 * fem,
-          height: 30 * fem,
+          margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 0 * fem),
+          width: 35 * fem,
+          height: 35 * fem,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20 * fem),
             image: DecorationImage(
@@ -70,7 +70,10 @@ class FilleulsCard extends StatelessWidget {
                 onPressed: () {},
                 child: const Text(
                   'actif',
-                  style: TextStyle(fontSize: 13),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xff1862f0),
+                  ),
                 ),
               )
             : const SizedBox(),

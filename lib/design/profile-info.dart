@@ -30,6 +30,9 @@ class _ProfileState extends State<Profile> {
 
   late SharedPreferences prefs;
 
+  String telegramLink = 'https://t.me/+huMT6BLYR9sxOTg0';
+  String whatsappLink = 'https://chat.whatsapp.com/IlGvSZtVYEkLRDFStFuQMT';
+
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
 
@@ -40,8 +43,13 @@ class _ProfileState extends State<Profile> {
     phone = prefs.getString('phone');
     avatar = prefs.getString('avatar') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
+    telegramLink = prefs.getString('telegram') ?? 'https://t.me/+huMT6BLYR9sxOTg0';
+    whatsappLink = prefs.getString('whatsapp') ?? 'https://chat.whatsapp.com/IlGvSZtVYEkLRDFStFuQMT';
 
     showSpinner = false;
+
+    downloadUrl = '${downloadContacts}?email=$email';
+    downloadUpdateUrl = '${downloadContactsUpdates}?email=$email';
   }
 
   Future<void> logoutUser(context) async {
@@ -99,6 +107,8 @@ class _ProfileState extends State<Profile> {
   String? token;
   String avatar = '';
   bool isSubscribed = false;
+  String downloadUrl = '';
+  String downloadUpdateUrl = '';
 
   Future<String?> downloadVCF(BuildContext context) async {
     try {
@@ -125,7 +135,7 @@ class _ProfileState extends State<Profile> {
       final jsonResponse = jsonDecode(response.body);
 
       final imageData = jsonResponse['vcfData'];
-      final msg = jsonResponse['message'];
+      final msg = jsonResponse['message']??'';
 
       if (response.statusCode == 200) {
         final imageBytes = base64Decode(imageData);
@@ -206,7 +216,7 @@ class _ProfileState extends State<Profile> {
         decoration: BoxDecoration(
           color: Color(0xffffffff),
         ),
-        child:  email != null && email!= ''?
+        child:  downloadUrl != '' && downloadUpdateUrl != '' ?
         Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -295,13 +305,13 @@ class _ProfileState extends State<Profile> {
                     height: 15 * fem,
                   ),
                   ProfileButton(
-                    title: 'Acceder aux informations de fichier de contact',
+                    title: 'Téléchargez le fichier des contacts(Global)',
                     onPress: () async {
                       try {
                         if (isSubscribed) {
                           refreshPageWait();
                           if (kIsWeb) {
-                            launchURL('${downloadContacts}?email=$email');
+                            launchURL(downloadUrl);
                           } else {
                             final path = await downloadVCF(context);
 
@@ -344,11 +354,58 @@ class _ProfileState extends State<Profile> {
                     height: 15 * fem,
                   ),
                   ProfileButton(
+                    title: 'Téléchargez le fichier des contacts des sept derniers jours',
+                    onPress: () async {
+                      try {
+                        if (isSubscribed) {
+                          refreshPageWait();
+                          if (kIsWeb) {
+                            launchURL(downloadUpdateUrl);
+                          } else {
+                            final path = await downloadVCF(context);
+
+                            refreshPageRemove();
+                            if (path == null) {
+                              return print('Error somewhere');
+                            }
+
+                            final contacts = await readVcfFile(path);
+                            await saveContacts(contacts);
+                          }
+                        } else {
+                          String msg = 'Vous n\'êtes pas abonné😔';
+                          String title = 'Erreur';
+                          showPopupMessage(context, title, msg);
+                        }
+                      } catch (e) {
+                        String msg = 'An Error occured😥';
+                        String title = 'Error';
+                        showPopupMessage(context, title, msg);
+                        print(e);
+                        refreshPageRemove();
+                      }
+                    },
+                    iconImage: Container(
+                      margin: EdgeInsets.fromLTRB(
+                          0 * fem, 0 * fem, 26.25 * fem, 0 * fem),
+                      width: 37.5 * fem,
+                      height: 41.67 * fem,
+                      child: Image.asset(
+                        'assets/design/images/permcontactcalendar.png',
+                        width: 37.5 * fem,
+                        height: 41.67 * fem,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 15 * fem,
+                  ),                 
+                  ProfileButton(
                     title: 'Rejoindre la communauté SBC sur WhatsApp',
                     onPress: () {
                       if (isSubscribed) {
                         launchURL(
-                          'https://chat.whatsapp.com/F1YT6Wy9xvS0HYbGFQeT6z');
+                          whatsappLink);
                       } else {
                         String msg = 'Vous n\'etes pas abonné😔';
                         String title = 'Erreur';
@@ -362,6 +419,60 @@ class _ProfileState extends State<Profile> {
                       height: 41.67 * fem,
                       child: Image.asset(
                         'assets/design/images/whatsapp.png',
+                        width: 41.46 * fem,
+                        height: 41.67 * fem,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 15 * fem,
+                  ),                 
+                  ProfileButton(
+                    title: 'Rejoindre la Formation en Trading',
+                    onPress: () {
+                      if (isSubscribed) {
+                        launchURL(
+                          telegramLink);
+                      } else {
+                        String msg = 'Vous n\'etes pas abonné😔';
+                        String title = 'Erreur';
+                        showPopupMessage(context, title, msg);
+                      }
+                    },
+                    iconImage: Container(
+                      margin: EdgeInsets.fromLTRB(
+                          0 * fem, 0 * fem, 24.27 * fem, 0 * fem),
+                      width: 41.46 * fem,
+                      height: 41.67 * fem,
+                      child: Image.asset(
+                        'assets/design/images/telegram.png',
+                        width: 41.46 * fem,
+                        height: 41.67 * fem,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 65.0 * fem,
+                  ),                 
+                  ProfileButton(
+                    title: 'MARKETING 360°',
+                    onPress: () {
+                      if (isSubscribed) {
+                        launchURL(
+                          'https://t.me/+BLBOGqPGjSwwNmE0');
+                      } else {
+                        String msg = 'Vous n\'etes pas abonné😔';
+                        String title = 'Erreur';
+                        showPopupMessage(context, title, msg);
+                      }
+                    },
+                    iconImage: Container(
+                      margin: EdgeInsets.fromLTRB(
+                          0 * fem, 0 * fem, 24.27 * fem, 0 * fem),
+                      width: 41.46 * fem,
+                      height: 41.67 * fem,
+                      child: Image.asset(
+                        'assets/design/images/telegram.png',
                         width: 41.46 * fem,
                         height: 41.67 * fem,
                       ),

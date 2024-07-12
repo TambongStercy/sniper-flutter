@@ -6,20 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
-import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/accueil.dart';
-import 'package:snipper_frontend/design/supscrition.dart';
-import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 
 // ignore: must_be_immutable
-class NewPassword extends StatefulWidget {
-  static const id = 'NewPassword';
+class NewEmail extends StatefulWidget {
+  static const id = 'NewEmail';
 
-  NewPassword({
+  NewEmail({
     super.key,
     required this.email,
   });
@@ -27,71 +24,66 @@ class NewPassword extends StatefulWidget {
   String email;
 
   @override
-  State<NewPassword> createState() => _NewPasswordState();
+  State<NewEmail> createState() => _NewEmailState();
 }
 
-class _NewPasswordState extends State<NewPassword> {
+class _NewEmailState extends State<NewEmail> {
   String get email => widget.email;
   String token = '';
   String? avatar = '';
   bool isSubscribed = false;
   String otp = '';
 
-  String password = '';
+  String id = '';
 
   bool showSpinner = false;
-  bool hasPP = false;
 
   late SharedPreferences prefs;
 
-  Future<bool> changeAndValidate(context) async {
-    print(otp);
-    print(password);
-    print(email);
-    if (password.isNotEmpty &&
+  Future<void> changeAndValidate(context) async {
+
+    if (id.isNotEmpty &&
         email.isNotEmpty &&
         otp.isNotEmpty &&
         otp.length == 4) {
+          
+
       final regBody = {
         'email': email,
-        'newPassword': password,
-        'otp': int.parse(otp),
+        'id': id,
+        'otp': (otp),
+      };
+
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
       };
 
       final response = await http.post(
-        Uri.parse(validatefOTP),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
+        Uri.parse(validateEOTP),
+        headers: headers,
+        body: regBody,
       );
 
       final jsonResponse = jsonDecode(response.body);
 
-      final myToken = jsonResponse['token'];
-
       final user = jsonResponse['user'];
+      final msg = jsonResponse['message'] ?? '';
 
-      final name = user['name'];
-      final region = user['region'];
-      final phone = user['phoneNumber'].toString();
-      final msg = jsonResponse['message']??'';
+      if (response.statusCode == 200) {
+        final name = user['name'];
+        final region = user['region'];
+        final phone = user['phoneNumber'].toString();
 
-      final userCode = user['code'];
-      final balance = user['balance'];
-      final id = user['id'];
-      avatar = !kIsWeb ? user['avatar'] : user['url'];
-      isSubscribed = user['isSubscribed'] ?? false;
+        final userCode = user['code'];
+        final balance = user['balance'];
+        avatar = !kIsWeb ? user['avatar'] : user['url'];
+        isSubscribed = user['isSubscribed'] ?? false;
 
-      if (response.statusCode == 200 && myToken != null) {
         if ((avatar != null || avatar != '') && !kIsWeb) {
           avatar = await mobilePathGetter('Profile Pictures/Your Picture.jpg');
-          hasPP = true;
-        } else {
-          hasPP = false;
         }
 
-        token = myToken;
-        prefs.setString('id', id);
-        prefs.setString('token', myToken);
         prefs.setString('email', email);
         prefs.setString('name', name);
         prefs.setString('region', region);
@@ -103,98 +95,45 @@ class _NewPasswordState extends State<NewPassword> {
 
         await initializeOneSignal(id);
 
-        return true;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Accueil(),
+          ),
+          (route) => false,
+        );
       } else {
         // String msg = 'Please Try again';
         String title = 'Something went wrong';
         showPopupMessage(context, title, msg);
-        return false;
       }
     } else {
       String msg = 'Please fill in all information asked';
       String title = 'Information not complete';
       showPopupMessage(context, title, msg);
-      return false;
     }
   }
 
-  Future<void> downloadAvatar(BuildContext context) async {
-    try {
-      final avatarPath = avatar;
-
-      if (avatarPath == null || avatarPath.isEmpty) {
-        hasPP = false;
-        return print('User does not have a Profile Photo');
-      }
-
-      if (kIsWeb) {
-        return print('Already have URL for Web');
-      }
-
-      if (ppExist(avatarPath)) {
-        hasPP = true;
-        return print('Already Downloaded');
-      }
-
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
-      final url = Uri.parse('$downloadPP?email=$email');
-
-      final response = await http.get(url, headers: headers);
-
-      final jsonResponse = jsonDecode(response.body);
-
-      final avatarUrl = jsonResponse['url'];
-
-      final imageData = jsonResponse['imageData'];
-
-      if (response.statusCode == 200) {
-        print(avatarUrl);
-        final imageBytes = imageData;
-        String fileName = generateUniqueFileName('pp', 'jpg');
-        // String fileName = 'Your Picture.jpg';
-        String folder = 'Profile Pictures';
-
-        final permanentPath = kIsWeb
-            ? avatarUrl
-            : await saveFileBytesLocally(folder, fileName, imageBytes);
-
-        avatar = permanentPath;
-
-        prefs.setString('avatar', permanentPath);
-      } else {
-        // Handle errors, e.g., image not found
-        print('Image request failed with status code ${response.statusCode}');
-      }
-    } catch (e) {
-      print(e);
-    }
-  }
-
-  Future<void> sendFOTP(context) async {
+  Future<void> ModifyEmailOTP(context) async {
     if (email.isNotEmpty) {
       final regBody = {
         'email': email,
+        'id': id,
       };
 
       final response = await http.post(
-        Uri.parse(sendfOTP),
+        Uri.parse(modEmail),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(regBody),
       );
 
       final jsonResponse = jsonDecode(response.body);
 
-      final msg = jsonResponse['message']??'';
+      final msg = jsonResponse['message'] ?? '';
 
       if (response.statusCode == 200) {
         String title = 'Code Sent';
         showPopupMessage(context, title, msg);
-
-        // Navigator.push(context, MaterialPageRoute(builder: ((context) => ));
 
         return;
       } else {
@@ -214,11 +153,21 @@ class _NewPasswordState extends State<NewPassword> {
   @override
   void initState() {
     super.initState();
-    initSharedPref();
+    // Create anonymous function:
+    () async {
+      await initSharedPref();
+      if (mounted) {
+        setState(() {
+          // Update your UI with the desired changes.
+        });
+      }
+    }();
   }
 
-  void initSharedPref() async {
+  Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
+    id = prefs.getString('id') ?? '';
+    token = prefs.getString('token') ?? '';
   }
 
   @override
@@ -273,7 +222,7 @@ class _NewPasswordState extends State<NewPassword> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Modifier et Valider le mot de passe',
+                              'Valider l\'adresse e-mail',
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -287,7 +236,7 @@ class _NewPasswordState extends State<NewPassword> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Entrez le code OTP envoyé à $email et votre nouveau mot de passe',
+                              'Entrez le code OTP envoyé à $email',
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -328,17 +277,6 @@ class _NewPasswordState extends State<NewPassword> {
                           SizedBox(
                             height: 20 * fem,
                           ),
-                          CustomTextField(
-                            hintText: 'Nouveau mot de passe',
-                            type: 3,
-                            value: password,
-                            onChange: (val) {
-                              password = val;
-                            },
-                          ),
-                          SizedBox(
-                            height: 20 * fem,
-                          ),
                           ReusableButton(
                             title: 'Valider',
                             lite: false,
@@ -348,37 +286,7 @@ class _NewPasswordState extends State<NewPassword> {
                                   showSpinner = true;
                                 });
 
-                                final hasLogged =
-                                    await changeAndValidate(context);
-
-                                if (hasLogged) {
-                                  // ignore: use_build_context_synchronously
-                                  await downloadAvatar(context);
-
-                                  setState(() {
-                                    showSpinner = false;
-                                  });
-
-                                  if (hasPP && isSubscribed) {
-                                    // ignore: use_build_context_synchronously
-                                    return Navigator.pushAndRemoveUntil(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => Accueil(),
-                                      ),
-                                      (route) => false,
-                                    );
-                                  }
-
-                                  final pageToGo =
-                                      hasPP ? Subscrition.id : PpUpload.id;
-
-                                  // ignore: use_build_context_synchronously
-                                  return Navigator.pushNamed(
-                                    context,
-                                    pageToGo,
-                                  );
-                                }
+                                await changeAndValidate(context);
 
                                 setState(() {
                                   showSpinner = false;
@@ -408,7 +316,7 @@ class _NewPasswordState extends State<NewPassword> {
                                     showSpinner = true;
                                   });
 
-                                  await sendFOTP(context);
+                                  await ModifyEmailOTP(context);
 
                                   setState(() {
                                     showSpinner = false;

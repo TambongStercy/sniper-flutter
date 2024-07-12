@@ -126,6 +126,8 @@ class _HomeState extends State<Home> {
   void initState() {
     super.initState();
 
+    unsubSlides.shuffle();
+
     // Create anonymous function:
     () async {
       await initSharedPref();
@@ -150,176 +152,178 @@ class _HomeState extends State<Home> {
     final slides = isSubscribed ? subSlides : unsubSlides;
 
 
-    return Container(
-      margin: EdgeInsets.fromLTRB(15 * fem, 20 * fem, 15 * fem, 14 * fem),
-      padding: EdgeInsets.fromLTRB(3 * fem, 0 * fem, 0 * fem, 0 * fem),
-      width: double.infinity,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: EdgeInsets.fromLTRB(7 * fem, 0 * fem, 0 * fem, 20 * fem),
-            constraints: BoxConstraints(
-              maxWidth: 325 * fem,
+    return SingleChildScrollView(
+      child: Container(
+        margin: EdgeInsets.fromLTRB(15 * fem, 20 * fem, 15 * fem, 14 * fem),
+        padding: EdgeInsets.fromLTRB(3 * fem, 0 * fem, 0 * fem, 0 * fem),
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: EdgeInsets.fromLTRB(7 * fem, 0 * fem, 0 * fem, 20 * fem),
+              constraints: BoxConstraints(
+                maxWidth: 325 * fem,
+              ),
+              child: RichText(
+                text: TextSpan(
+                  style: SafeGoogleFont(
+                    'Montserrat',
+                    fontSize: 15 * ffem,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4 * ffem / fem,
+                    color: Color(0xff25313c),
+                  ),
+                  children: <TextSpan>[
+                    const TextSpan(
+                      text: 'Bienvenue ',
+                    ),
+                    TextSpan(
+                      text: name?.toUpperCase(),
+                      style: SafeGoogleFont(
+                        'Montserrat',
+                        fontSize: 15 * ffem,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4 * ffem / fem,
+                        color: limeGreen,
+                      ),
+                    ),
+                    const TextSpan(
+                      text:
+                          ' à la sniper Business Center, la communauté la plus dynamique du Cameroun.',
+                    )
+                  ],
+                ),
+              ),
             ),
-            child: RichText(
-              text: TextSpan(
+            Container(
+              margin: EdgeInsets.fromLTRB(7 * fem, 0 * fem, 0 * fem, 5 * fem),
+              child: Text(
+                'A l’affiche',
                 style: SafeGoogleFont(
                   'Montserrat',
-                  fontSize: 15 * ffem,
-                  fontWeight: FontWeight.w500,
-                  height: 1.4 * ffem / fem,
-                  color: Color(0xff25313c),
+                  fontSize: 16 * ffem,
+                  fontWeight: FontWeight.w600,
+                  height: 1.25 * ffem / fem,
+                  color: Color(0xfff49101),
                 ),
-                children: <TextSpan>[
-                  const TextSpan(
-                    text: 'Bienvenue ',
-                  ),
-                  TextSpan(
-                    text: name?.toUpperCase(),
-                    style: SafeGoogleFont(
-                      'Montserrat',
-                      fontSize: 15 * ffem,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4 * ffem / fem,
-                      color: limeGreen,
-                    ),
-                  ),
-                  const TextSpan(
-                    text:
-                        ' à la sniper Business Center, la communauté la plus dynamique du Cameroun.',
+              ),
+            ),
+            AdCard(
+              height: 300,
+              buttonTitle: 'En savoir plus',
+              buttonAction: () {
+                //Go to marketPlace
+                changePage(2);
+              },
+              child: Container(
+                padding: EdgeInsets.all(5 * fem),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12 * fem),
+                  color: Colors.black,
+                ),
+                child: AnotherCarousel(
+                  images: slides.map((name) {
+                    return AssetImage('assets/slides/$name.jpg');
+                  }).toList(),
+                  boxFit: BoxFit.contain,
+                  showIndicator: false,
+                  dotSize: 3.0,
+                  borderRadius: true,
+                ),
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.fromLTRB(7 * fem, 0 * fem, 0 * fem, 15 * fem),
+              child: Text(
+                'C’est quoi Sniper Business Center ?',
+                style: SafeGoogleFont(
+                  'Montserrat',
+                  fontSize: 16 * ffem,
+                  fontWeight: FontWeight.w600,
+                  height: 1.25 * ffem / fem,
+                  color: Color(0xfff49101),
+                ),
+              ),
+            ),
+            AdCard(
+              height: 300,
+              buttonTitle: 'Telecharger le document',
+              buttonAction: downloadPresentation,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12 * fem),
+                  border: Border.all(color: Colors.grey, width: 1.0),
+                ),
+                child: const VideoItem(),
+              ),
+            ),
+            !isSubscribed
+                ? Column(
+                    children: [
+                      Container(
+                        margin: EdgeInsets.fromLTRB(
+                            7 * fem, 0 * fem, 0 * fem, 9 * fem),
+                        child: Text(
+                          'Rejoindre la communauté',
+                          style: SafeGoogleFont(
+                            'Montserrat',
+                            fontSize: 16 * ffem,
+                            fontWeight: FontWeight.w600,
+                            height: 1.25 * ffem / fem,
+                            color: Color(0xfff49101),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.all(7 * fem),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(5 * fem),
+                          color: Color.fromARGB(255, 244, 245, 248),
+                        ),
+                        child: Text(
+                          'Votre abonnement n’est pas encore activé. Pour profiter pleinement des avantages du réseau sniper business center , veuillez procéder au paiement de votre inscription.',
+                          style: SafeGoogleFont(
+                            'Montserrat',
+                            fontSize: 15 * ffem,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4 * ffem / fem,
+                            color: Color.fromARGB(255, 91, 92, 96),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10.0),
+                      ReusableButton(
+                        title: 'Payer mon inscription',
+                        onPress: () {
+                          Navigator.pushNamed(context, Subscrition.id);
+                        },
+                        lite: false,
+                      ),
+                      Container(
+                        padding: EdgeInsets.all(7 * fem),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(5 * fem),
+                          color: Color.fromARGB(255, 244, 245, 248),
+                        ),
+                        child: Text(
+                          'Cependant, vous avez la possibilité de commencer à inviter d’autres personnes à rejoindre le réseau et payer votre inscription avec les commissions que vous recevez . Génial n’est ce pas ?',
+                          style: SafeGoogleFont(
+                            'Montserrat',
+                            fontSize: 15 * ffem,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4 * ffem / fem,
+                            color: Color.fromARGB(255, 91, 92, 96),
+                          ),
+                        ),
+                      ),
+                    ],
                   )
-                ],
-              ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.fromLTRB(7 * fem, 0 * fem, 0 * fem, 5 * fem),
-            child: Text(
-              'A l’affiche',
-              style: SafeGoogleFont(
-                'Montserrat',
-                fontSize: 16 * ffem,
-                fontWeight: FontWeight.w600,
-                height: 1.25 * ffem / fem,
-                color: Color(0xfff49101),
-              ),
-            ),
-          ),
-          AdCard(
-            height: 300,
-            buttonTitle: 'En savoir plus',
-            buttonAction: () {
-              //Go to marketPlace
-              changePage(2);
-            },
-            child: Container(
-              padding: EdgeInsets.all(5 * fem),
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12 * fem),
-                color: Colors.black,
-              ),
-              child: AnotherCarousel(
-                images: slides.map((name) {
-                  return AssetImage('assets/slides/$name.jpg');
-                }).toList(),
-                boxFit: BoxFit.contain,
-                showIndicator: false,
-                dotSize: 3.0,
-                borderRadius: true,
-              ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.fromLTRB(7 * fem, 0 * fem, 0 * fem, 15 * fem),
-            child: Text(
-              'C’est quoi Sniper Business Center ?',
-              style: SafeGoogleFont(
-                'Montserrat',
-                fontSize: 16 * ffem,
-                fontWeight: FontWeight.w600,
-                height: 1.25 * ffem / fem,
-                color: Color(0xfff49101),
-              ),
-            ),
-          ),
-          AdCard(
-            height: 300,
-            buttonTitle: 'Telecharger le document',
-            buttonAction: downloadPresentation,
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12 * fem),
-                border: Border.all(color: Colors.grey, width: 1.0),
-              ),
-              child: const VideoItem(),
-            ),
-          ),
-          !isSubscribed
-              ? Column(
-                  children: [
-                    Container(
-                      margin: EdgeInsets.fromLTRB(
-                          7 * fem, 0 * fem, 0 * fem, 9 * fem),
-                      child: Text(
-                        'Rejoindre la communauté',
-                        style: SafeGoogleFont(
-                          'Montserrat',
-                          fontSize: 16 * ffem,
-                          fontWeight: FontWeight.w600,
-                          height: 1.25 * ffem / fem,
-                          color: Color(0xfff49101),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.all(7 * fem),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(5 * fem),
-                        color: Color.fromARGB(255, 244, 245, 248),
-                      ),
-                      child: Text(
-                        'Votre abonnement n’est pas encore activé. Pour profiter pleinement des avantages du réseau sniper business center , veuillez procéder au paiement de votre inscription.',
-                        style: SafeGoogleFont(
-                          'Montserrat',
-                          fontSize: 15 * ffem,
-                          fontWeight: FontWeight.w500,
-                          height: 1.4 * ffem / fem,
-                          color: Color.fromARGB(255, 91, 92, 96),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10.0),
-                    ReusableButton(
-                      title: 'Payer mon inscription',
-                      onPress: () {
-                        Navigator.pushNamed(context, Subscrition.id);
-                      },
-                      lite: false,
-                    ),
-                    Container(
-                      padding: EdgeInsets.all(7 * fem),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(5 * fem),
-                        color: Color.fromARGB(255, 244, 245, 248),
-                      ),
-                      child: Text(
-                        'Cependant, vous avez la possibilité de commencer à inviter d’autres personnes à rejoindre le réseau et payer votre inscription avec les commissions que vous recevez . Génial n’est ce pas ?',
-                        style: SafeGoogleFont(
-                          'Montserrat',
-                          fontSize: 15 * ffem,
-                          fontWeight: FontWeight.w500,
-                          height: 1.4 * ffem / fem,
-                          color: Color.fromARGB(255, 91, 92, 96),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : const SizedBox(),
-        ],
+                : const SizedBox(),
+          ],
+        ),
       ),
     );
   }

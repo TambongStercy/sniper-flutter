@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
@@ -7,6 +8,7 @@ import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/historique-transaction-bottom-sheet.dart';
 import 'package:snipper_frontend/design/retrait.dart';
+import 'package:snipper_frontend/design/splash1.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 
@@ -63,6 +65,8 @@ class _WalletState extends State<Wallet> {
   }
 
   Future<void>? getInfos() async {
+    String msg = '';
+    String error = '';
     try {
       await initSharedPref();
 
@@ -79,25 +83,20 @@ class _WalletState extends State<Wallet> {
 
       final jsonResponse = jsonDecode(response.body);
 
-      // final myToken = jsonResponse['token'];
-
-      final user = jsonResponse['user'];
-      final msg = jsonResponse['message'];
-
-      final region = user['region'];
-      email = user['email'] ?? '';
-      final phone = user['phoneNumber'].toString();
-      final userCode = user['code'];
-      balance = user['balance'].toDouble();
-      final name = user['name'] ?? '';
-      final isSubscribed = user['isSubscribed'] ?? false;
-      final gottenTransactions = user['transactions'] ?? [];
-
-      // print(user['transactions'] ?? {});
-      // print(user);
-      print(transactions);
+      msg = jsonResponse['message'];
+      error = jsonResponse['error'];
 
       if (response.statusCode == 200) {
+        final user = jsonResponse['user'];
+
+        final region = user['region'];
+        email = user['email'] ?? '';
+        final phone = user['phoneNumber'].toString();
+        final userCode = user['code'];
+        balance = user['balance'].toDouble();
+        final name = user['name'] ?? '';
+        final isSubscribed = user['isSubscribed'] ?? false;
+        final gottenTransactions = user['transactions'] ?? [];
         prefs.setString('name', name);
         prefs.setString('email', email);
         prefs.setString('region', region);
@@ -111,17 +110,49 @@ class _WalletState extends State<Wallet> {
         setState(() {});
 
         print('all good');
-        print(transactions);
       } else {
-        String title = 'Error';
+        if (error == 'Accès refusé') {
+          String title = "Erreur. Accès refusé.";
+          showPopupMessage(context, title, msg);
+
+          if (!kIsWeb) {
+            final avatar = prefs.getString('avatar') ?? '';
+
+            await deleteFile(avatar);
+            await unInitializeOneSignal();
+          }
+
+          prefs.setString('token', '');
+          prefs.setString('id', '');
+          prefs.setString('email', '');
+          prefs.setString('name', '');
+          prefs.setString('token', '');
+          prefs.setString('region', '');
+          prefs.setString('phone', '');
+          prefs.setString('code', '');
+          prefs.setString('avatar', '');
+          prefs.setDouble('balance', 0);
+          prefs.setBool('isSubscribed', false);
+          await deleteNotifications();
+          await deleteTransactions();
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Scene(),
+            ),
+            (route) => false,
+          );
+        }
+
+        String title = 'Erreur';
         showPopupMessage(context, title, msg);
         print('something went wrong');
       }
-    } on Exception catch (e) {
-        print('something went wrong: $e');
-        String title = 'Error';
-        showPopupMessage(context, title, 'An Error occured please contact developers');
-        print('something went wrong');
+    } catch (e) {
+      print(e);
+      String title = error;
+      showPopupMessage(context, title, msg);
     }
   }
 

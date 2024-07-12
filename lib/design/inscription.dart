@@ -56,78 +56,82 @@ class _InscriptionState extends State<Inscription> {
     // print(countryCode);
     // print(city);
 
-    if (name.isNotEmpty &&
-        pw.isNotEmpty &&
-        name.isNotEmpty &&
-        email.isNotEmpty &&
-        pw.isNotEmpty &&
-        pwconfirm.isNotEmpty &&
-        whatsapp.isNotEmpty &&
-        countryCode.isNotEmpty &&
-        city.isNotEmpty&&
-        code.isNotEmpty) {
+    String msg = '';
 
-      final regBody = {
-        'name': name,
-        'email': email,
-        'password': pw,
-        'confirm': pwconfirm,
-        'phone': (countryCode + whatsapp),
-        'region': city,
-        'code': code,
-      };
+    try {
+      if (name.isNotEmpty &&
+          pw.isNotEmpty &&
+          name.isNotEmpty &&
+          email.isNotEmpty &&
+          pw.isNotEmpty &&
+          pwconfirm.isNotEmpty &&
+          whatsapp.isNotEmpty &&
+          countryCode.isNotEmpty &&
+          city.isNotEmpty &&
+          code.isNotEmpty) {
+        final regBody = {
+          'name': name,
+          'email': email.trim(),
+          'password': pw,
+          'confirm': pwconfirm,
+          'phone': (countryCode + whatsapp),
+          'region': city,
+          'code': code.trim(),
+        };
 
-
-      final response = await http.post(
-        Uri.parse(registration),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
-
-      print(response.body);
-
-      final jsonResponse = jsonDecode(response.body);
-
-      final myToken = jsonResponse['token'];
-      final user = jsonResponse['user'];
-      final msg = jsonResponse['message'];
-
-      final userCode = user['code'];
-      final balance = user['balance'];
-      final id = user['id'];
-      isSubscribed = user['isSubscribed'] ?? false;
-
-
-      if ( response.statusCode == 200 && myToken != null ) {
-        
-        prefs.setString('id', id);
-        prefs.setString('email', email);
-        prefs.setString('name', name);
-        prefs.setString('token', myToken);
-        prefs.setString('region', city);
-        prefs.setString('phone', whatsapp);
-        prefs.setString('code', userCode);
-        prefs.setInt('balance', balance);
-        prefs.setString('avatar', '');
-        prefs.setBool('isSubscribed', isSubscribed);
-
-        await initializeOneSignal(id);
-
-        String title = 'Erreur';
-        showPopupMessage(context, title, msg);
-
-        Navigator.pushNamed(
-          context,
-          PpUpload.id,
+        final response = await http.post(
+          Uri.parse(registration),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(regBody),
         );
+
+        print(response.body);
+
+        final jsonResponse = jsonDecode(response.body);
+
+        msg = jsonResponse['message']??'';
+
+        if (response.statusCode == 200) {
+          final myToken = jsonResponse['token'];
+          final user = jsonResponse['user'];
+
+          final userCode = user['code'];
+          final balance = user['balance'];
+          final id = user['id'];
+          isSubscribed = user['isSubscribed'] ?? false;
+          prefs.setString('id', id);
+          prefs.setString('email', email);
+          prefs.setString('name', name);
+          prefs.setString('token', myToken);
+          prefs.setString('region', city);
+          prefs.setString('phone', whatsapp);
+          prefs.setString('code', userCode);
+          prefs.setInt('balance', balance);
+          prefs.setString('avatar', '');
+          prefs.setBool('isSubscribed', isSubscribed);
+
+          await initializeOneSignal(id);
+
+          String title = 'Erreur';
+          showPopupMessage(context, title, msg);
+
+          Navigator.pushNamed(
+            context,
+            PpUpload.id,
+          );
+        } else {
+          // String msg = 'Erreur';
+          String title = 'Erreur';
+          showPopupMessage(context, title, msg);
+        }
       } else {
-        // String msg = 'Erreur';
-        String title = 'Erreur';
-        showPopupMessage(context, title, msg);
-      }
-    } else {
         String msg = "Veuillez remplir toutes les informations demandées.";
         String title = "Information incomplète.";
+        showPopupMessage(context, title, msg);
+      }
+    } catch (e) {
+      print(e);
+      String title = 'Erreur';
       showPopupMessage(context, title, msg);
     }
   }

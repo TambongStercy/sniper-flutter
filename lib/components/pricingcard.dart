@@ -38,6 +38,8 @@ class PricingCard extends StatelessWidget {
         [
           'Accès à la fiche de nos contacts',
           'Pourvoir effectuer des retrait de vos compte',
+          'Formation au trading',
+          'Accès à notre market place',
         ],
       );
     } else if (type == 1) {
@@ -48,7 +50,7 @@ class PricingCard extends StatelessWidget {
       description.addAll(
         [
           'Partage de ton service ou produits dans nos différents groupe WhatsApp 1/semaine',
-          'Accès à notre market place (1produits ou service)',
+          'Accès à notre market place (3produits ou service)',
         ],
       );
     } else if (type == 2) {
@@ -59,7 +61,7 @@ class PricingCard extends StatelessWidget {
       description.addAll(
         [
           'Partage de ton service ou produits dans nos différents groupe WhatsApp 3/semaine',
-          'Accès à notre marketplace (3 produits ou services)',
+          'Accès à notre marketplace (6 produits ou services)',
         ],
       );
     } else {
@@ -70,7 +72,7 @@ class PricingCard extends StatelessWidget {
       description.addAll(
         [
           'Partage de ton service ou produits dans nos différents groupe WhatsApp 5/semaine',
-          'Accès à notre marketplace (7produits ou services)',
+          'Accès à notre marketplace (10 produits ou services)',
           'Partage de ton service ou produit sur notre page Facebook',
           'Conception d‘un flyer professionnel',
         ],

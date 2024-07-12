@@ -4,6 +4,7 @@ import 'dart:math';
 // import 'dart:io';
 
 // import 'package:contacts_service/contacts_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 // import 'package:vcard_maintained/vcard_maintained.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/affiliation-page-filleuls-details.dart';
 import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/design/splash1.dart';
 
 import 'package:snipper_frontend/utils.dart';
 
@@ -70,35 +72,83 @@ class _AffiliationState extends State<Affiliation> {
   }
 
   Future<void>? getInfos() async {
-    await initSharedPref();
+    String msg = '';
+    String error = '';
+    try {
+      await initSharedPref();
 
-    final token = prefs.getString('token');
+      final token = prefs.getString('token');
 
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
 
-    final url = Uri.parse('$getReferals?email=$email');
+      final url = Uri.parse('$getReferals?email=$email');
 
-    final response = await http.get(url, headers: headers);
+      final response = await http.get(url, headers: headers);
 
-    final jsonResponse = jsonDecode(response.body);
+      final jsonResponse = jsonDecode(response.body);
 
-    if (response.statusCode == 200) {
-      directUsers = jsonResponse['directUsers'] ?? [];
-      indirectUsers = jsonResponse['indirectUsers'] ?? [];
+      msg = jsonResponse['message']??'';
+      error = jsonResponse['error']??'';
 
-      // await saveTransactionList(gottenTransactions);
-      // transactions = await getTransactions();
+      if (response.statusCode == 200) {
+        directUsers = jsonResponse['directUsers'] ?? [];
+        indirectUsers = jsonResponse['indirectUsers'] ?? [];
 
-      setState(() {});
+        // await saveTransactionList(gottenTransactions);
+        // transactions = await getTransactions();
 
-      print('all good');
-      // print(transactions);
-    } else {
-      // Handle errors,
-      print('something went wrong');
+        setState(() {});
+
+        print('all good');
+        // print(transactions);
+      } else {
+        if (error == 'Accès refusé') {
+          String title = "Erreur. Accès refusé.";
+          showPopupMessage(context, title, msg);
+
+          if (!kIsWeb) {
+            final avatar = prefs.getString('avatar') ?? '';
+
+            await deleteFile(avatar);
+            await unInitializeOneSignal();
+          }
+
+          prefs.setString('token', '');
+          prefs.setString('id', '');
+          prefs.setString('email', '');
+          prefs.setString('name', '');
+          prefs.setString('token', '');
+          prefs.setString('region', '');
+          prefs.setString('phone', '');
+          prefs.setString('code', '');
+          prefs.setString('avatar', '');
+          prefs.setDouble('balance', 0);
+          prefs.setBool('isSubscribed', false);
+          await deleteNotifications();
+          await deleteTransactions();
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Scene(),
+            ),
+            (route) => false,
+          );
+        }
+
+        String title = 'Erreur';
+        showPopupMessage(context, title, msg);
+
+        // Handle errors,
+        print('something went wrong');
+      }
+    } catch (e) {
+      print(e);
+      String title = error;
+      showPopupMessage(context, title, msg);
     }
   }
 

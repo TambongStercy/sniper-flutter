@@ -18,7 +18,7 @@ class CustomTextField extends StatefulWidget {
     this.initialCountryCode,
   });
 
-  ///1 = text, 2 = numbers, 3 = password, 4 = email, 5 = phonenumber
+  ///1 = text, 2 = numbers, 3 = password, 4 = email, 5 = phonenumber, 6 = long text
   final int? type;
   final String hintText;
   final String? value;
@@ -46,7 +46,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
     () async {
       _textFieldController = TextEditingController(text: value);
 
-      if (type == 1 || type == null) {
+      if (type == 1 || type == 6||type == null) {
         keyboard = TextInputType.text;
         passwordVisible = false;
       } else if (type == 2) {
@@ -59,7 +59,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
         keyboard = TextInputType.emailAddress;
         passwordVisible = false;
       } else {
-      // _textFieldController = TextEditingController(text: '237675080477');
+        // _textFieldController = TextEditingController(text: '237675080477');
         keyboard = TextInputType.phone;
         passwordVisible = false;
       }
@@ -77,8 +77,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
   Function(String)? get getCountryCode => widget.getCountryCode;
   Function()? get onSearch => widget.onSearch;
   bool? get searchMode => widget.searchMode;
+
   ///Should be the code without +
-  String get initialCountryCode => widget.initialCountryCode??'CM';
+  String get initialCountryCode => widget.initialCountryCode ?? 'CM';
 
   TextInputType keyboard = TextInputType.text;
 
@@ -91,12 +92,13 @@ class _CustomTextFieldState extends State<CustomTextField> {
     bool search = searchMode ?? false;
     int marg = margin ?? 49;
 
-    print(initialCountryCode);
+    // print(initialCountryCode);
 
     return Container(
       margin: EdgeInsets.fromLTRB(marg * fem, 0 * fem, marg * fem, 13 * fem),
       child: (type != 5)
           ? TextField(
+              maxLines : type == 6 ? 5 : 1,
               controller: _textFieldController,
               keyboardType: keyboard,
               obscureText: passwordVisible,
@@ -104,6 +106,11 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   type == 2 ? [FilteringTextInputFormatter.digitsOnly] : null,
               onChanged: (value) {
                 onChange(value);
+              },
+              onSubmitted: (value) {
+                if (search && onSearch != null) {
+                  onSearch!();
+                }
               },
               style: SafeGoogleFont(
                 'Montserrat',
@@ -125,7 +132,21 @@ class _CustomTextFieldState extends State<CustomTextField> {
                           );
                         },
                       )
-                    : null,
+                    : IconButton(
+                        icon: Icon(
+                          _textFieldController.value.text.isNotEmpty
+                              ? Icons.close
+                              : null,
+                        ),
+                        onPressed: () {
+                          setState(
+                            () {
+                              onChange('');
+                              _textFieldController.text = '';
+                            },
+                          );
+                        },
+                      ),
                 prefixIcon: search
                     ? IconButton(
                         icon: Icon(Icons.search),
@@ -137,6 +158,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   'Montserrat',
                   fontSize: 14 * ffem,
                 ),
+                contentPadding: search ? EdgeInsets.only(top: 20.0) : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(search ? 55 : 5),
                 ),

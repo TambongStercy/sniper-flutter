@@ -25,6 +25,7 @@ class _RetraitState extends State<Retrait> {
   String token = '';
   String email = '';
   String countryCode = '237';
+  String password = '';
   String countryCode2 = 'CM';
   double balance = 0;
   bool isSubscribed = false;
@@ -99,6 +100,7 @@ class _RetraitState extends State<Retrait> {
           'phone': sendPone,
           'amount': amount,
           'operator': dropdownValue,
+          'password': password,
         };
 
         final headers = {
@@ -112,7 +114,7 @@ class _RetraitState extends State<Retrait> {
           body: jsonEncode(regBody),
         );
         final jsonResponse = jsonDecode(response.body);
-        final msg = jsonResponse['message'];
+        final msg = jsonResponse['message']??'';
 
         if (response.statusCode == 200) {
           // final msg = 'you successfully withdrawed $amount from your wallet';
@@ -303,6 +305,37 @@ class _RetraitState extends State<Retrait> {
                       ),
                     ],
                   ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: EdgeInsets.fromLTRB(
+                            0 * fem, 0 * fem, 0 * fem, 10 * fem),
+                        child: Text(
+                          'Mot de passe',
+                          style: SafeGoogleFont(
+                            'Montserrat',
+                            fontSize: 14 * ffem,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4285714286 * ffem / fem,
+                            color: Color(0xff25313c),
+                          ),
+                        ),
+                      ),
+                      CustomTextField(
+                        hintText: '',
+                        type: 3,
+                        value: password,
+                        onChange: (val) {
+                          // print(val);
+                          password = val;
+                        },
+                      ),
+                    ],
+                  ),
+
+
+
                   SizedBox(
                     height: 15 * fem,
                   ),

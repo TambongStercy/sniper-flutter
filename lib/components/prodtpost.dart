@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/imagecard.dart';
+// import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
 
 class PrdtPost extends StatelessWidget {
@@ -9,11 +10,15 @@ class PrdtPost extends StatelessWidget {
     required this.image,
     required this.onContact,
     required this.title,
+    required this.price,
+    this.rating = null,
   });
 
   final String image;
   final String title;
+  final int price;
   final Function() onContact;
+  final Widget? rating;
 
   @override
   Widget build(BuildContext context) {
@@ -22,14 +27,12 @@ class PrdtPost extends StatelessWidget {
     double ffem = fem * 0.97;
 
     return Container(
-      // group45857s1b (290:1471)
-      margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 1 * fem, 0 * fem),
+      padding: EdgeInsets.fromLTRB(20 * fem, 0 * fem, 20 * fem, 0 * fem),
       width: 340 * fem,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            // marketplacecarousel1bTP (290:1473)
             margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 15 * fem),
             child: SizedBox(
               width: double.infinity,
@@ -37,23 +40,44 @@ class PrdtPost extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   ImageCard(
+                    network: true,
                     image: image,
+                    rating: rating,
                   ),
-                  Center(
-                    // servicedelivraisonzkR (I290:1473;281:1381)
-                    child: Container(
-                      width: double.infinity,
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: SafeGoogleFont(
-                          'Montserrat',
-                          fontSize: 20 * ffem,
-                          fontWeight: FontWeight.w600,
-                          height: 1 * ffem / fem,
-                          color: Color(0xff25313c),
+                  Container(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          width: 220,
+                          child: Text(
+                            title,
+                            textAlign: TextAlign.left,
+                            style: SafeGoogleFont(
+                              'Montserrat',
+                              fontSize: 20 * ffem,
+                              fontWeight: FontWeight.w600,
+                              height: 1 * ffem / fem,
+                              color: Color(0xff25313c),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 5.0,),
+                        Container(
+                          child: Text(
+                            price == 0 ? 'GRATUIT' : '${formatAmount(price)} FCFA',
+                            textAlign: TextAlign.left,
+                            style: SafeGoogleFont(
+                              'Mulish',
+                              fontSize: 17 * ffem,
+                              fontWeight: FontWeight.w800,
+                              height: 1.255 * ffem / fem,
+                              color: Color(0xfff49101),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -63,6 +87,10 @@ class PrdtPost extends StatelessWidget {
           ReusableButton(
             title: 'Contacter maintenant',
             onPress: onContact,
+          ),
+          Divider(
+            thickness: 1,
+            color: Colors.grey,
           ),
         ],
       ),

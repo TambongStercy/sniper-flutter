@@ -9,36 +9,46 @@ import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/inscription.dart';
-import 'package:snipper_frontend/design/new-password.dart';
+import 'package:snipper_frontend/design/new-email.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 
-class EmailOublie extends StatefulWidget {
-  static const id = 'emailOublie';
+class ModifyEmail extends StatefulWidget {
+  static const id = 'modifyEmail';
 
-  const EmailOublie({super.key});
+  const ModifyEmail({super.key});
 
   @override
-  State<EmailOublie> createState() => _EmailOublieState();
+  State<ModifyEmail> createState() => _ModifyEmailState();
 }
 
-class _EmailOublieState extends State<EmailOublie> {
+class _ModifyEmailState extends State<ModifyEmail> {
   String email = '';
+  String id = '';
+  String token = '';
 
   bool showSpinner = false;
 
   late SharedPreferences prefs;
 
-  Future<void> sendFOTP(context) async {
-    if ( email.isNotEmpty) {
+  Future<void> ModifyEmail(context) async {
+    if (email.isNotEmpty) {
+
       final regBody = {
         'email': email,
+        'id': id,
+      };
+
+      
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
       };
 
       final response = await http.post(
-        Uri.parse(sendfOTP),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
+        Uri.parse(modEmail),
+        headers: headers,
+        body: (regBody),
       );
 
       final jsonResponse = jsonDecode(response.body);
@@ -48,7 +58,7 @@ class _EmailOublieState extends State<EmailOublie> {
       if (response.statusCode == 200) {
         String title = 'Code Sent';
 
-        Navigator.push(context, MaterialPageRoute(builder: ((context) => NewPassword(email: email) )));
+        Navigator.push(context, MaterialPageRoute(builder: ((context) => NewEmail(email: email) )));
 
         showPopupMessage(context, title, msg);
         return;
@@ -75,6 +85,8 @@ class _EmailOublieState extends State<EmailOublie> {
 
   void initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
+    id = prefs.getString('id')??'';
+    token = prefs.getString('token')??'';
   }
 
   @override
@@ -129,7 +141,7 @@ class _EmailOublieState extends State<EmailOublie> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Mot de passe oublié',
+                              'Modifiez votre e-mail.',
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -143,7 +155,7 @@ class _EmailOublieState extends State<EmailOublie> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Entrez  l\'adresse e-mail du mot de passe oublié',
+                              'Entrez la nouvelle adresse e-mail',
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -183,7 +195,7 @@ class _EmailOublieState extends State<EmailOublie> {
                                   showSpinner = true;
                                 });
 
-                               await sendFOTP(context);
+                               await ModifyEmail(context);
 
 
                                 setState(() {

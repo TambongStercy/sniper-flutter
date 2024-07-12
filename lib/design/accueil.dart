@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
@@ -13,11 +14,13 @@ import 'package:snipper_frontend/design/accueil-home.dart';
 import 'package:snipper_frontend/design/accueil-investissement.dart';
 import 'package:snipper_frontend/design/accueil-market.dart';
 import 'package:snipper_frontend/design/accueil-publier.dart';
+import 'package:snipper_frontend/design/add-product.dart';
 import 'package:snipper_frontend/design/notifications.dart';
 import 'package:snipper_frontend/design/portfeuille.dart';
 import 'package:snipper_frontend/design/profile-info.dart';
 import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/design/splash1.dart';
+import 'package:snipper_frontend/design/your-products.dart';
 import 'package:snipper_frontend/utils.dart';
 
 class Accueil extends StatefulWidget {
@@ -100,95 +103,104 @@ class _AccueilState extends State<Accueil> {
   }
 
   Future<void>? getInfos() async {
-    await initSharedPref();
-    await initializeOneSignal(id);
+    String msg = '';
+    String error = '';
+    try {
+      await initSharedPref();
+      await initializeOneSignal(id);
 
-    print(token);
-    print(email);
-    print(name);
-    print(isSubscribed);
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
 
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
+      final url = Uri.parse('$getUpdates?email=$email');
 
-    final url = Uri.parse('$getUpdates?email=$email');
+      final response = await http.get(url, headers: headers);
 
-    final response = await http.get(url, headers: headers);
+      final jsonResponse = jsonDecode(response.body);
 
-    final jsonResponse = jsonDecode(response.body);
+      msg = jsonResponse['message']??'';
+      error = jsonResponse['error']??'';
 
-    // final myToken = jsonResponse['token'];
+      if (response.statusCode == 200) {
+        final user = jsonResponse['user'];
+        final links = jsonResponse['links'];
 
-    final user = jsonResponse['user'];
-    final msg = jsonResponse['message'];
+        final region = user['region'];
+        final phone = user['phoneNumber'].toString();
+        final userCode = user['code'];
+        final balance = user['balance'].toDouble();
 
-    final region = user['region'];
-    final phone = user['phoneNumber'].toString();
-    final userCode = user['code'];
-    final balance = user['balance'].toDouble();;
-    name = user['name'] ?? name;
-    isSubscribed = user['isSubscribed'] ?? false;
+        final whatsappLink = links['whatsapp'];
+        final telegramLink = links['telegram'];
 
-    if (response.statusCode == 200) {
-      print(phone);
-      prefs.setString('name', name);
-      prefs.setString('region', region);
-      prefs.setString('phone', phone);
-      prefs.setString('code', userCode);
-      prefs.setDouble('balance', balance);
-      prefs.setBool('isSubscribed', isSubscribed);
-      notifCount = 0;
-      print('isSubscribed = $isSubscribed');
-      if (!isSubscribed) {
-        print('add Notification');
-        addCallbackOnNotif(duringNotification);
-      }
 
-      print('all good');
-    } else {
-      final error = jsonResponse['error'];
+        name = user['name'] ?? name;
+        isSubscribed = user['isSubscribed'] ?? false;
 
-      if (error != null && error == 'Access denied') {
-        String title = "Erreur. Accès refusé.";
-        showPopupMessage(context, title, msg);
+        prefs.setString('name', name);
+        prefs.setString('whatsapp', whatsappLink);
+        prefs.setString('telegram', telegramLink);
+        prefs.setString('region', region);
+        prefs.setString('phone', phone);
+        prefs.setString('code', userCode);
+        prefs.setDouble('balance', balance);
+        prefs.setBool('isSubscribed', isSubscribed);
+        notifCount = 0;
 
-        if (!kIsWeb) {
-          await deleteFile(avatar);
-          await unInitializeOneSignal();
+        if (!isSubscribed) {
+          print('add Notification');
+          addCallbackOnNotif(duringNotification);
+        }
+      } else {
+        if (error == 'Accès refusé') {
+          String title = "Erreur. Accès refusé.";
+          showPopupMessage(context, title, msg);
+
+          if (!kIsWeb) {
+            await deleteFile(avatar);
+            await unInitializeOneSignal();
+          }
+
+          prefs.setString('token', '');
+          prefs.setString('id', '');
+          prefs.setString('email', '');
+          prefs.setString('name', '');
+          prefs.setString('token', '');
+          prefs.setString('region', '');
+          prefs.setString('phone', '');
+          prefs.setString('code', '');
+          prefs.setString('avatar', '');
+          prefs.setDouble('balance', 0);
+          prefs.setBool('isSubscribed', false);
+          await deleteNotifications();
+          await deleteTransactions();
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Scene(),
+            ),
+            (route) => false,
+          );
+
+          // String logoutMsg = 'You where successfully logged out';
+          // String logoutTitle = 'Logout';
+
+          // showPopupMessage(context, logoutTitle, logoutMsg);
         }
 
-        prefs.setString('token', '');
-        prefs.setString('id', '');
-        prefs.setString('email', '');
-        prefs.setString('name', '');
-        prefs.setString('token', '');
-        prefs.setString('region', '');
-        prefs.setString('phone', '');
-        prefs.setString('code', '');
-        prefs.setString('avatar', '');
-        prefs.setDouble('balance', 0);
-        prefs.setBool('isSubscribed', false);
-        await deleteNotifications();
-        await deleteTransactions();
+        String title = 'Erreur';
+        showPopupMessage(context, title, msg);
 
-        // String logoutMsg = 'You where successfully logged out';
-        // String logoutTitle = 'Logout';
-
-        // showPopupMessage(context, logoutTitle, logoutMsg);
-
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Scene(),
-          ),
-          (route) => false,
-        );
+        // Handle errors,
+        print('something went wrong');
       }
-
-      // Handle errors,
-      print('something went wrong');
+    } catch (e) {
+      print(e);
+      String title = error;
+      showPopupMessage(context, title, msg);
     }
   }
 
@@ -290,16 +302,56 @@ class _AccueilState extends State<Accueil> {
       ),
       body: ModalProgressHUD(
         inAsyncCall: showSpinner,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: _pages[_selectedIndex],
-              ),
-            ),
-          ],
-        ),
+        child: _pages[_selectedIndex],
       ),
+      floatingActionButton: _selectedIndex == 2 && isSubscribed
+          ? SpeedDial(
+              animatedIcon: AnimatedIcons.menu_close,
+              animatedIconTheme: const IconThemeData(
+                size: 22.0,
+                color: Colors.white,
+              ),
+              overlayColor: Colors.black,
+              overlayOpacity: 0.4,
+              backgroundColor: blue,
+              children: [
+                SpeedDialChild(
+                  onTap: () {
+                    Navigator.pushNamed(context, AjouterProduit.id);
+                  },
+                  child: Icon(
+                    Icons.add,
+                    color: Colors.black,
+                    size: 30,
+                  ),
+                  // label: 'Ajouter un produit',
+                ),
+                SpeedDialChild(
+                  onTap: () {
+                    Navigator.pushNamed(context, YourProducts.id);
+                  },
+                  child: Icon(
+                    Icons.edit,
+                    color: Colors.black,
+                    size: 30,
+                  ),
+                  // label: 'Modifier vos produits',
+                ),
+              ],
+            )
+
+          // FloatingActionButton(
+          //     backgroundColor: limeGreen,
+          //     onPressed: () {
+          //       Navigator.pushNamed(context, AjouterProduit.id);
+          //     },
+          // child: Icon(
+          //   Icons.add,
+          //   color: Colors.white,
+          //   size: 30,
+          // ),
+          //   )
+          : null,
       bottomNavigationBar: Container(
         color: limeGreen,
         padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 20.0),
