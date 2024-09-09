@@ -27,14 +27,16 @@ class ReusableButton extends StatelessWidget {
 
     bool isClickable = clickable == null || clickable == true;
 
-    Color color = isClickable?(mainColor ?? Color(0xff1862f0)):Color.fromARGB(255, 153, 184, 242);
+    Color color = isClickable
+        ? (mainColor ?? orange)
+        : Color.fromARGB(255, 153, 184, 242);
     Color white = const Color(0xffffffff);
-    bool liteColor = lite??true ;
+    bool liteColor = lite ?? true;
 
     return Container(
       margin: EdgeInsets.fromLTRB(30 * fem, 0 * fem, 30 * fem, 13 * fem),
       child: TextButton(
-        onPressed: isClickable?onPress:cancel,
+        onPressed: isClickable ? onPress : cancel,
         style: TextButton.styleFrom(
           padding: EdgeInsets.zero,
         ),
@@ -44,7 +46,7 @@ class ReusableButton extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border.all(color: color),
             color: liteColor == false ? color : white,
-            borderRadius: BorderRadius.circular(66 * fem),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
             child: Center(

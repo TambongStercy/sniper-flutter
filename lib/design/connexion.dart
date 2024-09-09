@@ -19,7 +19,8 @@ import 'package:http/http.dart' as http;
 class Connexion extends StatefulWidget {
   static const id = 'connexion';
 
-  const Connexion({super.key});
+
+  const Connexion({Key? key}) : super(key: key);
 
   @override
   State<Connexion> createState() => _ConnexionState();
@@ -93,7 +94,7 @@ class _ConnexionState extends State<Connexion> {
           prefs.setDouble('balance', balance);
           prefs.setBool('isSubscribed', isSubscribed);
 
-          await initializeOneSignal(id);
+          // await initializeOneSignal(id);
 
           return true;
         } else {

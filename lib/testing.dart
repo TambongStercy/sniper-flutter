@@ -16,7 +16,7 @@ class MyHomePage extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Text(
-              'There was an error :(',
+              'There was an error 🥲',
             );
           } else if (snapshot.hasData) {
             var count = json.decode(snapshot.data!).length;

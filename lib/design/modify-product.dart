@@ -127,9 +127,9 @@ class _ModifyProductState extends State<ModifyProduct> {
     "services",
     "produits",
   ];
-  String category = "produits";
-
   List<String> subcategories = [];
+
+  String category = "produits";
   String subcategory = "électronique et gadgets";
 
   Future<void> modifyProduct(BuildContext context) async {
@@ -520,6 +520,7 @@ class _ModifyProductState extends State<ModifyProduct> {
                 if (mounted)
                   setState(() {
                     imageUse.remove(image);
+                    if(existingImages.contains(image)) existingImages.remove(image);
                   });
               },
               icon: Container(

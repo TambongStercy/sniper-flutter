@@ -113,7 +113,7 @@ class _AffiliationState extends State<Affiliation> {
             final avatar = prefs.getString('avatar') ?? '';
 
             await deleteFile(avatar);
-            await unInitializeOneSignal();
+            // await unInitializeOneSignal();
           }
 
           prefs.setString('token', '');
@@ -128,7 +128,7 @@ class _AffiliationState extends State<Affiliation> {
           prefs.setDouble('balance', 0);
           prefs.setBool('isSubscribed', false);
           await deleteNotifications();
-          await deleteTransactions();
+          await deleteAllKindTransactions();
 
           Navigator.pushAndRemoveUntil(
             context,

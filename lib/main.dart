@@ -5,6 +5,7 @@ import 'package:snipper_frontend/design/add-product.dart';
 import 'package:snipper_frontend/design/affiliation-page.dart';
 import 'package:snipper_frontend/design/connexion.dart';
 import 'package:snipper_frontend/design/email-oublier.dart';
+import 'package:snipper_frontend/design/espace-partenaire.dart';
 import 'package:snipper_frontend/design/fiche-contact.dart';
 import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/modify-email.dart';
@@ -16,36 +17,79 @@ import 'package:snipper_frontend/design/retrait.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/design/your-products.dart';
-import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/design/splash1.dart';
+import 'package:snipper_frontend/utils.dart';
+import 'package:uni_links/uni_links.dart';
+import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  return runApp(
-    MyApp(
-      token: prefs.getString('token'),
-    ),
-  );
+  final token = prefs.getString('token');
+  runApp(MyApp(token: token));
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({
-    required this.token,
-    Key? key,
-  }) : super(key: key);
   final String? token;
+
+  const MyApp({Key? key, required this.token}) : super(key: key);
 
   @override
   State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
+  StreamSubscription? _linkSubscription;
 
   @override
   void initState() {
+    _initUniLinks();
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// Deep linking handling
+  Future<void> _initUniLinks() async {
+    try {
+      final initialLink = await getInitialLink();
+      if (initialLink != null) {
+        _handleDeepLink(initialLink);
+      }
+
+      _linkSubscription = linkStream.listen((String? link) {
+        if (link != null) {
+          _handleDeepLink(link);
+        }
+      });
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  void _handleDeepLink(String link) {
+    Uri uri = Uri.parse(link);
+    // Check if the link has an affiliationCode and navigate accordingly
+    if (uri.path.contains('inscription')) {
+      String? affiliationCode = uri.queryParameters['affiliationCode'];
+      Navigator.pushNamed(
+        context,
+        Inscription.id,
+        arguments: affiliationCode,
+      );
+    } else if (uri.path.contains('affiliation')) {
+      Navigator.pushNamed(context, Affiliation.id);
+    } else if (uri.path.contains('add-product')) {
+      Navigator.pushNamed(context, AjouterProduit.id);
+    } else if (uri.path.contains('notifications')) {
+      Navigator.pushNamed(context, Notifications.id);
+    }
+    // Add other link handling cases as needed
   }
 
   String? get token => widget.token;
@@ -53,13 +97,11 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // home: Scene(),
       routes: {
-        // '/': (context) => (token != null && JwtDecoder.isExpired(token) == false )?Accueil():Scene(),
         '/': (context) => (token != null && token!.isNotEmpty && token != '')
             ? Accueil()
             : Scene(),
-        // '/': (context) => Scene(),
+        EspacePartenaire.id: (context) => EspacePartenaire(),
         Connexion.id: (context) => Connexion(),
         Inscription.id: (context) => Inscription(),
         Accueil.id: (context) => Accueil(),
@@ -73,17 +115,25 @@ class _MyAppState extends State<MyApp> {
         Subscrition.id: (context) => Subscrition(),
         PpUpload.id: (context) => PpUpload(),
         EmailOublie.id: (context) => EmailOublie(),
-        ModifyEmail.id:(context) => ModifyEmail(),
-        AjouterProduit.id:(context) => AjouterProduit(),
-        YourProducts.id:(context) => YourProducts(),
+        ModifyEmail.id: (context) => ModifyEmail(),
+        AjouterProduit.id: (context) => AjouterProduit(),
+        YourProducts.id: (context) => YourProducts(),
       },
-      title: 'Sniper Business Center',
+      onGenerateRoute: (settings) {
+        if (settings.name == Connexion.id) {
+          final String? affiliationCode = settings.arguments as String?;
+          return MaterialPageRoute(
+            builder: (context) => Inscription(affiliationCode: affiliationCode),
+          );
+        }
+        // Define other onGenerateRoutes if necessary
+        return null;
+      },
+      title: 'Snipper Business Center',
       debugShowCheckedModeBanner: false,
       scrollBehavior: MyCustomScrollBehavior(),
       theme: ThemeData(
         primaryColor: Color(0xFF92B127),
-        // primarySwatch: Colors.lightGreen,
-        // primaryColor: Colors.lightBlue,
       ),
     );
   }

@@ -16,6 +16,10 @@ import 'package:http/http.dart' as http;
 class Inscription extends StatefulWidget {
   static const id = 'inscription';
 
+  final String? affiliationCode;
+
+  const Inscription({Key? key, this.affiliationCode}) : super(key: key);
+
   @override
   State<Inscription> createState() => _InscriptionState();
 }
@@ -110,7 +114,7 @@ class _InscriptionState extends State<Inscription> {
           prefs.setString('avatar', '');
           prefs.setBool('isSubscribed', isSubscribed);
 
-          await initializeOneSignal(id);
+          // await initializeOneSignal(id);
 
           String title = 'Erreur';
           showPopupMessage(context, title, msg);

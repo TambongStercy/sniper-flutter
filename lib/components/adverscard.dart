@@ -22,23 +22,25 @@ class AdCard extends StatelessWidget {
     // double ffem = fem * 0.97;
 
     return Container(
-      // autogroupm7rjHbw (NBwmfpKJXseGejF4JnM7Rj)
-      margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 26 * fem),
-      padding: EdgeInsets.fromLTRB(7 * fem, 10 * fem, 7 * fem, 10 * fem),
-      width: 354 * fem,
-      decoration: BoxDecoration(
-        border: Border.all(color: Color(0xffbbc8d4)),
-        color: Color(0xffffffff),
-        borderRadius: BorderRadius.circular(15 * fem),
-      ),
+      // // autogroupm7rjHbw (NBwmfpKJXseGejF4JnM7Rj)
+      // margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 26 * fem),
+      // padding: EdgeInsets.fromLTRB(7 * fem, 10 * fem, 7 * fem, 10 * fem),
+      // width: 354 * fem,
+      // decoration: BoxDecoration(
+      //   border: Border.all(color: Color(0xffbbc8d4)),
+      //   color: Color(0xffffffff),
+      //   borderRadius: BorderRadius.circular(15 * fem),
+      // ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          SizedBox(height: 20.0),
           Container(
             margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 10 * fem),
             height: height * fem,
             child: child,
           ),
+          SizedBox(height: 20.0),
           ReusableButton(
             title: buttonTitle,
             lite: false,

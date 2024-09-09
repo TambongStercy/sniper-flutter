@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 // import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +39,7 @@ class _MarketState extends State<Market> {
   String queue = '';
   String category = '';
   String subcategory = '';
+  double randNum = 0.5;
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
@@ -49,6 +51,13 @@ class _MarketState extends State<Market> {
   @override
   void initState() {
     super.initState();
+
+    // Create a Random object
+    final random = Random();
+
+
+    // Generate a random number between 0 and 1
+    randNum = random.nextDouble();
 
     getProductsOnline();
 
@@ -74,7 +83,9 @@ class _MarketState extends State<Market> {
       };
 
       final url = Uri.parse(
-          '$getProducts?email=$email&page=$page&search=$queue&category=$category&subcategory=$subcategory');
+          '$getProducts?email=$email&page=$page&search=$queue&category=$category&subcategory=$subcategory&randNum=$randNum');
+
+      print(randNum);
 
       final response = await http.get(url, headers: headers);
 
@@ -95,8 +106,63 @@ class _MarketState extends State<Market> {
         prdtList.addAll(newItems);
         itemCount = prdtList.length;
 
-        if(mounted)  setState(() {});
+        if (mounted) setState(() {});
+      } else {
+        if (error == 'Accès refusé') {
+          String title = "Erreur. Accès refusé.";
+          showPopupMessage(context, title, msg);
+        }
 
+        String title = 'Erreur';
+        showPopupMessage(context, title, msg);
+
+        // Handle errors,
+        print('something went wrong');
+      }
+    } catch (e) {
+      print(e);
+      String title = error;
+      showPopupMessage(context, title, msg);
+    }
+  }
+
+  Future<void> getProductOnline(String sellerEmail, String name,
+      String category, String subcategory) async {
+    if (isloading) return;
+    isloading = true;
+    String msg = '';
+    String error = '';
+    try {
+      await initSharedPref();
+
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
+
+      final url = Uri.parse(
+          '$getProduct?email=$email&seller=$sellerEmail&search=$queue&category=$category&subcategory=$subcategory');
+
+      final response = await http.get(url, headers: headers);
+
+      final jsonResponse = jsonDecode(response.body);
+
+      msg = jsonResponse['message'] ?? '';
+      error = jsonResponse['error'] ?? '';
+
+      if (response.statusCode == 200) {
+        final newItems = jsonResponse['products'];
+        page++;
+        isloading = false;
+
+        if (newItems.length < 10) {
+          hasMore = false;
+        }
+
+        prdtList.addAll(newItems);
+        itemCount = prdtList.length;
+
+        if (mounted) setState(() {});
       } else {
         if (error == 'Accès refusé') {
           String title = "Erreur. Accès refusé.";
@@ -160,11 +226,21 @@ class _MarketState extends State<Market> {
   }
 
   Future<void> refresh() async {
+    // Create a Random object
+    final random = Random();
+
+
+    // Generate a random number between 0 and 1
+    double randomValue = random.nextDouble();
+
+    print(randomValue);
+
     setState(() {
       prdtList.clear();
       itemCount = 0;
       page = 1;
       hasMore = true;
+      randNum = randomValue;
     });
 
     getProductsOnline();
@@ -328,7 +404,7 @@ class _MarketState extends State<Market> {
                       final link = prdt['whatsappLink'];
                       final prdtName = prdt['name'];
                       final price = prdt['price'] ?? 0;
-                      final imageUrl =(prdt['urls'])[0];
+                      final imageUrl = (prdt['urls'])[0];
                       final rating = (prdt['overallRating'] ?? 0.0).toDouble();
                       final ratingLength = (prdt['ratings'] ?? []).length;
 

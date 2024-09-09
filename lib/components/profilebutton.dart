@@ -53,23 +53,6 @@ class ProfileButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             iconImage,
-            // Container(
-            //   // unsplashjmurdhtm7ngvfb (177:608)
-            //   margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 20 * fem, 0 * fem),
-            //   width: 50 * fem,
-            //   height: 50 * fem,
-            //   decoration: BoxDecoration(
-            //     borderRadius: BorderRadius.circular(25 * fem),
-            //     border: Border.all(color: Color(0xfff49101)),
-            //     color: Color(0xffc4c4c4),
-            //     image: DecorationImage(
-            //       fit: BoxFit.cover,
-            //       image: AssetImage(
-            //         'assets/design/images/unsplash-jmurdhtm7ng-bg-HgM.png',
-            //       ),
-            //     ),
-            //   ),
-            // ),
             Expanded(
               child: Text(
                title,
@@ -83,9 +66,8 @@ class ProfileButton extends StatelessWidget {
               ),
             ),
             Container(
-              // chevrondowncirclefillKBw (177:604)
               margin:
-                  EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 0.99 * fem),
+                  EdgeInsets.fromLTRB(2 * fem, 0 * fem, 0 * fem, 0.99 * fem),
               width: 16.23 * fem,
               height: 16.24 * fem,
               child: Image.asset(

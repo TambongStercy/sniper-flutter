@@ -8,11 +8,9 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl_phone_field/countries.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:snipper_frontend/config.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
@@ -22,8 +20,6 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
         PointerDeviceKind.mouse,
       };
 }
-
-
 
 class ArcClipper extends CustomClipper<Path> {
   @override
@@ -49,7 +45,6 @@ class ArcClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
-
 var bgGradient = new LinearGradient(
   colors: [const Color(0xFF9BFBC1), const Color(0xFFF3F9A7)],
   tileMode: TileMode.clamp,
@@ -59,16 +54,16 @@ var bgGradient = new LinearGradient(
 );
 
 var btnGradient = new LinearGradient(
-  colors: [const Color(0xFF37ecba), const Color(0xFF72afd3)], 
+  colors: [const Color(0xFF37ecba), const Color(0xFF72afd3)],
   tileMode: TileMode.clamp,
   begin: Alignment.bottomCenter,
   end: Alignment.topCenter,
   stops: [0.0, 1.0],
 );
 
-
-
-
+final gold = Color(0xffFFD700);
+final silver = Color(0xff8B9094);
+final orange = Color(0xffED8B00);
 
 void showPopupMessage(BuildContext context, String title, String msg) {
   showDialog(
@@ -327,76 +322,6 @@ void launchURL(String url) {
   // }
 }
 
-//Initialize notification handleing
-Future<void> initializeOneSignal(String extId) async {
-  if (kIsWeb) {
-    return;
-  }
-  OneSignal.initialize(onesignalAppId);
-
-  /// notification external id
-  await OneSignal.login(extId);
-
-  // addCallbackOnNotif(duringNotification);
-  OneSignal.Notifications.removeForegroundWillDisplayListener(
-      duringNotification);
-
-  OneSignal.Notifications.addForegroundWillDisplayListener(duringNotification);
-}
-
-void addCallbackOnNotif(callback) {
-  if (kIsWeb) {
-    return;
-  }
-  print('adding callback');
-  OneSignal.Notifications.removeForegroundWillDisplayListener(callback);
-
-  // OneSignal.Notifications.clearAll();
-  OneSignal.Notifications.addForegroundWillDisplayListener(callback);
-}
-
-Future<void> unInitializeOneSignal() async {
-  if (kIsWeb) {
-    return;
-  }
-  OneSignal.Notifications.removeForegroundWillDisplayListener(
-      duringNotification);
-
-  OneSignal.Notifications.clearAll();
-  OneSignal.logout();
-}
-
-String notifId = '';
-
-///Is called during a notification
-Future<void> duringNotification(OSNotificationWillDisplayEvent event) async {
-  // Display Notification, preventDefault to not display
-  // event.preventDefault();
-
-  final notification = event.notification;
-
-  String notificationTitle = notification.title ?? "No Title";
-  String newNotifId = notification.rawPayload?['google.message_id'];
-
-  if (newNotifId == notifId || notificationTitle == 'Sniper abonnement') {
-    return print('break');
-  }
-
-  notifId = newNotifId;
-
-  if (notificationTitle == 'Sniper transaction') {
-    final message = (notification.body) ?? '';
-    Map<String, String> notif = {
-      'message': message,
-      'titile': notificationTitle,
-    };
-    saveNotification(notif);
-  } else if (notificationTitle == 'Sniper abonnement') {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setBool('isSubscribed', true);
-  }
-}
-
 Country? getCountryFromPhoneNumber(String phoneNumber) {
   for (Country country in countries) {
     if (phoneNumber.startsWith(country.dialCode)) {
@@ -467,21 +392,29 @@ Future<List<Map<String, String>>> getNotifications() async {
 Future<void> saveTransactionList(List<dynamic> transactions) async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  print('saving');
   // Convert the list to a JSON string
   String jsonList = jsonEncode(transactions);
-
-  print(jsonList);
 
   // Save the JSON string to shared preferences
   prefs.setString('transaction', jsonList);
 }
 
-Future<void> deleteTransactions() async {
+Future<void> savePartnerTransList(List<dynamic> transactions) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  // Convert the list to a JSON string
+  String jsonList = jsonEncode(transactions);
+
+  // Save the JSON string to shared preferences
+  prefs.setString('partnerTrans', jsonList);
+}
+
+Future<void> deleteAllKindTransactions() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
 
   // Save the JSON string to shared preferences
   prefs.setString('transaction', '');
+  prefs.setString('partnerTrans', '');
 }
 
 Future<List<Map<String, dynamic>>> getTransactions() async {
@@ -512,8 +445,61 @@ Future<List<Map<String, dynamic>>> getTransactions() async {
   }
 }
 
+Future<List<Map<String, dynamic>>> getPartnerTrans() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  // Retrieve the JSON string from shared preferences
+  String? jsonList = prefs.getString('partnerTrans');
+
+  // If the JSON string is not null, decode it back to a list
+  if (jsonList != null && jsonList.isNotEmpty) {
+    List<Map<String, dynamic>> userTransactions = jsonDecode(jsonList)
+        .map((item) {
+          // Assuming 'date' is the key for the date field
+          if (item['date'] != null) {
+            DateTime date = DateTime.parse(item['date']);
+            // Add the DateTime object to the map
+            item['date'] = date;
+          }
+          return item;
+        })
+        .cast<Map<String, dynamic>>()
+        .toList();
+
+    return userTransactions.reversed.take(20).toList();
+  } else {
+    // If the JSON string is null, return an empty list
+    return [];
+  }
+}
+
+Future<double> getTransactionsBenefit() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  // Retrieve the JSON string from shared preferences
+  String? jsonList = prefs.getString('transaction');
+
+  double value = 0;
+
+  // If the JSON string is not null, decode it back to a list
+  if (jsonList != null && jsonList.isNotEmpty) {
+    jsonDecode(jsonList)
+        .forEach((item) {
+          if(item['transType']=='deposit'){
+            value += double.parse(item['amount']);
+          }
+        });
+
+    return value;
+  } else {
+    // If the JSON string is null, return an empty list
+    return 0;
+  }
+}
+
+
+/// Format the time as HH:MM AM/PM
 String formatTime(DateTime dateTime) {
-  // Format the time as HH:MM AM/PM
   String formattedTime =
       "${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')} ";
 
@@ -524,8 +510,7 @@ String formatTime(DateTime dateTime) {
 }
 
 Future<bool> requestContactPermission() async {
-
-  if(await Permission.contacts.isGranted){
+  if (await Permission.contacts.isGranted) {
     print('Contact permission already granted');
     return true;
   }
@@ -542,7 +527,6 @@ Future<bool> requestContactPermission() async {
   }
 }
 
-
 String formatAmount(int amount) {
   if (amount >= 1000000000) {
     return '${(amount / 1000000000).toStringAsFixed(1)}B';
@@ -555,3 +539,14 @@ String formatAmount(int amount) {
   }
 }
 
+// Function to capitalize the first letter of each word
+String capitalizeWords(String? input) {
+  if(input == null) return '';
+
+  return input.split(' ').map((word) {
+    if (word.isNotEmpty) {
+      return '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}';
+    }
+    return '';
+  }).join(' ');
+}

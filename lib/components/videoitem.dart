@@ -41,7 +41,7 @@ class _VideoItemState extends State<VideoItem> {
             );
           },
         );
-      } on Exception catch (e) {
+      } catch (e) {
         print(e);
       }
     }();
@@ -58,8 +58,11 @@ class _VideoItemState extends State<VideoItem> {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: Chewie(
-        controller: _chewieController,
+      child: AspectRatio(
+        aspectRatio: _videoPlayerController.value.aspectRatio,
+        child: Chewie(
+          controller: _chewieController,
+        ),
       ),
     );
   }

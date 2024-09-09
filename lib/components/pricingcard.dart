@@ -38,7 +38,11 @@ class PricingCard extends StatelessWidget {
         [
           'Accès à la fiche de nos contacts',
           'Pourvoir effectuer des retrait de vos compte',
+          'Accès au groupe whatsapp',
           'Formation au trading',
+          'Formation en marketing 360',
+          'Formation sur l\'achat en chine',
+          'Formation en Art oratoire',
           'Accès à notre market place',
         ],
       );
@@ -189,7 +193,6 @@ class PricingCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Container(
-                              // group45809r9X (12:657)
                               margin: EdgeInsets.fromLTRB(
                                 0 * fem,
                                 0 * fem,

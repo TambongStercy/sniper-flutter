@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/accueil-divertissement.dart';
@@ -15,7 +14,6 @@ import 'package:snipper_frontend/design/accueil-investissement.dart';
 import 'package:snipper_frontend/design/accueil-market.dart';
 import 'package:snipper_frontend/design/accueil-publier.dart';
 import 'package:snipper_frontend/design/add-product.dart';
-import 'package:snipper_frontend/design/notifications.dart';
 import 'package:snipper_frontend/design/portfeuille.dart';
 import 'package:snipper_frontend/design/profile-info.dart';
 import 'package:http/http.dart' as http;
@@ -31,7 +29,7 @@ class Accueil extends StatefulWidget {
 }
 
 class _AccueilState extends State<Accueil> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 2;
   late List<Widget> _pages;
 
   String avatar = '';
@@ -40,6 +38,7 @@ class _AccueilState extends State<Accueil> {
   String email = '';
   String name = '';
   bool isSubscribed = false;
+  bool isPartner = false;
   bool showSpinner = true;
 
   late SharedPreferences prefs;
@@ -49,10 +48,10 @@ class _AccueilState extends State<Accueil> {
     super.initState();
 
     _pages = <Widget>[
-      Home(changePage: onItemTapped),
       const Publicite(),
-      const Market(),
       const Divertissement(),
+      Home(changePage: onItemTapped),
+      const Market(),
       const Investissement(),
     ];
 
@@ -73,10 +72,10 @@ class _AccueilState extends State<Accueil> {
   refreshPage() {
     if (mounted) {
       _pages = <Widget>[
-        Home(changePage: onItemTapped),
         const Publicite(),
-        const Market(),
         const Divertissement(),
+        Home(changePage: onItemTapped),
+        const Market(),
         const Investissement(),
       ];
       setState(() {
@@ -107,7 +106,6 @@ class _AccueilState extends State<Accueil> {
     String error = '';
     try {
       await initSharedPref();
-      await initializeOneSignal(id);
 
       final headers = {
         'Authorization': 'Bearer $token',
@@ -120,8 +118,8 @@ class _AccueilState extends State<Accueil> {
 
       final jsonResponse = jsonDecode(response.body);
 
-      msg = jsonResponse['message']??'';
-      error = jsonResponse['error']??'';
+      msg = jsonResponse['message'] ?? '';
+      error = jsonResponse['error'] ?? '';
 
       if (response.statusCode == 200) {
         final user = jsonResponse['user'];
@@ -132,9 +130,10 @@ class _AccueilState extends State<Accueil> {
         final userCode = user['code'];
         final balance = user['balance'].toDouble();
 
+        final partner = user['partner'];
+
         final whatsappLink = links['whatsapp'];
         final telegramLink = links['telegram'];
-
 
         name = user['name'] ?? name;
         isSubscribed = user['isSubscribed'] ?? false;
@@ -146,12 +145,22 @@ class _AccueilState extends State<Accueil> {
         prefs.setString('phone', phone);
         prefs.setString('code', userCode);
         prefs.setDouble('balance', balance);
+
+        if (partner != null) {
+          final partnerAmount = partner['amount'].toDouble();
+          final partnerPack = partner['pack'];
+          final partnerTrans = partner['transactions'];
+          prefs.setDouble('partnerAmount', partnerAmount);
+          prefs.setString('partnerPack', partnerPack);
+          prefs.setDouble('partnerTrans', partnerTrans);
+          isPartner = true;
+        }
+
         prefs.setBool('isSubscribed', isSubscribed);
         notifCount = 0;
 
         if (!isSubscribed) {
           print('add Notification');
-          addCallbackOnNotif(duringNotification);
         }
       } else {
         if (error == 'Accès refusé') {
@@ -160,7 +169,7 @@ class _AccueilState extends State<Accueil> {
 
           if (!kIsWeb) {
             await deleteFile(avatar);
-            await unInitializeOneSignal();
+            // await unInitializeOneSignal();
           }
 
           prefs.setString('token', '');
@@ -175,7 +184,7 @@ class _AccueilState extends State<Accueil> {
           prefs.setDouble('balance', 0);
           prefs.setBool('isSubscribed', false);
           await deleteNotifications();
-          await deleteTransactions();
+          await deleteAllKindTransactions();
 
           Navigator.pushAndRemoveUntil(
             context,
@@ -206,35 +215,6 @@ class _AccueilState extends State<Accueil> {
 
   int notifCount = 0;
 
-  Future<void> duringNotification(OSNotificationWillDisplayEvent event) async {
-    print('refreshing for subscription');
-
-    final notification = event.notification;
-
-    String notificationTitle = notification.title ?? "No Title";
-    String newNotifId = notification.rawPayload?['google.message_id'];
-
-    if (newNotifId == notifId) {
-      return print('inside accueil break');
-    }
-
-    notifId = newNotifId;
-
-    if (notificationTitle == 'Sniper abonnement') {
-      try {
-        showSpinner = true;
-        refreshPage();
-        await getInfos();
-        showSpinner = false;
-        refreshPage();
-      } catch (e) {
-        print(e);
-        showSpinner = false;
-        refreshPage();
-      }
-    }
-  }
-
   int selected = 0;
 
   @override
@@ -245,7 +225,7 @@ class _AccueilState extends State<Accueil> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xff92b127),
+        backgroundColor: Color(0xffffffff),
         automaticallyImplyLeading: false,
         title: SizedBox(
           width: 83 * fem,
@@ -256,9 +236,23 @@ class _AccueilState extends State<Accueil> {
           ),
         ),
         actions: [
+          if (kIsWeb)
+            IconButton(
+              icon: Icon(Icons.download_rounded),
+              color: Colors.black,
+              onPressed: () {
+                // Navigator.pushNamed(context, Notifications.id).then((value) {
+                //   if (mounted) {
+                //     setState(() {
+                //       initSharedPref();
+                //     });
+                //   }
+                // });
+              },
+            ),
           IconButton(
             icon: Icon(Icons.wallet),
-            color: Colors.white,
+            color: Colors.black,
             iconSize: 24,
             onPressed: () {
               Navigator.pushNamed(context, Wallet.id).then((value) {
@@ -271,8 +265,27 @@ class _AccueilState extends State<Accueil> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.person),
-            color: Colors.white,
+            icon: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(25 * fem),
+                border: Border.all(color: isPartner?orange:blue, width: 2.0),
+              ),
+              child: Container(
+                width: 35 * fem,
+                height: 35 * fem,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(25 * fem),
+                  border: Border.all(color: Colors.white),
+                  // border: Border.all(color: Color(0xfff49101)),
+                  color: Color(0xffc4c4c4),
+                  image: DecorationImage(
+                    fit: BoxFit.cover,
+                    image: profileImage(avatar),
+                  ),
+                ),
+              ),
+            ),
+            color: Colors.black,
             iconSize: 24,
             onPressed: () {
               Navigator.pushNamed(context, Profile.id).then((value) {
@@ -284,27 +297,16 @@ class _AccueilState extends State<Accueil> {
               });
             },
           ),
-          if (!kIsWeb)
-            IconButton(
-              icon: Icon(Icons.notifications_rounded),
-              color: Colors.white,
-              onPressed: () {
-                Navigator.pushNamed(context, Notifications.id).then((value) {
-                  if (mounted) {
-                    setState(() {
-                      initSharedPref();
-                    });
-                  }
-                });
-              },
-            ),
+          SizedBox(
+            width: 20.0,
+          ),
         ],
       ),
       body: ModalProgressHUD(
         inAsyncCall: showSpinner,
         child: _pages[_selectedIndex],
       ),
-      floatingActionButton: _selectedIndex == 2 && isSubscribed
+      floatingActionButton: _selectedIndex == 3 && isSubscribed
           ? SpeedDial(
               animatedIcon: AnimatedIcons.menu_close,
               animatedIconTheme: const IconThemeData(
@@ -353,18 +355,38 @@ class _AccueilState extends State<Accueil> {
           //   )
           : null,
       bottomNavigationBar: Container(
-        color: limeGreen,
+        color: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 20.0),
         child: GNav(
           selectedIndex: _selectedIndex,
           onTabChange: onItemTapped,
-          backgroundColor: limeGreen,
-          color: Colors.white,
+          backgroundColor: Colors.white,
+          color: Colors.black87,
           activeColor: Colors.white,
-          tabActiveBorder: Border.all(color: Colors.white),
+          tabBackgroundColor: orange,
           padding: const EdgeInsets.all(10.0),
           gap: 5,
           tabs: [
+            GButton(
+              icon: Icons.remove_red_eye_sharp,
+              text: 'Publicité',
+              textStyle: SafeGoogleFont(
+                'Montserrat',
+                fontWeight: FontWeight.w600,
+                height: 1 * fem,
+                color: Colors.white,
+              ),
+            ),
+            GButton(
+              icon: (Icons.hail_rounded),
+              text: 'Divertissement',
+              textStyle: SafeGoogleFont(
+                'Montserrat',
+                fontWeight: FontWeight.w600,
+                height: 1 * fem,
+                color: Colors.white,
+              ),
+            ),
             GButton(
               icon: Icons.home,
               text: 'Accueil',
@@ -372,37 +394,17 @@ class _AccueilState extends State<Accueil> {
                 'Montserrat',
                 fontWeight: FontWeight.w600,
                 height: 1 * fem,
-                color: Color(0xff25313c),
+                color: Colors.white,
               ),
             ),
             GButton(
-              icon: Icons.public,
-              text: 'Publicité',
-              textStyle: SafeGoogleFont(
-                'Montserrat',
-                fontWeight: FontWeight.w600,
-                height: 1 * fem,
-                color: Color(0xff25313c),
-              ),
-            ),
-            GButton(
-              icon: Icons.store,
+              icon: Icons.shopping_cart,
               text: 'Market place',
               textStyle: SafeGoogleFont(
                 'Montserrat',
                 fontWeight: FontWeight.w600,
                 height: 1 * fem,
-                color: Color(0xff25313c),
-              ),
-            ),
-            GButton(
-              icon: (Icons.hail_sharp),
-              text: 'Divertissement',
-              textStyle: SafeGoogleFont(
-                'Montserrat',
-                fontWeight: FontWeight.w600,
-                height: 1 * fem,
-                color: Color(0xff25313c),
+                color: Colors.white,
               ),
             ),
             GButton(
@@ -412,7 +414,7 @@ class _AccueilState extends State<Accueil> {
                 'Montserrat',
                 fontWeight: FontWeight.w600,
                 height: 1 * fem,
-                color: Color(0xff25313c),
+                color: Colors.white,
               ),
             ),
           ],

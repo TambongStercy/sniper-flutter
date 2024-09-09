@@ -93,7 +93,7 @@ class _NewEmailState extends State<NewEmail> {
         prefs.setInt('balance', balance);
         prefs.setBool('isSubscribed', isSubscribed);
 
-        await initializeOneSignal(id);
+        // await initializeOneSignal(id);
 
         Navigator.pushAndRemoveUntil(
           context,

@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 // import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/textfield.dart';
@@ -14,6 +16,7 @@ import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+import 'package:path/path.dart' as path;
 
 // ignore: must_be_immutable
 class NewPassword extends StatefulWidget {
@@ -101,7 +104,7 @@ class _NewPasswordState extends State<NewPassword> {
         prefs.setInt('balance', balance);
         prefs.setBool('isSubscribed', isSubscribed);
 
-        await initializeOneSignal(id);
+        // await initializeOneSignal(id);
 
         return true;
       } else {
@@ -135,38 +138,26 @@ class _NewPasswordState extends State<NewPassword> {
         hasPP = true;
         return print('Already Downloaded');
       }
+      
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
+      //from google drive
+      final response = await http.get(Uri.parse(avatarPath));
 
-      final url = Uri.parse('$downloadPP?email=$email');
-
-      final response = await http.get(url, headers: headers);
-
-      final jsonResponse = jsonDecode(response.body);
-
-      final avatarUrl = jsonResponse['url'];
-
-      final imageData = jsonResponse['imageData'];
 
       if (response.statusCode == 200) {
-        print(avatarUrl);
-        final imageBytes = imageData;
+        final imageBytes = response.bodyBytes;
         String fileName = generateUniqueFileName('pp', 'jpg');
         // String fileName = 'Your Picture.jpg';
         String folder = 'Profile Pictures';
 
         final permanentPath = kIsWeb
-            ? avatarUrl
+            ? avatarPath
             : await saveFileBytesLocally(folder, fileName, imageBytes);
 
         avatar = permanentPath;
 
         prefs.setString('avatar', permanentPath);
       } else {
-        // Handle errors, e.g., image not found
         print('Image request failed with status code ${response.statusCode}');
       }
     } catch (e) {

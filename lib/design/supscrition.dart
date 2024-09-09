@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/pricingcard.dart';
@@ -46,8 +45,6 @@ class _SubscritionState extends State<Subscrition> {
     // isSubscribed = prefs.getBool('isSubscribed') ?? false;
   }
 
-  final notif = OneSignal.Notifications;
-
   Future<void> subscribe(context) async {
     try {
       if (token != '' && email != '') {
@@ -89,35 +86,7 @@ class _SubscritionState extends State<Subscrition> {
     }
   }
 
-  Future<void> subscribeNotif(event) async {
-    final notification = event.notification;
-
-    String notificationTitle = notification.title ?? "No Title";
-    String newNotifId = notification.rawPayload?['google.message_id'];
-
-    if (newNotifId == notifId) {
-      return print('inside subscription break');
-    }
-
-    notifId = newNotifId;
-
-    if (notificationTitle == 'Sniper abonnement') {
-      final prefs = await SharedPreferences.getInstance();
-
-      prefs.setBool('isSubscribed', true);
-
-      // ignore: use_build_context_synchronously
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Accueil(),
-        ),
-        (route) => false,
-      );
-    }
-
-    notif.removeForegroundWillDisplayListener(subscribeNotif);
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -197,13 +166,8 @@ class _SubscritionState extends State<Subscrition> {
                     setState(() {
                       showSpinner = true;
                     });
-                    print('object1');
+
                     await subscribe(context);
-
-                    notif.removeForegroundWillDisplayListener(subscribeNotif);
-
-                    notif.addForegroundWillDisplayListener(subscribeNotif);
-                    print('object2');
 
                     setState(() {
                       showSpinner = false;
@@ -217,7 +181,6 @@ class _SubscritionState extends State<Subscrition> {
                   title: 'Passer',
                   lite: false,
                   onPress: () {
-                    notif.removeForegroundWillDisplayListener(subscribeNotif);
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(

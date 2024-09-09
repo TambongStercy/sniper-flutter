@@ -52,58 +52,6 @@ class BottomHitory extends StatelessWidget {
                     amount: int.parse(amt),
                   );
                 }).toList(),
-                // [
-                //  Text(
-                //    '02/01/24',
-                //    style: SafeGoogleFont(
-                //      'Montserrat',
-                //      fontSize: 14 * ffem,
-                //      fontWeight: FontWeight.w500,
-                //      height: 1.4285714286 * ffem / fem,
-                //      color: Color(0xfff49101),
-                //    ),
-                //  ),
-                //   HistoryCard(
-                //     time: '12:25 pm',
-                //     deposit: true,
-                //     amount: amt,
-                //   ),
-                //   HistoryCard(
-                //     time: '10:25 pm',
-                //     deposit: true,
-                //     amount: 5525,
-                //   ),
-                //   Text(
-                //     '30/12/23',
-                //     style: SafeGoogleFont(
-                //       'Montserrat',
-                //       fontSize: 14 * ffem,
-                //       fontWeight: FontWeight.w500,
-                //       height: 1.4285714286 * ffem / fem,
-                //       color: Color(0xfff49101),
-                //     ),
-                //   ),
-                //   HistoryCard(
-                //     time: '12:25 pm',
-                //     deposit: false,
-                //     amount: 3525,
-                //   ),
-                //   HistoryCard(
-                //     time: '10:25 pm',
-                //     deposit: false,
-                //     amount: 5525,
-                //   ),
-                //   HistoryCard(
-                //     time: '12:25 pm',
-                //     deposit: true,
-                //     amount: 3525,
-                //   ),
-                //   HistoryCard(
-                //     time: '10:25 pm',
-                //     deposit: true,
-                //     amount: 5525,
-                //   ),
-                // ],
               ),
             ],
           ),

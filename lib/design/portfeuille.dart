@@ -21,6 +21,7 @@ class Wallet extends StatefulWidget {
 
 class _WalletState extends State<Wallet> {
   double balance = 0;
+  double benefice = 0;
   String email = '';
   bool showSpinner = true;
   List<Map<String, dynamic>> transactions = [];
@@ -31,8 +32,7 @@ class _WalletState extends State<Wallet> {
     balance = prefs.getDouble('balance') ?? 0;
     email = prefs.getString('email') ?? '';
     transactions = await getTransactions();
-    print('transactions');
-    print(transactions);
+    benefice = await getTransactionsBenefit();
   }
 
   @override
@@ -119,7 +119,7 @@ class _WalletState extends State<Wallet> {
             final avatar = prefs.getString('avatar') ?? '';
 
             await deleteFile(avatar);
-            await unInitializeOneSignal();
+            // await unInitializeOneSignal();
           }
 
           prefs.setString('token', '');
@@ -134,7 +134,7 @@ class _WalletState extends State<Wallet> {
           prefs.setDouble('balance', 0);
           prefs.setBool('isSubscribed', false);
           await deleteNotifications();
-          await deleteTransactions();
+          await deleteAllKindTransactions();
 
           Navigator.pushAndRemoveUntil(
             context,
@@ -207,7 +207,7 @@ class _WalletState extends State<Wallet> {
                   ),
                   Text(
                     ///2% of every transaction
-                    'Benefice total ${balance * 0.02} Fcfa',
+                    'Benefice total ${benefice.toStringAsFixed(1)} Fcfa',
                     style: SafeGoogleFont(
                       'Montserrat',
                       fontSize: 8 * ffem,
@@ -228,6 +228,9 @@ class _WalletState extends State<Wallet> {
             TextButton(
               onPressed: () {
                 showModalBottomSheet(
+                  showDragHandle: true,
+                  isScrollControlled: true,
+                  useSafeArea: true,
                   context: context,
                   builder: (context) {
                     return BottomHitory(transactions: transactions);
@@ -264,7 +267,7 @@ class _WalletState extends State<Wallet> {
                         fontSize: 16 * ffem,
                         fontWeight: FontWeight.w600,
                         height: 1.25 * ffem / fem,
-                        color: Color(0xfff49101),
+                        color: orange,
                       ),
                     ),
                     Container(
@@ -280,6 +283,7 @@ class _WalletState extends State<Wallet> {
                 ),
               ),
             ),
+          
           ],
         ),
       ),
