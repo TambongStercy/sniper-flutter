@@ -16,7 +16,11 @@ import 'package:http/http.dart' as http;
 // import 'package:snipper_frontend/utils.dart';
 
 class Market extends StatefulWidget {
-  const Market({super.key});
+  Market({super.key, this.page});
+
+  static const id = 'market';
+
+  int? page;
 
   @override
   State<Market> createState() => _MarketState();
@@ -52,9 +56,10 @@ class _MarketState extends State<Market> {
   void initState() {
     super.initState();
 
+    page = widget.page ?? page;
+
     // Create a Random object
     final random = Random();
-
 
     // Generate a random number between 0 and 1
     randNum = random.nextDouble();
@@ -71,7 +76,7 @@ class _MarketState extends State<Market> {
 
   Future<void> getProductsOnline() async {
     if (isloading) return;
-    isloading = true;
+    isloading = true; 
     String msg = '';
     String error = '';
     try {
@@ -126,43 +131,27 @@ class _MarketState extends State<Market> {
     }
   }
 
-  Future<void> getProductOnline(String sellerEmail, String name,
-      String category, String subcategory) async {
-    if (isloading) return;
-    isloading = true;
+  Future<void> getProductOnline(String sellerEmail, String prdtId) async {
     String msg = '';
     String error = '';
     try {
-      await initSharedPref();
 
       final headers = {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/x-www-form-urlencoded',
       };
 
-      final url = Uri.parse(
-          '$getProduct?email=$email&seller=$sellerEmail&search=$queue&category=$category&subcategory=$subcategory');
+      final url =
+          Uri.parse('$getProduct?email=$email&seller=$sellerEmail&id=$prdtId');
 
       final response = await http.get(url, headers: headers);
 
       final jsonResponse = jsonDecode(response.body);
 
       msg = jsonResponse['message'] ?? '';
-      error = jsonResponse['error'] ?? '';
 
       if (response.statusCode == 200) {
-        final newItems = jsonResponse['products'];
-        page++;
-        isloading = false;
-
-        if (newItems.length < 10) {
-          hasMore = false;
-        }
-
-        prdtList.addAll(newItems);
-        itemCount = prdtList.length;
-
-        if (mounted) setState(() {});
+        return jsonResponse['userPrdt'];
       } else {
         if (error == 'Accès refusé') {
           String title = "Erreur. Accès refusé.";
@@ -228,7 +217,6 @@ class _MarketState extends State<Market> {
   Future<void> refresh() async {
     // Create a Random object
     final random = Random();
-
 
     // Generate a random number between 0 and 1
     double randomValue = random.nextDouble();
@@ -532,4 +520,5 @@ class _MarketState extends State<Market> {
       ),
     );
   }
+
 }

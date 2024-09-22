@@ -19,11 +19,14 @@ class _EspacePartenaireState extends State<EspacePartenaire> {
   double amount = 0;
   List<Map<String, dynamic>> transactions = [];
 
-
   @override
   void initState() {
     super.initState();
-    initSharedPref();
+
+    () async {
+      await initSharedPref();
+      setState(() {});
+    }();
   }
 
   Future<void> initSharedPref() async {
@@ -34,20 +37,19 @@ class _EspacePartenaireState extends State<EspacePartenaire> {
     transactions = await getPartnerTrans();
   }
 
-
   @override
   Widget build(BuildContext context) {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     // double ffem = fem * 0.97;
 
-    final type = 1;
+    final type = pack == 'gold' ? 2 : 1;
+    ;
     bool isGold = pack == 'gold' ? true : false;
     final color = isGold ? gold : silver;
 
     return SimpleScaffold(
       appBarColor: color,
-      // appBarColor: Color(0xffFFD700),
       title: 'Partenaire SBC',
       child: Container(
         padding: EdgeInsets.fromLTRB(27 * fem, 25 * fem, 23 * fem, 25 * fem),
@@ -112,7 +114,7 @@ class BonusCard extends StatelessWidget {
     final perc = type == 1 ? 0.18 : 0.30;
     final text = type == 1 ? 'SILVER (18%)' : 'GOLD (30%)';
     final subTitle =
-        isDevelopment ? 'Bonus de Development' : 'Benefice dans mon resaux';
+        isDevelopment ? 'Bonus de Développment' : 'Benefice dans mon réseau';
 
     final amtDisp = isDevelopment ? perc * amount : amount;
 

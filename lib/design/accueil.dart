@@ -18,6 +18,7 @@ import 'package:snipper_frontend/design/portfeuille.dart';
 import 'package:snipper_frontend/design/profile-info.dart';
 import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/design/splash1.dart';
+import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/your-products.dart';
 import 'package:snipper_frontend/utils.dart';
 
@@ -51,7 +52,7 @@ class _AccueilState extends State<Accueil> {
       const Publicite(),
       const Divertissement(),
       Home(changePage: onItemTapped),
-      const Market(),
+      Market(),
       const Investissement(),
     ];
 
@@ -75,7 +76,7 @@ class _AccueilState extends State<Accueil> {
         const Publicite(),
         const Divertissement(),
         Home(changePage: onItemTapped),
-        const Market(),
+        Market(),
         const Investissement(),
       ];
       setState(() {
@@ -129,6 +130,7 @@ class _AccueilState extends State<Accueil> {
         final phone = user['phoneNumber'].toString();
         final userCode = user['code'];
         final balance = user['balance'].toDouble();
+        final gottenTransactions = user['transactions'] ?? [];
 
         final partner = user['partner'];
 
@@ -145,6 +147,16 @@ class _AccueilState extends State<Accueil> {
         prefs.setString('phone', phone);
         prefs.setString('code', userCode);
         prefs.setDouble('balance', balance);
+        await saveTransactionList(gottenTransactions);
+
+        if (!isSubscribed) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            Subscrition.id,
+            (route) => false,
+          );
+          print('stay here');
+        }
 
         if (partner != null) {
           final partnerAmount = partner['amount'].toDouble();
@@ -152,7 +164,7 @@ class _AccueilState extends State<Accueil> {
           final partnerTrans = partner['transactions'];
           prefs.setDouble('partnerAmount', partnerAmount);
           prefs.setString('partnerPack', partnerPack);
-          prefs.setDouble('partnerTrans', partnerTrans);
+          await savePartnerTransList(partnerTrans);
           isPartner = true;
         }
 
@@ -268,7 +280,8 @@ class _AccueilState extends State<Accueil> {
             icon: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(25 * fem),
-                border: Border.all(color: isPartner?orange:blue, width: 2.0),
+                border:
+                    Border.all(color: isPartner ? orange : blue, width: 2.0),
               ),
               child: Container(
                 width: 35 * fem,
@@ -276,7 +289,6 @@ class _AccueilState extends State<Accueil> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(25 * fem),
                   border: Border.all(color: Colors.white),
-                  // border: Border.all(color: Color(0xfff49101)),
                   color: Color(0xffc4c4c4),
                   image: DecorationImage(
                     fit: BoxFit.cover,

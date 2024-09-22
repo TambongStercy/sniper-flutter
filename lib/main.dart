@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snipper_frontend/design/accueil-market.dart';
 import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/add-product.dart';
 import 'package:snipper_frontend/design/affiliation-page.dart';
@@ -11,6 +12,7 @@ import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/modify-email.dart';
 import 'package:snipper_frontend/design/notifications.dart';
 import 'package:snipper_frontend/design/portfeuille.dart';
+import 'package:snipper_frontend/design/produit-page.dart';
 import 'package:snipper_frontend/design/profile-info.dart';
 import 'package:snipper_frontend/design/profile-modify.dart';
 import 'package:snipper_frontend/design/retrait.dart';
@@ -119,13 +121,23 @@ class _MyAppState extends State<MyApp> {
         AjouterProduit.id: (context) => AjouterProduit(),
         YourProducts.id: (context) => YourProducts(),
       },
-      onGenerateRoute: (settings) {
-        if (settings.name == Connexion.id) {
+      onGenerateRoute: (settings)  {
+        if (settings.name == Inscription.id) {
           final String? affiliationCode = settings.arguments as String?;
           return MaterialPageRoute(
             builder: (context) => Inscription(affiliationCode: affiliationCode),
           );
         }
+        if (settings.name == ProduitPage.id) {
+          // final ScreenArguments? args = settings.arguments as ScreenArguments?;
+
+          // if (args != null) {
+          //   getProductOnline(args.sellerEmail, args.prdtId, context).then((userPrdt) {
+          //     return MaterialPageRoute(builder: (context) => ProduitPage(prdtAndUser: userPrdt,));
+          //   });
+          // }
+        }
+
         // Define other onGenerateRoutes if necessary
         return null;
       },

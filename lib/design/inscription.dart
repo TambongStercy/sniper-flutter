@@ -73,6 +73,7 @@ class _InscriptionState extends State<Inscription> {
           countryCode.isNotEmpty &&
           city.isNotEmpty &&
           code.isNotEmpty) {
+            
         final regBody = {
           'name': name,
           'email': email.trim(),
@@ -152,10 +153,15 @@ class _InscriptionState extends State<Inscription> {
 
   void initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
+    code = affiliationCode??'';
   }
+
+  String? get affiliationCode => widget.affiliationCode;
 
   @override
   Widget build(BuildContext context) {
+
+
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
@@ -292,7 +298,7 @@ class _InscriptionState extends State<Inscription> {
                               _fieldTitle(fem, ffem, 'Code parrain'),
                               CustomTextField(
                                 hintText: 'EX: eG7iOp3',
-                                value: code,
+                                value: affiliationCode??code,
                                 onChange: (val) {
                                   code = val;
                                 },

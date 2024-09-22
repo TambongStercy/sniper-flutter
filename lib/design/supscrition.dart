@@ -177,19 +177,19 @@ class _SubscritionState extends State<Subscrition> {
                 SizedBox(
                   height: 20 * fem,
                 ),
-                ReusableButton(
-                  title: 'Passer',
-                  lite: false,
-                  onPress: () {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => Accueil(),
-                      ),
-                      (route) => false,
-                    );
-                  },
-                ),
+                // ReusableButton(
+                //   title: 'Passer',
+                //   lite: false,
+                //   onPress: () {
+                //     Navigator.pushAndRemoveUntil(
+                //       context,
+                //       MaterialPageRoute(
+                //         builder: (context) => Accueil(),
+                //       ),
+                //       (route) => false,
+                //     );
+                //   },
+                // ),
               ],
             ),
           ),

@@ -1,10 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/utils.dart';
 
-class FilleulsCard extends StatelessWidget {
+class FilleulsCard extends StatefulWidget {
   const FilleulsCard({
     super.key,
     this.image,
@@ -22,20 +24,48 @@ class FilleulsCard extends StatelessWidget {
   final String url;
   final bool isSub;
 
+  @override
+  State<FilleulsCard> createState() => _FilleulsCardState();
+}
+
+class _FilleulsCardState extends State<FilleulsCard> {
   ImageProvider<Object> _imageBuffer() {
-    if (buffer != '') {
-      final Uint8List bytes = Uint8List.fromList(base64.decode(buffer));
+    if (widget.buffer != '') {
+      final Uint8List bytes = Uint8List.fromList(base64.decode(widget.buffer));
 
       return MemoryImage(bytes);
     }
 
-    if (url != '') {
-      return NetworkImage(url);
+    if (widget.url != '') {
+      return NetworkImage(widget.url);
     }
 
     return const AssetImage(
       'assets/design/images/your picture.png',
     );
+  }
+
+  late SharedPreferences prefs;
+  String email = '';
+  bool isSubscribed = false;
+  bool isPartner = false;
+
+  Future<void> initSharedPref() async {
+    prefs = await SharedPreferences.getInstance();
+    email = prefs.getString('email') ?? '';
+    isSubscribed = prefs.getBool('isSubscribed') ?? false;
+
+    isPartner = prefs.getString('partnerPack') != null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    () async {
+      await initSharedPref();
+      setState(() {});
+    }();
   }
 
   @override
@@ -52,7 +82,8 @@ class FilleulsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4 * fem),
       ),
       child: ListTile(
-        contentPadding: EdgeInsets.fromLTRB(20 * fem, 0 * fem, 20 * fem, 0 * fem),
+        contentPadding:
+            EdgeInsets.fromLTRB(20 * fem, 0 * fem, 20 * fem, 0 * fem),
         leading: Container(
           margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 0 * fem),
           width: 35 * fem,
@@ -65,20 +96,8 @@ class FilleulsCard extends StatelessWidget {
             ),
           ),
         ),
-        trailing: isSub
-            ? TextButton(
-                onPressed: () {},
-                child: const Text(
-                  'actif',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xff1862f0),
-                  ),
-                ),
-              )
-            : const SizedBox(),
         title: Text(
-          name,
+          widget.name,
           style: SafeGoogleFont(
             'Montserrat',
             fontSize: 16 * ffem,
@@ -89,7 +108,7 @@ class FilleulsCard extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          email,
+          widget.email,
           style: SafeGoogleFont(
             'Montserrat',
             fontSize: 12 * ffem,
@@ -99,6 +118,13 @@ class FilleulsCard extends StatelessWidget {
             color: Color(0xff6d7d8b),
           ),
         ),
+        trailing: widget.isSub
+            ? Image.asset(
+                'assets/assets/images/Certified - Blue.png',
+                width: 30,
+                height: 30,
+              )
+            : null,
       ),
     );
   }

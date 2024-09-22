@@ -80,16 +80,11 @@ class _PpUploadState extends State<PpUpload> {
       final response = await request.send();
 
       if (response.statusCode == 200) {
-        String permanentPath = '';
+        final responseString = await response.stream.bytesToString();
+        final jsonResponse = jsonDecode(responseString);
 
-        if (kIsWeb) {
-          permanentPath = '${host}Profile Pictures/$email/$avatarName';
-        } else {
-          avatarName;
-          String folder = 'Profile Pictures';
+        String permanentPath = jsonResponse['imgaeUrl'];
 
-          permanentPath = await saveFileLocally(folder, avatarName, path);
-        }
         avatar = permanentPath;
 
         prefs.setString('avatar', permanentPath);

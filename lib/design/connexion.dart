@@ -19,7 +19,6 @@ import 'package:http/http.dart' as http;
 class Connexion extends StatefulWidget {
   static const id = 'connexion';
 
-
   const Connexion({Key? key}) : super(key: key);
 
   @override
@@ -39,83 +38,86 @@ class _ConnexionState extends State<Connexion> {
 
   late SharedPreferences prefs;
 
-  Future<bool> loginUser(context) async {
-    String msg = '';
+Future<bool> loginUser(context) async {
+  String msg = '';
 
-    try {
-      if (password.isNotEmpty && email.isNotEmpty) {
-        final regBody = {
-          'email': email,
-          'password': password,
-        };
+  try {
+    if (password.isNotEmpty && email.isNotEmpty) {
+      final regBody = {
+        'email': email,
+        'password': password,
+      };
 
-        final response = await http.post(
-          Uri.parse(login),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode(regBody),
-        );
+      final response = await http.post(
+        Uri.parse(login),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(regBody),
+      );
 
-        final jsonResponse = jsonDecode(response.body);
-        msg = jsonResponse['message']??'';
+      final jsonResponse = jsonDecode(response.body);
+      msg = jsonResponse['message'] ?? '';
 
-        if (response.statusCode == 200) {
-          final myToken = jsonResponse['token'];
-          final user = jsonResponse['user'];
+      if (response.statusCode == 200) {
+        final myToken = jsonResponse['token'];
+        final user = jsonResponse['user'];
 
-          final name = user['name'];
-          final region = user['region'];
-          final phone = user['phoneNumber'].toString();
+        final name = user['name'];
+        final region = user['region'];
+        final phone = user['phoneNumber'].toString();
 
-          final userCode = user['code'];
-          final balance = user['balance'].toDouble();
+        final userCode = user['code'];
+        final balance = user['balance'].toDouble();
 
-          final id = user['id'];
-          avatar = !kIsWeb ? user['avatar'] : user['url'];
-          isSubscribed = user['isSubscribed'] ?? false;
-          if ((avatar != null || avatar != '') && !kIsWeb) {
-            avatar =
-                await mobilePathGetter('Profile Pictures/Your Picture.jpg');
-            hasPP = true;
-          } else if(avatar != null || avatar != ''){
-            hasPP = true;
-          }else{
-            hasPP = false;
-          }
-
-          token = myToken;
-          prefs.setString('id', id);
-          prefs.setString('token', myToken);
-          prefs.setString('email', email);
-          prefs.setString('name', name);
-          prefs.setString('region', region);
-          prefs.setString('phone', phone);
-          prefs.setString('code', userCode);
-          prefs.setString('avatar', avatar ?? '');
-          prefs.setDouble('balance', balance);
-          prefs.setBool('isSubscribed', isSubscribed);
-
-          // await initializeOneSignal(id);
-
-          return true;
+        final id = user['id'];
+        avatar = user['avatar'] ?? user['url'];
+        isSubscribed = user['isSubscribed'] ?? false;
+        if (avatar != null && avatar != '') {
+          hasPP = true;
         } else {
-          String title = 'Erreur';
-          showPopupMessage(context, title, msg);
-          return false;
+          avatar = d_PP;
+          hasPP = false;
         }
+
+        token = myToken;
+        prefs.setString('id', id);
+        prefs.setString('token', myToken);
+        prefs.setString('email', email);
+        prefs.setString('name', name);
+        prefs.setString('region', region);
+        prefs.setString('phone', phone);
+        prefs.setString('code', userCode);
+        prefs.setString('avatar', avatar ?? '');
+        prefs.setDouble('balance', balance);
+        prefs.setBool('isSubscribed', isSubscribed);
+
+        return true;
       } else {
-        String msg = "Veuillez remplir toutes les informations demandées.";
-        String title = "Information incomplète.";
+        String title = 'Erreur';
         showPopupMessage(context, title, msg);
         return false;
       }
-    } catch (e) {
-      print(e);
-      print('Print an error occured pls be carefull when trying to login');
-      String title = 'Erreur';
+    } else {
+      String msg = "Veuillez remplir toutes les informations demandées.";
+      String title = "Information incomplète.";
       showPopupMessage(context, title, msg);
       return false;
     }
+  } on http.ClientException catch (e) {
+    print('ClientException occurred: $e');
+    print('An error occurred. Please be careful when trying to login.');
+    String title = 'Erreur réseau';
+    String errorMsg = 'Une erreur réseau s\'est produite. Veuillez vérifier votre connexion.';
+    showPopupMessage(context, title, errorMsg);
+    return false;
+  } catch (e) {
+    print('An unexpected error occurred: $e');
+    print('An error occurred. Please be careful when trying to login.');
+    String title = 'Erreur';
+    showPopupMessage(context, title, msg);
+    return false;
   }
+}
+
 
   Future<void> downloadAvatar(BuildContext context) async {
     try {

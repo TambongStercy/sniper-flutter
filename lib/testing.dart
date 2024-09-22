@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:snipper_frontend/utils.dart';
+
 class MyHomePage extends StatelessWidget {
   Future<String> getPosts() async {
     final uri = Uri.parse('https://jsonplaceholder.typicode.com/posts');
@@ -29,3 +31,4 @@ class MyHomePage extends StatelessWidget {
         });
   }
 }
+

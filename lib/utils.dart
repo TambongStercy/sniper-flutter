@@ -5,13 +5,16 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl_phone_field/countries.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snipper_frontend/config.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
   @override
@@ -82,6 +85,31 @@ void showPopupMessage(BuildContext context, String title, String msg) {
         ],
       );
     },
+  );
+}
+
+void showSnackbar(BuildContext context, String message) {
+  final snackBar = SnackBar(
+    content: Text(message),
+    duration: Duration(seconds: 2), // Customize the duration
+    action: SnackBarAction(
+      label: 'Ok',
+      onPressed: () {},
+    ),
+  );
+
+  ScaffoldMessenger.of(context).showSnackBar(snackBar);
+}
+
+void copyToClipboard(BuildContext context, String text) {
+  Clipboard.setData(ClipboardData(text: text));
+
+  // Optional: Show a Snackbar or some feedback to the user
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Copied to clipboard!'),
+      duration: Duration(seconds: 2),
+    ),
   );
 }
 
@@ -267,31 +295,30 @@ Future<List<int>> readFileBytes(String filePath) async {
 }
 
 bool ppExist(String path) {
-  if (kIsWeb) {
-    return path.isNotEmpty;
-  } else {
-    return path.isNotEmpty && File(path).existsSync();
-  }
+  return path.isNotEmpty;
 }
 
 ImageProvider<Object> profileImage(String avatarPath) {
-  if (kIsWeb) {
-    print('avatarPath please call setState: $avatarPath');
+  // if (kIsWeb) {
+  //   print('avatarPath please call setState: $avatarPath');
 
-    return NetworkImage((avatarPath));
-  }
+  // }
+  const nothingPP =
+      'https://www.shutterstock.com/image-vector/default-avatar-profile-icon-social-600nw-1677509740.jpg';
+  return NetworkImage(
+      ((avatarPath == '') ? nothingPP : avatarPath));
 
-  if (ppExist(avatarPath)) {
-    print('avatarPath please call setState: $avatarPath');
+  // if (ppExist(avatarPath)) {
+  //   print('avatarPath please call setState: $avatarPath');
 
-    // Check if the user's profile picture path is not empty and the file exists.
+  //   // Check if the user's profile picture path is not empty and the file exists.
 
-    return FileImage(File(avatarPath));
-  }
-  // Return the default profile picture from the asset folder.
-  return const AssetImage(
-    'assets/design/images/your picture.png',
-  );
+  //   return FileImage(File(avatarPath));
+  // }
+  // // Return the default profile picture from the asset folder.
+  // return const AssetImage(
+  //   'assets/design/images/your picture.png',
+  // );
 }
 
 Future<void> deleteFile(String filePath) async {
@@ -451,6 +478,8 @@ Future<List<Map<String, dynamic>>> getPartnerTrans() async {
   // Retrieve the JSON string from shared preferences
   String? jsonList = prefs.getString('partnerTrans');
 
+  print(jsonList);
+
   // If the JSON string is not null, decode it back to a list
   if (jsonList != null && jsonList.isNotEmpty) {
     List<Map<String, dynamic>> userTransactions = jsonDecode(jsonList)
@@ -483,20 +512,18 @@ Future<double> getTransactionsBenefit() async {
 
   // If the JSON string is not null, decode it back to a list
   if (jsonList != null && jsonList.isNotEmpty) {
-    jsonDecode(jsonList)
-        .forEach((item) {
-          if(item['transType']=='deposit'){
-            value += double.parse(item['amount']);
-          }
-        });
+    jsonDecode(jsonList).forEach((item) {
+      if (item['transType'] == 'withdrawal') {
+        value += double.parse(item['amount']);
+      }
+    });
 
-    return value;
+    return value * 0.99;
   } else {
     // If the JSON string is null, return an empty list
     return 0;
   }
 }
-
 
 /// Format the time as HH:MM AM/PM
 String formatTime(DateTime dateTime) {
@@ -541,7 +568,7 @@ String formatAmount(int amount) {
 
 // Function to capitalize the first letter of each word
 String capitalizeWords(String? input) {
-  if(input == null) return '';
+  if (input == null) return '';
 
   return input.split(' ').map((word) {
     if (word.isNotEmpty) {
@@ -549,4 +576,60 @@ String capitalizeWords(String? input) {
     }
     return '';
   }).join(' ');
+}
+
+Future<dynamic> getProductOnline(
+  String sellerEmail,
+  String prdtId,
+  BuildContext context,
+) async {
+  String msg = '';
+  String error = '';
+  final prefs = await SharedPreferences.getInstance();
+  try {
+    final token = prefs.getString('token');
+    final email = prefs.getString('email');
+
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
+    final url =
+        Uri.parse('$getProduct?email=$email&seller=$sellerEmail&id=$prdtId');
+
+    final response = await http.get(url, headers: headers);
+
+    final jsonResponse = jsonDecode(response.body);
+
+    msg = jsonResponse['message'] ?? '';
+
+    if (response.statusCode == 200) {
+      return jsonResponse['userPrdt'];
+    } else {
+      if (error == 'Accès refusé') {
+        String title = "Erreur. Accès refusé.";
+        showPopupMessage(context, title, msg);
+      }
+
+      String title = 'Erreur';
+      showPopupMessage(context, title, msg);
+
+      // Handle errors,
+      print('something went wrong');
+      return;
+    }
+  } catch (e) {
+    print(e);
+    String title = error;
+    showPopupMessage(context, title, msg);
+    return;
+  }
+}
+
+class ScreenArguments {
+  final String prdtId;
+  final String sellerEmail;
+
+  ScreenArguments(this.prdtId, this.sellerEmail);
 }

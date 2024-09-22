@@ -1,12 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-// import 'dart:io';
 
-// import 'package:contacts_service/contacts_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
-// import 'package:vcard_maintained/vcard_maintained.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,13 +27,18 @@ class _AffiliationState extends State<Affiliation> {
   String? code;
   bool showSpinner = true;
   String email = '';
-  List directUsers = [];
-  List indirectUsers = [];
+  int directCount = 0;
+  int indirectCount = 0;
   late SharedPreferences prefs;
 
   int basicRequirements = 2000;
   int proRequirements = 5000;
   int goldRequirements = 10000;
+
+  List directSubEmails = [];
+  List directNonSubEmails = [];
+  List indirectSubEmails = [];
+  List indirectNonSubEmails = [];
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
@@ -90,12 +92,19 @@ class _AffiliationState extends State<Affiliation> {
 
       final jsonResponse = jsonDecode(response.body);
 
-      msg = jsonResponse['message']??'';
-      error = jsonResponse['error']??'';
+      msg = jsonResponse['message'] ?? '';
+      error = jsonResponse['error'] ?? '';
 
       if (response.statusCode == 200) {
-        directUsers = jsonResponse['directUsers'] ?? [];
-        indirectUsers = jsonResponse['indirectUsers'] ?? [];
+        directCount = jsonResponse['directCount'] ?? 0;
+        indirectCount = jsonResponse['indirectCount'] ?? 0;
+
+        directSubEmails = jsonResponse['directSep']['subEmails'] ?? [];
+        directNonSubEmails = jsonResponse['directSep']['nonSubEmails'] ?? [];
+
+        indirectSubEmails = jsonResponse['indirectSep']['subEmails'] ?? [];
+        indirectNonSubEmails =
+            jsonResponse['indirectSep']['nonSubEmails'] ?? [];
 
         // await saveTransactionList(gottenTransactions);
         // transactions = await getTransactions();
@@ -170,13 +179,14 @@ class _AffiliationState extends State<Affiliation> {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
-    final directL = directUsers.length;
-    final indirectL = indirectUsers.length;
+    final directL = directCount;
+    final indirectL = indirectCount;
 
-    final directSubL =
-        directUsers.where((user) => user['isSubscribed'] == true).length;
-    final indirectSubL =
-        indirectUsers.where((user) => user['isSubscribed'] == true).length;
+    final directSubL = directSubEmails.length;
+    final indirectSubL = indirectSubEmails.length;
+
+    final directNonSubL = directNonSubEmails.length;
+    final indirectNonSubL = indirectNonSubEmails.length;
 
     final basic = max((directSubL / basicRequirements),
             (indirectSubL / basicRequirements)) *
@@ -251,14 +261,7 @@ class _AffiliationState extends State<Affiliation> {
                           padding: EdgeInsets.fromLTRB(
                               14 * fem, 16 * fem, 14 * fem, 15 * fem),
                           onPressed: () async {
-                            await Clipboard.setData(
-                                ClipboardData(text: code ?? ''));
-                            const snackBar = SnackBar(
-                              content: Text('Code successfully copied'),
-                              duration: Duration(seconds: 2),
-                            );
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(snackBar);
+                            copyToClipboard(context, code ?? '');
                           },
                           icon: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -298,8 +301,6 @@ class _AffiliationState extends State<Affiliation> {
                           MaterialPageRoute(
                             builder: (context) => Filleuls(
                               email: email,
-                              directUsers: directUsers,
-                              indirectUsers: indirectUsers,
                             ),
                           ),
                         );

@@ -351,6 +351,7 @@ class _ProfileState extends State<Profile> {
                                 refreshPageWait();
                                 if (kIsWeb) {
                                   launchURL(downloadUrl);
+                                  refreshPageRemove();
                                 } else {
                                   final path = await downloadVCF(context);
 
@@ -397,6 +398,7 @@ class _ProfileState extends State<Profile> {
                                 refreshPageWait();
                                 if (kIsWeb) {
                                   launchURL(downloadUpdateUrl);
+                                  refreshPageRemove();
                                 } else {
                                   final path = await downloadVCF(context);
 
@@ -439,7 +441,7 @@ class _ProfileState extends State<Profile> {
                             if (isSubscribed && isPartner) {
                               Navigator.pushNamed(context, EspacePartenaire.id);
                             } else {
-                              String msg = 'Vous n\'etes pas abonné😔';
+                              String msg = 'Vous n\'etes pas partenaire😔';
                               String title = 'Erreur';
                               showPopupMessage(context, title, msg);
                             }
@@ -583,7 +585,7 @@ class _ProfileState extends State<Profile> {
                     ),
                     child: Center(
                       child: Text(
-                        'Developer par Simbtech\n copyright ©',
+                        'Developpé par Simbtech\n copyright ©',
                         textAlign: TextAlign.center,
                         style: SafeGoogleFont(
                           'Montserrat',

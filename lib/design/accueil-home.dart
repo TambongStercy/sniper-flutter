@@ -106,6 +106,7 @@ class _HomeState extends State<Home> {
     token = prefs.getString('token');
     email = prefs.getString('email');
     name = prefs.getString('name') ?? '';
+    code = prefs.getString('code');
     region = prefs.getString('region');
     phone = prefs.getString('phone');
     avatar = prefs.getString('avatar') ?? '';
@@ -119,6 +120,7 @@ class _HomeState extends State<Home> {
 
   String? email;
   String name = '';
+  String? code;
   String? region;
   String? phone;
   String? token;
@@ -196,6 +198,7 @@ class _HomeState extends State<Home> {
     'slide 2 fr',
     'slide 3 fr',
   ];
+  
 
   void downloadPresentation() {
     launchURL('$downloadPres?language=fr');
@@ -313,7 +316,9 @@ class _HomeState extends State<Home> {
             ReusableButton(
               title: 'Partagez mon code',
               lite: false,
-              onPress: () {},
+              onPress: () {
+                copyToClipboard(context, code??'');
+              },
             ),
             Text(
               'À propos de SBC',
