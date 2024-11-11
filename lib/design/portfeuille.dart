@@ -2,15 +2,16 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/historique-transaction-bottom-sheet.dart';
 import 'package:snipper_frontend/design/retrait.dart';
-import 'package:snipper_frontend/design/splash1.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 
 class Wallet extends StatefulWidget {
   static const id = 'wallet';
@@ -32,7 +33,7 @@ class _WalletState extends State<Wallet> {
     balance = prefs.getDouble('balance') ?? 0;
     email = prefs.getString('email') ?? '';
     transactions = await getTransactions();
-    benefice = await getTransactionsBenefit();
+    benefice = getTransactionsBenefit(prefs);
   }
 
   @override
@@ -112,7 +113,7 @@ class _WalletState extends State<Wallet> {
         print('all good');
       } else {
         if (error == 'Accès refusé') {
-          String title = "Erreur. Accès refusé.";
+          String title = context.translate('error_access_denied');
           showPopupMessage(context, title, msg);
 
           if (!kIsWeb) {
@@ -136,16 +137,10 @@ class _WalletState extends State<Wallet> {
           await deleteNotifications();
           await deleteAllKindTransactions();
 
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Scene(),
-            ),
-            (route) => false,
-          );
+          context.goNamed('/');
         }
 
-        String title = 'Erreur';
+        String title = context.translate('error');
         showPopupMessage(context, title, msg);
         print('something went wrong');
       }
@@ -163,7 +158,7 @@ class _WalletState extends State<Wallet> {
     double ffem = fem * 0.97;
 
     return SimpleScaffold(
-      title: 'Portfeuille',
+      title: context.translate('wallet'), // 'Portfeuille'
       inAsyncCall: showSpinner,
       child: Container(
         margin: EdgeInsets.fromLTRB(15 * fem, 20 * fem, 15 * fem, 14 * fem),
@@ -186,7 +181,7 @@ class _WalletState extends State<Wallet> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'Mon solde',
+                    context.translate('my_balance'), // 'Mon solde'
                     style: SafeGoogleFont(
                       'Montserrat',
                       fontSize: 12 * ffem,
@@ -206,8 +201,9 @@ class _WalletState extends State<Wallet> {
                     ),
                   ),
                   Text(
-                    ///2% of every transaction
-                    'Benefice total ${benefice.toStringAsFixed(1)} Fcfa',
+                    context.translate('total_benefit', args: {
+                      'benefice': benefice.toStringAsFixed(1)
+                    }), // 'Benefice total $benefice Fcfa'
                     style: SafeGoogleFont(
                       'Montserrat',
                       fontSize: 8 * ffem,
@@ -220,9 +216,9 @@ class _WalletState extends State<Wallet> {
               ),
             ),
             ReusableButton(
-              title: 'Retrait',
+              title: context.translate('withdraw'), // 'Retrait'
               onPress: () {
-                Navigator.pushNamed(context, Retrait.id);
+                context.pushNamed(Retrait.id);
               },
             ),
             TextButton(
@@ -261,7 +257,7 @@ class _WalletState extends State<Wallet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Historique',
+                      context.translate('history'), // 'Historique'
                       style: SafeGoogleFont(
                         'Montserrat',
                         fontSize: 16 * ffem,
@@ -283,7 +279,6 @@ class _WalletState extends State<Wallet> {
                 ),
               ),
             ),
-          
           ],
         ),
       ),

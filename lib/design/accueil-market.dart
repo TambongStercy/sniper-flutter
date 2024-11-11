@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
 
-// import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:snipper_frontend/components/pricingcard.dart';
 import 'package:snipper_frontend/components/prodtpost.dart';
 import 'package:snipper_frontend/components/rating_tag.dart';
 import 'package:snipper_frontend/components/textfield.dart';
@@ -13,7 +12,7 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/produit-page.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
-// import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 
 class Market extends StatefulWidget {
   Market({super.key, this.page});
@@ -58,10 +57,7 @@ class _MarketState extends State<Market> {
 
     page = widget.page ?? page;
 
-    // Create a Random object
     final random = Random();
-
-    // Generate a random number between 0 and 1
     randNum = random.nextDouble();
 
     getProductsOnline();
@@ -76,7 +72,7 @@ class _MarketState extends State<Market> {
 
   Future<void> getProductsOnline() async {
     if (isloading) return;
-    isloading = true; 
+    isloading = true;
     String msg = '';
     String error = '';
     try {
@@ -114,69 +110,24 @@ class _MarketState extends State<Market> {
         if (mounted) setState(() {});
       } else {
         if (error == 'Accès refusé') {
-          String title = "Erreur. Accès refusé.";
+          String title = context.translate('error_access_denied');
           showPopupMessage(context, title, msg);
         }
 
-        String title = 'Erreur';
+        String title = context.translate('error');
         showPopupMessage(context, title, msg);
 
-        // Handle errors,
         print('something went wrong');
       }
     } catch (e) {
       print(e);
-      String title = error;
-      showPopupMessage(context, title, msg);
-    }
-  }
-
-  Future<void> getProductOnline(String sellerEmail, String prdtId) async {
-    String msg = '';
-    String error = '';
-    try {
-
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
-      final url =
-          Uri.parse('$getProduct?email=$email&seller=$sellerEmail&id=$prdtId');
-
-      final response = await http.get(url, headers: headers);
-
-      final jsonResponse = jsonDecode(response.body);
-
-      msg = jsonResponse['message'] ?? '';
-
-      if (response.statusCode == 200) {
-        return jsonResponse['userPrdt'];
-      } else {
-        if (error == 'Accès refusé') {
-          String title = "Erreur. Accès refusé.";
-          showPopupMessage(context, title, msg);
-        }
-
-        String title = 'Erreur';
-        showPopupMessage(context, title, msg);
-
-        // Handle errors,
-        print('something went wrong');
-      }
-    } catch (e) {
-      print(e);
-      String title = error;
+      String title = context.translate('error');
       showPopupMessage(context, title, msg);
     }
   }
 
   Future<void> rateProduct(
-    String sellerId,
-    String prdtId,
-    double rating,
-  ) async {
-    // email, sellerId, prdtId, rating
+      String sellerId, String prdtId, double rating) async {
     String msg = '';
     String error = '';
     try {
@@ -203,22 +154,21 @@ class _MarketState extends State<Market> {
       msg = jsonResponse['message'] ?? '';
       error = jsonResponse['error'] ?? '';
 
-      final title = (response.statusCode == 200) ? 'Success' : 'Error';
+      final title = (response.statusCode == 200)
+          ? context.translate('success')
+          : context.translate('error');
 
       showPopupMessage(context, title, msg);
       print(msg);
     } catch (e) {
       print(e);
-      String title = error;
+      String title = context.translate('error');
       showPopupMessage(context, title, msg);
     }
   }
 
   Future<void> refresh() async {
-    // Create a Random object
     final random = Random();
-
-    // Generate a random number between 0 and 1
     double randomValue = random.nextDouble();
 
     print(randomValue);
@@ -240,16 +190,7 @@ class _MarketState extends State<Market> {
     super.dispose();
   }
 
-  void refreshPage() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  void showRatingBar(
-    BuildContext context,
-    prdtAndUser,
-  ) {
+  void showRatingBar(BuildContext context, prdtAndUser) {
     final prdt = prdtAndUser['product'];
     final prdtId = prdt['id'];
 
@@ -263,7 +204,7 @@ class _MarketState extends State<Market> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-            'Votre avis sur le produit?',
+            context.translate('product_rating_prompt'),
             textAlign: TextAlign.center,
             style: SafeGoogleFont(
               'Montserrat',
@@ -295,19 +236,19 @@ class _MarketState extends State<Market> {
             TextButton(
               onPressed: () async {
                 try {
-                  Navigator.of(context).pop();
+                  context.pop();
                   await rateProduct(sellerId, prdtId, userRating);
                 } on Exception catch (e) {
                   print(e);
                 }
               },
-              child: Text('Ok'),
+              child: Text(context.translate('ok')),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                context.pop();
               },
-              child: Text('Annuler'),
+              child: Text(context.translate('cancel')),
             ),
           ],
         );
@@ -341,16 +282,13 @@ class _MarketState extends State<Market> {
             child: Column(
               children: [
                 CustomTextField(
-                  hintText: 'Recherchez un produit ou service',
+                  hintText: context.translate('search_product_or_service'),
                   onChange: (val) {
                     setState(() {
                       queue = val;
                     });
                   },
                   onSearch: () async {
-                    // setState(() {
-                    //   search = queue;
-                    // });
                     await refresh();
                   },
                   searchMode: true,
@@ -396,14 +334,15 @@ class _MarketState extends State<Market> {
                       final rating = (prdt['overallRating'] ?? 0.0).toDouble();
                       final ratingLength = (prdt['ratings'] ?? []).length;
 
+                      final prdtId = prdt['id'];
+                      final seller = prdtAndUser['userInfo'];
+                      final sellerId = seller['id'];
+
                       return InkWell(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ProduitPage(prdtAndUser: prdtAndUser),
-                            ),
+                          context.pushNamed(
+                            ProduitPage.id,
+                            extra: prdtAndUser,
                           );
                         },
                         child: PrdtPost(
@@ -411,6 +350,8 @@ class _MarketState extends State<Market> {
                           onContact: () {
                             launchURL(link);
                           },
+                          prdtId: prdtId,
+                          sellerId: sellerId,
                           price: price,
                           title: prdtName,
                           rating: InkWell(
@@ -431,7 +372,7 @@ class _MarketState extends State<Market> {
                         child: Center(
                           child: hasMore
                               ? CircularProgressIndicator()
-                              : Text('Aucun autre produit n\'est disponible'),
+                              : Text(context.translate('no_more_products')),
                         ),
                       );
                     }
@@ -450,7 +391,7 @@ class _MarketState extends State<Market> {
   InkWell _subcategButton(double fem, String subCateg) {
     subCateg = subCateg.toLowerCase();
 
-    final value = subCateg == '' ? 'Tous' : subCateg;
+    final value = subCateg == '' ? context.translate('all') : subCateg;
 
     return InkWell(
       onTap: () async {
@@ -485,9 +426,8 @@ class _MarketState extends State<Market> {
   }
 
   Expanded _topButton(double fem, String catg) {
-    final capsCateg = catg.length > 2
-        ? catg.substring(0, 1).toUpperCase() + catg.substring(1)
-        : catg;
+    final value =
+        catg == '' ? context.translate('all') : context.translate(catg);
 
     return Expanded(
       child: InkWell(
@@ -508,7 +448,7 @@ class _MarketState extends State<Market> {
             color: category == catg ? blue : null,
           ),
           child: Text(
-            catg == '' ? 'Tous' : capsCateg,
+            value,
             textAlign: TextAlign.center,
             style: SafeGoogleFont(
               'Mulish',
@@ -520,5 +460,4 @@ class _MarketState extends State<Market> {
       ),
     );
   }
-
 }

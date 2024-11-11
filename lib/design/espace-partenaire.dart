@@ -4,6 +4,7 @@ import 'package:snipper_frontend/components/customDropdown.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/design/historique-transaction-bottom-sheet.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Assuming you have this for context.translate
 
 class EspacePartenaire extends StatefulWidget {
   static const id = 'espace-partenaire';
@@ -41,16 +42,14 @@ class _EspacePartenaireState extends State<EspacePartenaire> {
   Widget build(BuildContext context) {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
-    // double ffem = fem * 0.97;
 
     final type = pack == 'gold' ? 2 : 1;
-    ;
     bool isGold = pack == 'gold' ? true : false;
     final color = isGold ? gold : silver;
 
     return SimpleScaffold(
       appBarColor: color,
-      title: 'Partenaire SBC',
+      title: context.translate('partner_sbc'), // Translated title
       child: Container(
         padding: EdgeInsets.fromLTRB(27 * fem, 25 * fem, 23 * fem, 25 * fem),
         width: double.infinity,
@@ -66,7 +65,7 @@ class _EspacePartenaireState extends State<EspacePartenaire> {
             ),
             SizedBox(height: 15),
             HistoryDropdown(
-              title: 'Historique',
+              title: context.translate('history'), // Translated "Historique"
               color: color,
               onPressed: () {
                 showModalBottomSheet(
@@ -109,35 +108,26 @@ class BonusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = type == 1 ? silver : gold;
-    final bg = type == 1 ? Color(0xfffcfcfc) : Color(0xff6f7377);
-    final textColor = type == 1 ? Color(0xff6f7377) : Color(0xfffcfcfc);
+    final bg = type == 1 ? const Color(0xfffcfcfc) : const Color(0xff6f7377);
+    final textColor = type == 1 ? const Color(0xff6f7377) : const Color(0xfffcfcfc);
     final perc = type == 1 ? 0.18 : 0.30;
-    final text = type == 1 ? 'SILVER (18%)' : 'GOLD (30%)';
-    final subTitle =
-        isDevelopment ? 'Bonus de Développment' : 'Benefice dans mon réseau';
+    final text = type == 1 ? context.translate('silver_18') : context.translate('gold_30'); // Translated bonus types
+    final subTitle = isDevelopment
+        ? context.translate('development_bonus') // Translated "Bonus de Développment"
+        : context.translate('network_benefit');  // Translated "Benefice dans mon réseau"
 
     final amtDisp = isDevelopment ? perc * amount : amount;
 
     return Container(
-      margin: EdgeInsets.fromLTRB(
-        0,
-        0,
-        0,
-        15,
-      ),
-      padding: EdgeInsets.fromLTRB(
-        24,
-        20,
-        24,
-        20,
-      ),
+      margin: const EdgeInsets.fromLTRB(0, 0, 0, 15),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       decoration: BoxDecoration(
-        border: Border.all(color: Color(0xffbbc8d4)),
+        border: Border.all(color: const Color(0xffbbc8d4)),
         color: bg,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Color(0x3f25313c),
+            color: const Color(0x3f25313c),
             blurRadius: 2.9,
           ),
         ],
@@ -172,8 +162,7 @@ class BonusCard extends StatelessWidget {
                 ],
               ),
             ),
-          // if(!isDevelopment)
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           Text(
             '${formatNumber(amtDisp)} FCFA',
             textAlign: TextAlign.center,
@@ -186,7 +175,7 @@ class BonusCard extends StatelessWidget {
               color: color,
             ),
           ),
-          SizedBox(height: 30),
+          const SizedBox(height: 30),
           Text(
             subTitle,
             style: SafeGoogleFont(

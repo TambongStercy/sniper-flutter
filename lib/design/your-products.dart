@@ -2,12 +2,14 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/modify-product.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 class YourProducts extends StatefulWidget {
   static const id = 'yourProduct';
@@ -88,14 +90,13 @@ class _YourProductsState extends State<YourProducts> {
         setState(() {});
       } else {
         if (error == 'Accès refusé') {
-          String title = "Erreur. Accès refusé.";
+          String title = context.translate('error_access_denied');
           showPopupMessage(context, title, msg);
         }
 
-        String title = 'Erreur';
+        String title = context.translate('error');
         showPopupMessage(context, title, msg);
 
-        // Handle errors,
         print('something went wrong');
       }
     } catch (e) {
@@ -130,19 +131,18 @@ class _YourProductsState extends State<YourProducts> {
 
         prdtList.addAll(newItems);
 
-        showPopupMessage(context, 'Succès', msg);
+        showPopupMessage(context, context.translate('success'), msg);
 
         setState(() {});
       } else {
         if (error == 'Accès refusé') {
-          String title = "Erreur. Accès refusé.";
+          String title = context.translate('error_access_denied');
           showPopupMessage(context, title, msg);
         }
 
-        String title = 'Erreur';
+        String title = context.translate('error');
         showPopupMessage(context, title, msg);
 
-        // Handle errors,
         print('something went wrong');
       }
     } catch (e) {
@@ -168,7 +168,7 @@ class _YourProductsState extends State<YourProducts> {
         return AlertDialog(
           title: RichText(
             text: TextSpan(
-              text: 'Est-ce que vous souhaitez ',
+              text: context.translate('delete_product_prompt'),
               style: SafeGoogleFont(
                 'Montserrat',
                 fontSize: 15,
@@ -178,19 +178,11 @@ class _YourProductsState extends State<YourProducts> {
               ),
               children: <TextSpan>[
                 TextSpan(
-                  text: 'supprimer ',
+                  text: context.translate('delete'),
                   style: TextStyle(color: Colors.red),
                 ),
                 TextSpan(
-                  text:
-                      'ce produit?\n\nTous les cotation de se produit seront ',
-                ),
-                TextSpan(
-                  text: 'supprimeés ',
-                  style: TextStyle(color: Colors.red),
-                ),
-                TextSpan(
-                  text: 'aussi!',
+                  text: context.translate('delete_risk_notice'),
                 ),
               ],
             ),
@@ -199,7 +191,7 @@ class _YourProductsState extends State<YourProducts> {
             TextButton(
               onPressed: () async {
                 try {
-                  Navigator.of(context).pop();
+                  context.pop();
                   showSpinner = true;
                   refreshPage();
                   await deleteThisProduct(id);
@@ -209,15 +201,15 @@ class _YourProductsState extends State<YourProducts> {
                 }
               },
               child: Text(
-                'Oui',
+                context.translate('yes'),
                 style: TextStyle(color: Colors.red),
               ),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                context.pop();
               },
-              child: Text('Non'),
+              child: Text(context.translate('no')),
             ),
           ],
         );
@@ -232,7 +224,7 @@ class _YourProductsState extends State<YourProducts> {
     double ffem = fem * 0.97;
 
     return SimpleScaffold(
-      title: 'Vos Produits et Services',
+      title: context.translate('your_products_services'),
       inAsyncCall: showSpinner,
       child: Container(
         padding: EdgeInsets.fromLTRB(5 * fem, 10 * fem, 5 * fem, 0 * fem),
@@ -240,7 +232,7 @@ class _YourProductsState extends State<YourProducts> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: prdtList.length == 0
-              ? [Text('Vous avez pas encore de produits ou services')]
+              ? [Text(context.translate('no_products_services'))]
               : prdtList.map((prdt) {
                   return prdtTile(prdt, fem, ffem);
                 }).toList(),
@@ -285,12 +277,7 @@ class _YourProductsState extends State<YourProducts> {
           trailing: PopupMenuButton(
             onSelected: (value) {
               if (value == '/edit') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ModifyProduct(product: prdt),
-                  ),
-                ).then((value) => refresh());
+                context.pushNamed(ModifyProduct.id, extra: prdt).then((value) => refresh());
               } else if (value == '/delete') {
                 showDeleteDialog(context, id);
               }
@@ -383,7 +370,7 @@ class _YourProductsState extends State<YourProducts> {
             ],
           ),
           subtitle: Text(
-            price > 0 ? '$price FCFA' : 'GRATUIT',
+            price > 0 ? '$price FCFA' : context.translate('free'),
             style: SafeGoogleFont(
               'Montserrat',
               fontSize: 12 * ffem,

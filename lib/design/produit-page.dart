@@ -3,13 +3,15 @@ import 'dart:convert';
 import 'package:another_carousel_pro/another_carousel_pro.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/filleulscard.dart';
-// import 'package:snipper_frontend/components/prodtpost.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
+import 'package:share_plus/share_plus.dart';
 
 class ProduitPage extends StatefulWidget {
   static const id = 'productpage';
@@ -26,6 +28,7 @@ class _ProduitPageState extends State<ProduitPage> {
   String email = '';
   String token = '';
   bool isSubscribed = false;
+  String shareLink = '';
 
   get prdtAndUser => widget.prdtAndUser;
 
@@ -36,12 +39,20 @@ class _ProduitPageState extends State<ProduitPage> {
     email = prefs.getString('email') ?? '';
     token = prefs.getString('token') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
+
+    final prdt = prdtAndUser['product'];
+    final prdtId = prdt['id'];
+
+    final seller = prdtAndUser['userInfo'];
+    final sellerId = seller['id'];
+
+    shareLink =
+        'https://sniperbuisnesscenter.com/?sellerId=$sellerId&prdtId=$prdtId';
   }
 
   @override
   void initState() {
     super.initState();
-    // Create anonymous function:
     () async {
       await initSharedPref();
       if (mounted) {
@@ -57,7 +68,6 @@ class _ProduitPageState extends State<ProduitPage> {
     String prdtId,
     double rating,
   ) async {
-    // email, sellerId, prdtId, rating
     String msg = '';
     String error = '';
     try {
@@ -84,12 +94,12 @@ class _ProduitPageState extends State<ProduitPage> {
       msg = jsonResponse['message'] ?? '';
       error = jsonResponse['error'] ?? '';
 
-      final title = (response.statusCode == 200) ? 'Success' : 'Error';
+      final title = (response.statusCode == 200)
+          ? context.translate('success')
+          : context.translate('error');
 
       showPopupMessage(context, title, msg);
-      print(msg);
     } catch (e) {
-      print(e);
       String title = error;
       showPopupMessage(context, title, msg);
     }
@@ -112,7 +122,7 @@ class _ProduitPageState extends State<ProduitPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-            'Votre avis sur le produit?',
+            context.translate('product_rating_prompt'),
             textAlign: TextAlign.center,
             style: SafeGoogleFont(
               'Montserrat',
@@ -137,22 +147,21 @@ class _ProduitPageState extends State<ProduitPage> {
               setState(() {
                 userRating = rating;
               });
-              print(rating);
             },
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                context.pop();
               },
-              child: Text('Annuler'),
+              child: Text(context.translate('cancel')),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.of(context).pop();
+                context.pop();
                 await rateProduct(sellerId, prdtId, userRating);
               },
-              child: Text('Ok'),
+              child: Text(context.translate('ok')),
             ),
           ],
         );
@@ -165,7 +174,6 @@ class _ProduitPageState extends State<ProduitPage> {
     final prdt = prdtAndUser['product'];
     final link = prdt['whatsappLink'];
     final prdtName = prdt['name'];
-    // final category = prdt['category'];
     final description = prdt['description'];
     final imagesUrl = prdt['urls'];
     final rating = (prdt['overallRating'] ?? 0.0).toDouble();
@@ -173,14 +181,14 @@ class _ProduitPageState extends State<ProduitPage> {
 
     final seller = prdtAndUser['userInfo'];
     final sellerName = seller['name'];
-    final sellerUrl = seller['url'];
+    final sellerUrl = seller['url']??'';
     final sellerEmail = seller['email'];
     final sellerRegion = seller['region'];
     final sellerPhone = seller['phoneNumber'].toString();
 
-    final country = getCountryFromPhoneNumber(sellerPhone)!;
+    print(sellerUrl);
 
-    // final imageWidget = NetworkImage(imagesUrl[0]);
+    final country = getCountryFromPhoneNumber(sellerPhone)!;
 
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
@@ -206,7 +214,7 @@ class _ProduitPageState extends State<ProduitPage> {
                       children: [
                         IconButton(
                           onPressed: () {
-                            Navigator.pop(context);
+                            context.pop();
                           },
                           icon: Icon(Icons.close),
                         ),
@@ -217,13 +225,14 @@ class _ProduitPageState extends State<ProduitPage> {
                             }
                           },
                           itemBuilder: (BuildContext bc) {
-                            return const <PopupMenuEntry>[
+                            return <PopupMenuEntry>[
                               PopupMenuItem(
                                 child: Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceAround,
                                   children: [
-                                    Text('Votre avis'),
+                                    Text(context
+                                        .translate('product_rating_prompt')),
                                     Icon(Icons.star),
                                   ],
                                 ),
@@ -281,7 +290,9 @@ class _ProduitPageState extends State<ProduitPage> {
                             ),
                             Container(
                               child: Text(
-                                price == 0 ? 'GRATUIT' : '$price FCFA',
+                                price == 0
+                                    ? context.translate('free')
+                                    : '$price FCFA',
                                 textAlign: TextAlign.left,
                                 style: SafeGoogleFont(
                                   'Mulish',
@@ -316,41 +327,28 @@ class _ProduitPageState extends State<ProduitPage> {
                                 Icons.star,
                                 color: Colors.amber,
                               ),
-                              onRatingUpdate: (rating) {
-                                print(rating);
-                              },
+                              onRatingUpdate: (rating) {},
                             ),
                           ),
                         ),
                         const SizedBox(
                           height: 20.0,
                         ),
-                        _division(fem, ffem, 'Description', description),
-                        _division(fem, ffem, 'Localization', '${country.name} - $sellerRegion'),
-                        _division(fem, ffem, 'Information du vendeur', ''),
-                        // Divider(
-                        //   color: Colors.black12,
-                        //   thickness: 1,
-                        // ),
-                        // Container(
-                        //   margin: EdgeInsets.fromLTRB(
-                        //     0 * fem,
-                        //     0 * fem,
-                        //     0 * fem,
-                        //     5 * fem,
-                        //   ),
-                        //   child: Text(
-                        //     'Information du vendeur',
-                        //     style: SafeGoogleFont(
-                        //       'Montserrat',
-                        //       fontSize: 12 * ffem,
-                        //       fontWeight: FontWeight.w800,
-                        //       height: 1.3333333333 * ffem / fem,
-                        //       letterSpacing: 0.400000006 * fem,
-                        //       color: Color(0xff6d7d8b),
-                        //     ),
-                        //   ),
-                        // ),
+                        ReusableButton(
+                          title: context.translate('share'),
+                          onPress: () {
+                            Share.share(shareLink);
+                          },
+                        ),
+                        const SizedBox(
+                          height: 20.0,
+                        ),
+                        _division(fem, ffem, context.translate('description'),
+                            description),
+                        _division(fem, ffem, context.translate('localization'),
+                            '${country.name} - $sellerRegion'),
+                        _division(
+                            fem, ffem, context.translate('seller_info'), ''),
                         FilleulsCard(
                           isSub: true,
                           url: sellerUrl,
@@ -361,7 +359,7 @@ class _ProduitPageState extends State<ProduitPage> {
                           height: 20.0,
                         ),
                         ReusableButton(
-                          title: 'Contacter maintenant',
+                          title: context.translate('contact_now'),
                           onPress: () {
                             launchURL(link);
                           },
@@ -418,10 +416,10 @@ class _ProduitPageState extends State<ProduitPage> {
             ),
           ),
         ),
-        if(description != '')
-        SizedBox(
-          height: 20.0,
-        ),
+        if (description != '')
+          SizedBox(
+            height: 20.0,
+          ),
       ],
     );
   }

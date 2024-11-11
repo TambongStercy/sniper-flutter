@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 
 class PricingCard extends StatelessWidget {
   const PricingCard({
     super.key,
 
-    ///1 for basic, 2 for pro & 3 for gold
+    /// 1 for basic, 2 for pro & 3 for gold
     required this.type,
 
-    ///Called when user presses on "commander maintenant"
+    /// Called when user presses on "commander maintenant"
     required this.onCommand,
   });
 
@@ -30,55 +31,55 @@ class PricingCard extends StatelessWidget {
     List<String> description = [];
 
     if (type == 0) {
-      categ = 'Abonnement';
+      categ = context.translate('subscription');
       pointImage = 'assets/design/images/group-45809-oeR.png';
       price = '2000';
       color = Color(0xff1862f0);
       description.addAll(
         [
-          'Accès à la fiche de nos contacts',
-          'Pourvoir effectuer des retrait de vos compte',
-          'Accès au groupe whatsapp',
-          'Formation au trading',
-          'Formation en marketing 360',
-          'Formation sur l\'achat en chine',
-          'Formation en Art oratoire',
-          'Accès à notre market place',
+          context.translate('access_contacts_sheet'),
+          context.translate('withdraw_money'),
+          context.translate('whatsapp_group_access'),
+          context.translate('trading_training'),
+          context.translate('marketing_training'),
+          context.translate('china_purchase_training'),
+          context.translate('public_speaking_training'),
+          context.translate('marketplace_access'),
         ],
       );
     } else if (type == 1) {
-      categ = 'BASIQUE';
+      categ = context.translate('basic');
       pointImage = 'assets/design/images/group-45809-oeR.png';
       price = '2000';
       color = Color(0xff1862f0);
       description.addAll(
         [
-          'Partage de ton service ou produits dans nos différents groupe WhatsApp 1/semaine',
-          'Accès à notre market place (3produits ou service)',
+          context.translate('whatsapp_promo_once'),
+          context.translate('marketplace_access_3'),
         ],
       );
     } else if (type == 2) {
-      categ = 'Pro';
+      categ = context.translate('pro');
       pointImage = 'assets/design/images/group-45809.png';
       price = '5000';
       color = Color(0xff92b127);
       description.addAll(
         [
-          'Partage de ton service ou produits dans nos différents groupe WhatsApp 3/semaine',
-          'Accès à notre marketplace (6 produits ou services)',
+          context.translate('whatsapp_promo_thrice'),
+          context.translate('marketplace_access_6'),
         ],
       );
     } else {
-      categ = 'Gold';
+      categ = context.translate('gold');
       pointImage = 'assets/design/images/group-45809-Dah.png';
       price = '10000';
       color = Color(0xfff49101);
       description.addAll(
         [
-          'Partage de ton service ou produits dans nos différents groupe WhatsApp 5/semaine',
-          'Accès à notre marketplace (10 produits ou services)',
-          'Partage de ton service ou produit sur notre page Facebook',
-          'Conception d‘un flyer professionnel',
+          context.translate('whatsapp_promo_five'),
+          context.translate('marketplace_access_10'),
+          context.translate('facebook_promo'),
+          context.translate('flyer_design'),
         ],
       );
     }
@@ -159,7 +160,7 @@ class PricingCard extends StatelessWidget {
                     0 * fem,
                   ),
                   child: Text(
-                    type>0?'/mo':'a vie',
+                    type > 0 ? '/mo' : context.translate('for_life'),
                     textAlign: TextAlign.center,
                     style: SafeGoogleFont(
                       'Montserrat',
@@ -178,59 +179,60 @@ class PricingCard extends StatelessWidget {
             margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 15 * fem),
             width: 283 * fem,
             child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: description
-                    .map(
-                      (desc) => Container(
-                        margin: EdgeInsets.fromLTRB(
-                          0 * fem,
-                          0 * fem,
-                          0 * fem,
-                          8 * fem,
-                        ),
-                        width: double.infinity,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              margin: EdgeInsets.fromLTRB(
-                                0 * fem,
-                                0 * fem,
-                                21 * fem,
-                                1 * fem,
-                              ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: description
+                  .map(
+                    (desc) => Container(
+                      margin: EdgeInsets.fromLTRB(
+                        0 * fem,
+                        0 * fem,
+                        0 * fem,
+                        8 * fem,
+                      ),
+                      width: double.infinity,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            margin: EdgeInsets.fromLTRB(
+                              0 * fem,
+                              0 * fem,
+                              21 * fem,
+                              1 * fem,
+                            ),
+                            width: 13 * fem,
+                            height: 13 * fem,
+                            child: Image.asset(
+                              pointImage,
                               width: 13 * fem,
                               height: 13 * fem,
-                              child: Image.asset(
-                                pointImage,
-                                width: 13 * fem,
-                                height: 13 * fem,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              desc,
+                              style: SafeGoogleFont(
+                                'Montserrat',
+                                fontSize: 10 * ffem,
+                                fontWeight: FontWeight.w700,
+                                height: 1.6 * ffem / fem,
+                                letterSpacing: 0.400000006 * fem,
+                                color: Color(0xff6d7d8b),
                               ),
                             ),
-                            Expanded(
-                              child: Text(
-                                desc,
-                                style: SafeGoogleFont(
-                                  'Montserrat',
-                                  fontSize: 10 * ffem,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.6 * ffem / fem,
-                                  letterSpacing: 0.400000006 * fem,
-                                  color: Color(0xff6d7d8b),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    )
-                    .toList()),
+                    ),
+                  )
+                  .toList(),
+            ),
           ),
           ReusableButton(
-            title: 'Commander maintenant',
+            title: context.translate('order_now'),
             onPress: onCommand,
             mainColor: color,
-          )
+          ),
         ],
       ),
     );

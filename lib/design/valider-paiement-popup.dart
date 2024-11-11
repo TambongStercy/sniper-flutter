@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-// import 'package:flutter/gestures.dart';
-// import 'dart:ui';
-// import 'package:google_fonts/google_fonts.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 class Scene extends StatelessWidget {
   @override
@@ -14,27 +12,27 @@ class Scene extends StatelessWidget {
       width: double.infinity,
       child: Container(
         width: double.infinity,
-        height: 54*fem,
-        decoration: BoxDecoration (
+        height: 54 * fem,
+        decoration: BoxDecoration(
           color: Color(0xffffffff),
-          borderRadius: BorderRadius.circular(14*fem),
+          borderRadius: BorderRadius.circular(14 * fem),
         ),
         child: Center(
           child: Center(
             child: Text(
-              'Demande de retrait confirmer',
+              context.translate('withdrawal_request_confirmation'),
               textAlign: TextAlign.center,
-              style: SafeGoogleFont (
+              style: SafeGoogleFont(
                 'Montserrat',
-                fontSize: 16*ffem,
+                fontSize: 16 * ffem,
                 fontWeight: FontWeight.w700,
-                height: 1.5*ffem/fem,
+                height: 1.5 * ffem / fem,
                 color: Color(0xff25313c),
               ),
             ),
           ),
         ),
       ),
-          );
+    );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
@@ -11,6 +12,7 @@ import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 
 // ignore: must_be_immutable
 class NewEmail extends StatefulWidget {
@@ -41,17 +43,11 @@ class _NewEmailState extends State<NewEmail> {
   late SharedPreferences prefs;
 
   Future<void> changeAndValidate(context) async {
-
-    if (id.isNotEmpty &&
-        email.isNotEmpty &&
-        otp.isNotEmpty &&
-        otp.length == 4) {
-          
-
+    if (id.isNotEmpty && email.isNotEmpty && otp.isNotEmpty && otp.length == 4) {
       final regBody = {
         'email': email,
         'id': id,
-        'otp': (otp),
+        'otp': otp,
       };
 
       final headers = {
@@ -66,7 +62,6 @@ class _NewEmailState extends State<NewEmail> {
       );
 
       final jsonResponse = jsonDecode(response.body);
-
       final user = jsonResponse['user'];
       final msg = jsonResponse['message'] ?? '';
 
@@ -74,7 +69,6 @@ class _NewEmailState extends State<NewEmail> {
         final name = user['name'];
         final region = user['region'];
         final phone = user['phoneNumber'].toString();
-
         final userCode = user['code'];
         final balance = user['balance'];
         avatar = !kIsWeb ? user['avatar'] : user['url'];
@@ -93,28 +87,17 @@ class _NewEmailState extends State<NewEmail> {
         prefs.setInt('balance', balance);
         prefs.setBool('isSubscribed', isSubscribed);
 
-        // await initializeOneSignal(id);
+        context.goNamed(Accueil.id);
 
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Accueil(),
-          ),
-          (route) => false,
-        );
       } else {
-        // String msg = 'Please Try again';
-        String title = 'Something went wrong';
-        showPopupMessage(context, title, msg);
+        showPopupMessage(context, context.translate('error'), msg);
       }
     } else {
-      String msg = 'Please fill in all information asked';
-      String title = 'Information not complete';
-      showPopupMessage(context, title, msg);
+      showPopupMessage(context, context.translate('incomplete_info'), context.translate('fill_all_fields'));
     }
   }
 
-  Future<void> ModifyEmailOTP(context) async {
+  Future<void> modifyEmailOTP(context) async {
     if (email.isNotEmpty) {
       final regBody = {
         'email': email,
@@ -128,24 +111,17 @@ class _NewEmailState extends State<NewEmail> {
       );
 
       final jsonResponse = jsonDecode(response.body);
-
       final msg = jsonResponse['message'] ?? '';
 
       if (response.statusCode == 200) {
-        String title = 'Code Sent';
-        showPopupMessage(context, title, msg);
-
+        showPopupMessage(context, context.translate('otp_sent'), msg);
         return;
       } else {
-        // String msg = 'Please Try again';
-        String title = 'Something went wrong';
-        showPopupMessage(context, title, msg);
+        showPopupMessage(context, context.translate('error'), msg);
         return;
       }
     } else {
-      String msg = 'Please fill in all information asked';
-      String title = 'Information not complete';
-      showPopupMessage(context, title, msg);
+      showPopupMessage(context, context.translate('incomplete_info'), context.translate('fill_all_fields'));
       return;
     }
   }
@@ -153,7 +129,6 @@ class _NewEmailState extends State<NewEmail> {
   @override
   void initState() {
     super.initState();
-    // Create anonymous function:
     () async {
       await initSharedPref();
       if (mounted) {
@@ -191,20 +166,12 @@ class _NewEmailState extends State<NewEmail> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      margin: EdgeInsets.fromLTRB(
-                        25 * fem,
-                        0 * fem,
-                        0 * fem,
-                        21.17 * fem,
-                      ),
+                      margin: EdgeInsets.fromLTRB(25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
                       width: 771.27 * fem,
-                      // height: 275.83 * fem,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(
-                            height: 40.0,
-                          ),
+                          const SizedBox(height: 40.0),
                           Container(
                             margin: EdgeInsets.only(top: 46 * fem),
                             child: Text(
@@ -222,7 +189,7 @@ class _NewEmailState extends State<NewEmail> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Valider l\'adresse e-mail',
+                              context.translate('validate_email'), // 'Valider l\'adresse e-mail'
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -236,7 +203,7 @@ class _NewEmailState extends State<NewEmail> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Entrez le code OTP envoyé à $email',
+                              context.translate('enter_otp_for_email', args: {'email': email}), // 'Entrez le code OTP envoyé à $email'
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -255,30 +222,24 @@ class _NewEmailState extends State<NewEmail> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          _fieldTitle(fem, ffem, 'Code OTP'),
+                          _fieldTitle(fem, ffem, context.translate('otp_code')), // 'Code OTP'
                           OtpTextField(
                             numberOfFields: 4,
                             borderColor: Color(0xFF512DA8),
                             fieldWidth: 50.0,
                             margin: EdgeInsets.only(right: 8.0),
-                            //set to true to show as box or false to show as dash
                             showFieldAsBox: true,
-                            //runs when a code is typed in
                             onCodeChanged: (String code) {
                               print(code);
-                              // otp = code;
                             },
-                            //runs when every textfield is filled
                             onSubmit: (String verificationCode) {
                               otp = verificationCode;
                               print('submit');
-                            }, // end onSubmit
+                            },
                           ),
-                          SizedBox(
-                            height: 20 * fem,
-                          ),
+                          SizedBox(height: 20 * fem),
                           ReusableButton(
-                            title: 'Valider',
+                            title: context.translate('validate'), // 'Valider'
                             lite: false,
                             onPress: () async {
                               try {
@@ -292,22 +253,14 @@ class _NewEmailState extends State<NewEmail> {
                                   showSpinner = false;
                                 });
                               } catch (e) {
-                                String msg = e.toString();
-                                String title = 'Error';
-                                showPopupMessage(context, title, msg);
-                                print(e);
+                                showPopupMessage(context, context.translate('error'), e.toString());
                                 setState(() {
                                   showSpinner = false;
                                 });
                               }
                             },
                           ),
-                          SizedBox(
-                            height: 20 * fem,
-                          ),
-                          SizedBox(
-                            height: 10 * fem,
-                          ),
+                          SizedBox(height: 20 * fem),
                           Center(
                             child: TextButton(
                               onPressed: () async {
@@ -316,26 +269,21 @@ class _NewEmailState extends State<NewEmail> {
                                     showSpinner = true;
                                   });
 
-                                  await ModifyEmailOTP(context);
+                                  await modifyEmailOTP(context);
 
                                   setState(() {
                                     showSpinner = false;
                                   });
                                 } catch (e) {
-                                  String msg = e.toString();
-                                  String title = 'Error';
-                                  showPopupMessage(context, title, msg);
-                                  print(e);
+                                  showPopupMessage(context, context.translate('error'), e.toString());
                                   setState(() {
                                     showSpinner = false;
                                   });
                                 }
                               },
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                              ),
+                              style: TextButton.styleFrom(padding: EdgeInsets.zero),
                               child: Text(
-                                'Renvoyer le code OTP',
+                                context.translate('resend_otp'), // 'Renvoyer le code OTP'
                                 style: SafeGoogleFont(
                                   'Montserrat',
                                   fontSize: 16 * ffem,
@@ -377,12 +325,6 @@ class _NewEmailState extends State<NewEmail> {
   }
 
   void popUntilAndPush(BuildContext context) {
-    Navigator.popUntil(context, (route) => route.isFirst);
-
-    // Now, push the new page as the first page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => Accueil()),
-    );
+    context.goNamed(Accueil.id);
   }
 }

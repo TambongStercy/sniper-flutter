@@ -16,6 +16,7 @@ class CustomTextField extends StatefulWidget {
     this.type,
     this.value,
     this.initialCountryCode,
+    this.readOnly,
   });
 
   ///1 = text, 2 = numbers, 3 = password, 4 = email, 5 = phonenumber, 6 = long text
@@ -28,6 +29,7 @@ class CustomTextField extends StatefulWidget {
   final Function()? onSearch;
   final bool? searchMode;
   final String? initialCountryCode;
+  final bool? readOnly;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -46,7 +48,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
     () async {
       _textFieldController = TextEditingController(text: value);
 
-      if (type == 1 || type == 6||type == null) {
+      if (type == 1 || type == 6 || type == null) {
         keyboard = TextInputType.text;
         passwordVisible = false;
       } else if (type == 2) {
@@ -77,6 +79,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   Function(String)? get getCountryCode => widget.getCountryCode;
   Function()? get onSearch => widget.onSearch;
   bool? get searchMode => widget.searchMode;
+  bool get readOnly => widget.readOnly ?? false;
 
   ///Should be the code without +
   String get initialCountryCode => widget.initialCountryCode ?? 'CM';
@@ -98,10 +101,11 @@ class _CustomTextFieldState extends State<CustomTextField> {
       margin: EdgeInsets.fromLTRB(marg * fem, 0 * fem, marg * fem, 13 * fem),
       child: (type != 5)
           ? TextField(
-              maxLines : type == 6 ? 5 : 1,
+              maxLines: type == 6 ? 5 : 1,
               controller: _textFieldController,
               keyboardType: keyboard,
               obscureText: passwordVisible,
+              readOnly: readOnly,
               inputFormatters:
                   type == 2 ? [FilteringTextInputFormatter.digitsOnly] : null,
               onChanged: (value) {
@@ -132,21 +136,23 @@ class _CustomTextFieldState extends State<CustomTextField> {
                           );
                         },
                       )
-                    : IconButton(
-                        icon: Icon(
-                          _textFieldController.value.text.isNotEmpty
-                              ? Icons.close
-                              : null,
-                        ),
-                        onPressed: () {
-                          setState(
-                            () {
-                              onChange('');
-                              _textFieldController.text = '';
+                    : (!readOnly
+                        ? IconButton(
+                            icon: Icon(
+                              _textFieldController.value.text.isNotEmpty
+                                  ? Icons.close
+                                  : null,
+                            ),
+                            onPressed: () {
+                              setState(
+                                () {
+                                  onChange('');
+                                  _textFieldController.text = '';
+                                },
+                              );
                             },
-                          );
-                        },
-                      ),
+                          )
+                        : null),
                 prefixIcon: search
                     ? IconButton(
                         icon: Icon(Icons.search),
@@ -174,6 +180,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
               controller: _textFieldController,
               keyboardType: keyboard,
               obscureText: passwordVisible,
+              readOnly: readOnly ?? false,
               flagsButtonPadding: const EdgeInsets.all(8),
               dropdownIconPosition: IconPosition.trailing,
               decoration: InputDecoration(

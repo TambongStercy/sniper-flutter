@@ -3,12 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/pricingcard.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 // ignore: must_be_immutable
 class Subscrition extends StatefulWidget {
@@ -39,10 +38,6 @@ class _SubscritionState extends State<Subscrition> {
 
     token = prefs.getString('token') ?? '';
     email = prefs.getString('email') ?? '';
-
-    print(prefs.getString('token'));
-    // avatar = prefs.getString('avatar') ?? '';
-    // isSubscribed = prefs.getBool('isSubscribed') ?? false;
   }
 
   Future<void> subscribe(context) async {
@@ -70,30 +65,22 @@ class _SubscritionState extends State<Subscrition> {
           launchURL(paymentLink);
         } else {
           String msg = message;
-          String title = 'Something went wrong';
+          String title = context.translate('something_went_wrong');
           showPopupMessage(context, title, msg);
         }
-      } else {
-        print('empty');
-        print(token);
-        print(email);
       }
     } catch (e) {
       String msg = e.toString();
-      String title = 'Error';
+      String title = context.translate('error');
       showPopupMessage(context, title, msg);
-      print(e);
     }
   }
-
-  
 
   @override
   Widget build(BuildContext context) {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
-    // showSpinner = false;
 
     return Scaffold(
       body: SafeArea(
@@ -130,7 +117,7 @@ class _SubscritionState extends State<Subscrition> {
                       Container(
                         margin: EdgeInsets.only(top: 34 * fem),
                         child: Text(
-                          'Abonnement',
+                          context.translate('subscription'),
                           textAlign: TextAlign.left,
                           style: SafeGoogleFont(
                             'Montserrat',
@@ -144,7 +131,7 @@ class _SubscritionState extends State<Subscrition> {
                       Container(
                         margin: EdgeInsets.only(top: 34 * fem),
                         child: Text(
-                          'Choisissez un plan d\'abonnement.',
+                          context.translate('choose_subscription_plan'),
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 15 * ffem,
@@ -177,19 +164,6 @@ class _SubscritionState extends State<Subscrition> {
                 SizedBox(
                   height: 20 * fem,
                 ),
-                // ReusableButton(
-                //   title: 'Passer',
-                //   lite: false,
-                //   onPress: () {
-                //     Navigator.pushAndRemoveUntil(
-                //       context,
-                //       MaterialPageRoute(
-                //         builder: (context) => Accueil(),
-                //       ),
-                //       (route) => false,
-                //     );
-                //   },
-                // ),
               ],
             ),
           ),

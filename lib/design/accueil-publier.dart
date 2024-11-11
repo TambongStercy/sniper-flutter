@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:snipper_frontend/components/pricingcard.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 
 class Publicite extends StatelessWidget {
   const Publicite({super.key});
@@ -25,8 +27,8 @@ class Publicite extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    padding:
-                        EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 15 * fem),
+                    padding: EdgeInsets.fromLTRB(
+                        0 * fem, 0 * fem, 0 * fem, 15 * fem),
                     width: double.infinity,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,7 +40,7 @@ class Publicite extends StatelessWidget {
                             maxWidth: 304 * fem,
                           ),
                           child: Text(
-                            'Booste ta visibilité grâce à nos outils publicitaires ciblés.',
+                            context.translate('boost_visibility'),
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 16 * ffem,
@@ -52,7 +54,7 @@ class Publicite extends StatelessWidget {
                           margin: EdgeInsets.fromLTRB(
                               0 * fem, 0 * fem, 0 * fem, 15 * fem),
                           child: Text(
-                            'Nos Pack Publicitaire ',
+                            context.translate('advertisement_pack'),
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 16 * ffem,
@@ -70,15 +72,21 @@ class Publicite extends StatelessWidget {
             ),
             PricingCard(
               type: 1,
-              onCommand: () {},
+              onCommand: () {
+                context.pushNamed('pricing_details', extra: 1); // Navigate with type 1
+              },
             ),
             PricingCard(
               type: 2,
-              onCommand: () {},
+              onCommand: () {
+                context.pushNamed('pricing_details', extra: 2); // Navigate with type 2
+              },
             ),
             PricingCard(
               type: 3,
-              onCommand: () {},
+              onCommand: () {
+                context.pushNamed('pricing_details', extra: 3); // Navigate with type 3
+              },
             ),
             Container(
               decoration: BoxDecoration(
@@ -88,10 +96,10 @@ class Publicite extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    margin:
-                        EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 15 * fem),
+                    margin: EdgeInsets.fromLTRB(
+                        0 * fem, 0 * fem, 0 * fem, 15 * fem),
                     child: Text(
-                      'Mon pack actif',
+                      context.translate('active_pack'),
                       style: SafeGoogleFont(
                         'Montserrat',
                         fontSize: 16 * ffem,
@@ -102,8 +110,7 @@ class Publicite extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    margin:
-                        EdgeInsets.fromLTRB(1 * fem, 0 * fem, 0 * fem, 0 * fem),
+                    margin: EdgeInsets.fromLTRB(1 * fem, 0 * fem, 0 * fem, 0 * fem),
                     width: 339 * fem,
                     height: 50 * fem,
                     decoration: BoxDecoration(
@@ -119,7 +126,7 @@ class Publicite extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        'Desole vous n’avez pas de pack active. ',
+                        context.translate('no_active_pack'),
                         textAlign: TextAlign.center,
                         style: SafeGoogleFont(
                           'Montserrat',

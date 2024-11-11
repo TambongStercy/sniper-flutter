@@ -1,14 +1,13 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:http/http.dart' as http;
-
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Import localization extension
 
 class Retrait extends StatefulWidget {
   static const id = 'retrait';
@@ -37,7 +36,6 @@ class _RetraitState extends State<Retrait> {
   @override
   void initState() {
     super.initState();
-    // Create anonymous function:
     () async {
       await initSharedPref();
       setState(() {
@@ -52,7 +50,7 @@ class _RetraitState extends State<Retrait> {
     token = prefs.getString('token') ?? '';
     email = prefs.getString('email') ?? '';
     balance = prefs.getDouble('balance') ?? 0;
-    phone = prefs.getString('phone') ?? '';
+    phone = prefs.getString('momo') ?? prefs.getString('phone') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
 
     final country = getCountryFromPhoneNumber(phone);
@@ -61,10 +59,6 @@ class _RetraitState extends State<Retrait> {
     countryCode2 = country.code;
 
     phone = phone.substring(country.dialCode.length);
-
-    print(prefs.getString('token'));
-    // avatar = prefs.getString('avatar') ?? '';
-    // isSubscribed = prefs.getBool('isSubscribed') ?? false;
   }
 
   Future<void> withdrawal(context) async {
@@ -75,23 +69,21 @@ class _RetraitState extends State<Retrait> {
 
         final sendPone = countryCode + phone;
 
-        if(!isSubscribed){
-          String msg =
-              'Vous n\'etes pas abonner😔';
-          String title = 'Erreur';
+        if (!isSubscribed) {
+          String msg = context.translate('not_subscribed');
+          String title = context.translate('error');
           return showPopupMessage(context, title, msg);
         }
 
         if (intAmt > balance || balance < (intAmt + fee)) {
-          String msg =
-              'Votre compte n\'as pas assez d\'argent pour effectuer un retrait 😔';
-          String title = 'Solde Insuffisant';
+          String msg = context.translate('insufficient_balance');
+          String title = context.translate('insufficient_funds');
           return showPopupMessage(context, title, msg);
         }
 
         if (intAmt < 250) {
-          String msg = 'Le montant est trop faible pour effectuer un retrait.(minimum 250 XFA)';
-          String title = 'Montant trop faible';
+          String msg = context.translate('low_amount');
+          String title = context.translate('low_amount_title');
           return showPopupMessage(context, title, msg);
         }
 
@@ -114,31 +106,23 @@ class _RetraitState extends State<Retrait> {
           body: jsonEncode(regBody),
         );
         final jsonResponse = jsonDecode(response.body);
-        final msg = jsonResponse['message']??'';
+        final msg = jsonResponse['message'] ?? '';
 
         if (response.statusCode == 200) {
-          // final msg = 'you successfully withdrawed $amount from your wallet';
           const title = 'Success';
-
           showPopupMessage(context, title, msg);
         } else {
-          // const msg = 'an error occured please try again later';
-          const title = 'Erreur';
-
+          final title = context.translate('error');
           showPopupMessage(context, title, msg);
         }
-
-        // print(msg);
       } else {
-        String msg = "Veuillez remplir toutes les informations demandées.";
-        String title = "Information incomplète.";
+        String msg = context.translate('fill_all_fields');
+        String title = context.translate('incomplete_info');
         showPopupMessage(context, title, msg);
-        print(msg);
       }
     } catch (e) {
-      String msg = 'Une erreur s\'est produite. Veuillez réessayer ou contacter l\'administrateur';
-      String title = 'Erreur';
-      print(msg);
+      String msg = context.translate('error_occurred');
+      String title = context.translate('error');
       showPopupMessage(context, title, msg);
     }
   }
@@ -148,8 +132,9 @@ class _RetraitState extends State<Retrait> {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
+
     return SimpleScaffold(
-      title: 'Retrait',
+      title: context.translate('withdrawal'),
       inAsyncCall: showSpinner,
       child: Container(
         margin: EdgeInsets.fromLTRB(25 * fem, 20 * fem, 25 * fem, 14 * fem),
@@ -168,7 +153,7 @@ class _RetraitState extends State<Retrait> {
                     margin: EdgeInsets.fromLTRB(
                         0 * fem, 0 * fem, 0 * fem, 20 * fem),
                     child: Text(
-                      'Informations de retrait',
+                      context.translate('withdrawal_info'),
                       style: SafeGoogleFont(
                         'Montserrat',
                         fontSize: 20 * ffem,
@@ -185,7 +170,7 @@ class _RetraitState extends State<Retrait> {
                         margin: EdgeInsets.fromLTRB(
                             0 * fem, 0 * fem, 0 * fem, 10 * fem),
                         child: Text(
-                          'Operateur',
+                          context.translate('operator'),
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 14 * ffem,
@@ -226,14 +211,8 @@ class _RetraitState extends State<Retrait> {
                             dropdownValue = newValue!;
                           });
                         },
-                        // icon: const Icon(Icons.arrow_drop_down_rounded),
-                        // iconSize: 60,
-                        iconDisabledColor: Colors.blue,
-                        iconEnabledColor: Colors.pink,
-                        items: <String>[
-                          'MTN',
-                          'ORANGE',
-                        ].map<DropdownMenuItem<String>>((String value) {
+                        items: <String>['MTN', 'ORANGE']
+                            .map<DropdownMenuItem<String>>((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -242,9 +221,7 @@ class _RetraitState extends State<Retrait> {
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
+                  SizedBox(height: 15 * fem),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -252,7 +229,7 @@ class _RetraitState extends State<Retrait> {
                         margin: EdgeInsets.fromLTRB(
                             0 * fem, 0 * fem, 0 * fem, 10 * fem),
                         child: Text(
-                          'Numero de telephone',
+                          context.translate('phone_number'),
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 14 * ffem,
@@ -263,7 +240,7 @@ class _RetraitState extends State<Retrait> {
                         ),
                       ),
                       CustomTextField(
-                        hintText: 'EX: 674090411',
+                        hintText: context.translate('example_phone'),
                         value: phone,
                         onChange: (val) {
                           phone = val;
@@ -277,6 +254,7 @@ class _RetraitState extends State<Retrait> {
                       ),
                     ],
                   ),
+                  SizedBox(height: 15 * fem),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -284,7 +262,7 @@ class _RetraitState extends State<Retrait> {
                         margin: EdgeInsets.fromLTRB(
                             0 * fem, 0 * fem, 0 * fem, 10 * fem),
                         child: Text(
-                          'Montant',
+                          context.translate('amount'),
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 14 * ffem,
@@ -305,6 +283,7 @@ class _RetraitState extends State<Retrait> {
                       ),
                     ],
                   ),
+                  SizedBox(height: 15 * fem),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -312,7 +291,7 @@ class _RetraitState extends State<Retrait> {
                         margin: EdgeInsets.fromLTRB(
                             0 * fem, 0 * fem, 0 * fem, 10 * fem),
                         child: Text(
-                          'Mot de passe',
+                          context.translate('password'),
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 14 * ffem,
@@ -327,40 +306,24 @@ class _RetraitState extends State<Retrait> {
                         type: 3,
                         value: password,
                         onChange: (val) {
-                          // print(val);
                           password = val;
                         },
                       ),
                     ],
                   ),
-
-
-
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
+                  SizedBox(height: 15 * fem),
                   ReusableButton(
-                    title: 'Valider',
+                    title: context.translate('confirm'),
                     onPress: () async {
-                      try {
-                        setState(() {
-                          // Update your UI with the desired changes.
-                          showSpinner = true;
-                        });
+                      setState(() {
+                        showSpinner = true;
+                      });
 
-                        await withdrawal(context);
+                      await withdrawal(context);
 
-                        setState(() {
-                          // Update your UI with the desired changes.
-                          showSpinner = false;
-                        });
-                      } on Exception catch (e) {
-                        print(e);
-                        setState(() {
-                          // Update your UI with the desired changes.
-                          showSpinner = false;
-                        });
-                      }
+                      setState(() {
+                        showSpinner = false;
+                      });
                     },
                   ),
                 ],

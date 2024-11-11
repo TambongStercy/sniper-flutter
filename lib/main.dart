@@ -1,34 +1,22 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:snipper_frontend/design/accueil-market.dart';
-import 'package:snipper_frontend/design/accueil.dart';
-import 'package:snipper_frontend/design/add-product.dart';
-import 'package:snipper_frontend/design/affiliation-page.dart';
-import 'package:snipper_frontend/design/connexion.dart';
-import 'package:snipper_frontend/design/email-oublier.dart';
-import 'package:snipper_frontend/design/espace-partenaire.dart';
-import 'package:snipper_frontend/design/fiche-contact.dart';
-import 'package:snipper_frontend/design/inscription.dart';
-import 'package:snipper_frontend/design/modify-email.dart';
-import 'package:snipper_frontend/design/notifications.dart';
-import 'package:snipper_frontend/design/portfeuille.dart';
-import 'package:snipper_frontend/design/produit-page.dart';
-import 'package:snipper_frontend/design/profile-info.dart';
-import 'package:snipper_frontend/design/profile-modify.dart';
-import 'package:snipper_frontend/design/retrait.dart';
-import 'package:snipper_frontend/design/supscrition.dart';
-import 'package:snipper_frontend/design/upload-pp.dart';
-import 'package:snipper_frontend/design/your-products.dart';
-import 'package:snipper_frontend/design/splash1.dart';
-import 'package:snipper_frontend/utils.dart';
-import 'package:uni_links/uni_links.dart';
-import 'dart:async';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:snipper_frontend/localization/app_localizations.dart';
+import 'package:snipper_frontend/router.dart';
+
+// Conditional import
+import 'web_url_strategy.dart' if (dart.library.io) 'default_url_strategy.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SharedPreferences prefs = await SharedPreferences.getInstance();
 
+  // Call the platform-specific setPathUrlStrategy function
+  setPathUrlStrategy();
+
+  SharedPreferences prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('token');
+
   runApp(MyApp(token: token));
 }
 
@@ -37,115 +25,51 @@ class MyApp extends StatefulWidget {
 
   const MyApp({Key? key, required this.token}) : super(key: key);
 
+  static void setLocale(BuildContext context, Locale newLocale) {
+    _MyAppState? state = context.findAncestorStateOfType<_MyAppState>();
+    state?.setLocale(newLocale);
+  }
+
   @override
   State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  StreamSubscription? _linkSubscription;
+  Locale? _locale;
 
-  @override
-  void initState() {
-    _initUniLinks();
-    super.initState();
+  void setLocale(Locale locale) {
+    setState(() {
+      _locale = locale;
+    });
   }
-
-  @override
-  void dispose() {
-    _linkSubscription?.cancel();
-    super.dispose();
-  }
-
-  /// Deep linking handling
-  Future<void> _initUniLinks() async {
-    try {
-      final initialLink = await getInitialLink();
-      if (initialLink != null) {
-        _handleDeepLink(initialLink);
-      }
-
-      _linkSubscription = linkStream.listen((String? link) {
-        if (link != null) {
-          _handleDeepLink(link);
-        }
-      });
-    } catch (e) {
-      print(e);
-    }
-  }
-
-  void _handleDeepLink(String link) {
-    Uri uri = Uri.parse(link);
-    // Check if the link has an affiliationCode and navigate accordingly
-    if (uri.path.contains('inscription')) {
-      String? affiliationCode = uri.queryParameters['affiliationCode'];
-      Navigator.pushNamed(
-        context,
-        Inscription.id,
-        arguments: affiliationCode,
-      );
-    } else if (uri.path.contains('affiliation')) {
-      Navigator.pushNamed(context, Affiliation.id);
-    } else if (uri.path.contains('add-product')) {
-      Navigator.pushNamed(context, AjouterProduit.id);
-    } else if (uri.path.contains('notifications')) {
-      Navigator.pushNamed(context, Notifications.id);
-    }
-    // Add other link handling cases as needed
-  }
-
-  String? get token => widget.token;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      routes: {
-        '/': (context) => (token != null && token!.isNotEmpty && token != '')
-            ? Accueil()
-            : Scene(),
-        EspacePartenaire.id: (context) => EspacePartenaire(),
-        Connexion.id: (context) => Connexion(),
-        Inscription.id: (context) => Inscription(),
-        Accueil.id: (context) => Accueil(),
-        Wallet.id: (context) => Wallet(),
-        Retrait.id: (context) => Retrait(),
-        Notifications.id: (context) => Notifications(),
-        Profile.id: (context) => Profile(),
-        ProfileMod.id: (context) => ProfileMod(),
-        Affiliation.id: (context) => Affiliation(),
-        FicheContact.id: (context) => FicheContact(),
-        Subscrition.id: (context) => Subscrition(),
-        PpUpload.id: (context) => PpUpload(),
-        EmailOublie.id: (context) => EmailOublie(),
-        ModifyEmail.id: (context) => ModifyEmail(),
-        AjouterProduit.id: (context) => AjouterProduit(),
-        YourProducts.id: (context) => YourProducts(),
-      },
-      onGenerateRoute: (settings)  {
-        if (settings.name == Inscription.id) {
-          final String? affiliationCode = settings.arguments as String?;
-          return MaterialPageRoute(
-            builder: (context) => Inscription(affiliationCode: affiliationCode),
-          );
+    return MaterialApp.router(
+      routerConfig: AppRouter.router(widget.token),
+      locale: _locale,
+      supportedLocales: const [
+        Locale('en', ''),
+        Locale('fr', ''),
+      ],
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      localeResolutionCallback: (locale, supportedLocales) {
+        for (var supportedLocale in supportedLocales) {
+          if (supportedLocale.languageCode == locale?.languageCode) {
+            return supportedLocale;
+          }
         }
-        if (settings.name == ProduitPage.id) {
-          // final ScreenArguments? args = settings.arguments as ScreenArguments?;
-
-          // if (args != null) {
-          //   getProductOnline(args.sellerEmail, args.prdtId, context).then((userPrdt) {
-          //     return MaterialPageRoute(builder: (context) => ProduitPage(prdtAndUser: userPrdt,));
-          //   });
-          // }
-        }
-
-        // Define other onGenerateRoutes if necessary
-        return null;
+        return supportedLocales.first;
       },
       title: 'Snipper Business Center',
       debugShowCheckedModeBanner: false,
-      scrollBehavior: MyCustomScrollBehavior(),
       theme: ThemeData(
-        primaryColor: Color(0xFF92B127),
+        primaryColor: const Color(0xFF92B127),
       ),
     );
   }

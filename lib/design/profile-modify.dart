@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
@@ -11,6 +12,7 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/modify-email.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/localization_extension.dart';
 
 class ProfileMod extends StatefulWidget {
   static const id = 'profile-modify';
@@ -33,24 +35,25 @@ class _ProfileModState extends State<ProfileMod> {
     region = prefs.getString('region');
     code = prefs.getString('code');
     phone = prefs.getString('phone') ?? '';
+    momo = prefs.getString('momo');
     avatar = prefs.getString('avatar') ?? "";
 
-    print(phone);
-    print(code);
-    print(token);
-    print(region);
+    final country1 = getCountryFromPhoneNumber(phone);
 
-    final country = getCountryFromPhoneNumber(phone);
+    countryCode = country1!.dialCode;
+    countryCode2 = country1.code;
 
-    countryCode = country!.dialCode;
-    countryCode2 = country.code;
-    print('uououououo');
-    print(countryCode);
-    print(countryCode2);
-    print('uououououo');
-    phone = phone.substring(country.dialCode.length);
+    phone = phone.substring(country1.dialCode.length);
 
-    print(countryCode);
+    if (momo != null) {
+      final country2 = getCountryFromPhoneNumber(momo ?? '');
+
+      if (country2 != null) {
+        cCode = country2.dialCode;
+        cCode2 = country2.code;
+        momo = momo?.substring(country2.dialCode.length);
+      }
+    }
 
     showSpinner = false;
   }
@@ -60,6 +63,9 @@ class _ProfileModState extends State<ProfileMod> {
   String? name;
   String? region;
   String phone = '';
+  String? momo = '';
+  String cCode = '237';
+  String cCode2 = 'CM';
   String? token;
   String? code;
   String avatar = '';
@@ -76,6 +82,7 @@ class _ProfileModState extends State<ProfileMod> {
           phone.isNotEmpty &&
           code!.isNotEmpty) {
         final sendPone = countryCode + phone;
+        final sendMomo = momo == '' || momo == null ? null : cCode + momo!;
 
         final regBody = {
           'id': id,
@@ -83,6 +90,7 @@ class _ProfileModState extends State<ProfileMod> {
           'name': name,
           'region': region,
           'phone': sendPone,
+          'momo': sendMomo,
           'code': code,
           'token': token,
         };
@@ -105,9 +113,8 @@ class _ProfileModState extends State<ProfileMod> {
 
         final title = (response.statusCode == 200) ? 'Success' : 'Error';
 
-        print(sendPone);
-
         prefs.setString('phone', sendPone);
+        if (sendMomo != null) prefs.setString('momo', sendMomo);
         if (code != null) prefs.setString('code', code!);
         if (name != null) prefs.setString('name', name!);
         if (email != '') prefs.setString('email', email);
@@ -145,8 +152,6 @@ class _ProfileModState extends State<ProfileMod> {
           : Uri.file(path).pathSegments.last;
 
       if (kIsWeb) {
-        print('filePath is fileBytes but in String form');
-
         final fileBytes = base64.decode(path);
 
         request.files.add(http.MultipartFile.fromBytes(
@@ -166,7 +171,6 @@ class _ProfileModState extends State<ProfileMod> {
         if (kIsWeb) {
           permanentPath = '${host}Profile Pictures/$email/$avatarName';
         } else {
-          avatarName;
           String folder = 'Profile Pictures';
 
           permanentPath = await saveFileLocally(folder, avatarName, path);
@@ -175,25 +179,20 @@ class _ProfileModState extends State<ProfileMod> {
 
         prefs.setString('avatar', permanentPath);
 
-        print(avatar);
-
         setState(() {});
       } else {
-        print('request failed with status: ${response.statusCode}');
-        // ignore: use_build_context_synchronously
         showPopupMessage(
           context,
-          'Erreur',
-          'An error occured please try again later',
+          context.translate('error'), // 'Erreur'
+          context.translate('error_occurred'), // 'An error occured please try again later'
         );
       }
 
       showSpinner = false;
     } catch (e) {
       String msg = e.toString();
-      String title = 'Error';
+      String title = context.translate('error'); // 'Error'
       showPopupMessage(context, title, msg);
-      print(e);
       showSpinner = false;
     }
   }
@@ -201,7 +200,6 @@ class _ProfileModState extends State<ProfileMod> {
   @override
   void initState() {
     super.initState();
-    // Create anonymous function:
     () async {
       await initSharedPref();
       setState(() {
@@ -215,16 +213,14 @@ class _ProfileModState extends State<ProfileMod> {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
-    // showSpinner = false;
 
-    print(email);
     return SimpleScaffold(
-      title: 'Modifier',
+      title: context.translate('modify'), // 'Modifier'
       inAsyncCall: showSpinner,
       child: Container(
         padding: EdgeInsets.fromLTRB(25 * fem, 32 * fem, 25 * fem, 32 * fem),
         width: double.infinity,
-        height: 1100,
+        height: 1200,
         decoration: const BoxDecoration(
           color: Color(0xffffffff),
         ),
@@ -261,7 +257,7 @@ class _ProfileModState extends State<ProfileMod> {
                               ),
                               Container(
                                 margin: EdgeInsets.fromLTRB(
-                                    0 * fem, 0 * fem, 0 * fem, 7 * fem), 
+                                    0 * fem, 0 * fem, 0 * fem, 7 * fem),
                                 child: Text(
                                   email,
                                   style: SafeGoogleFont(
@@ -278,7 +274,7 @@ class _ProfileModState extends State<ProfileMod> {
                                 height: 20.0 * fem,
                               ),
                               ReusableButton(
-                                title: 'Modifier Photo',
+                                title: context.translate('modify_photo'), // 'Modifier Photo'
                                 onPress: () async {
                                   try {
                                     final result =
@@ -295,13 +291,10 @@ class _ProfileModState extends State<ProfileMod> {
                                         ? base64.encode(fileBytes!)
                                         : result.files.first.path!;
 
-                                    print('filePath : $filePath');
-
                                     setState(() {
                                       showSpinner = true;
                                     });
 
-                                    // ignore: use_build_context_synchronously
                                     await uploadAvatar(
                                       context: context,
                                       path: filePath,
@@ -311,7 +304,6 @@ class _ProfileModState extends State<ProfileMod> {
                                       showSpinner = false;
                                     });
                                   } on Exception catch (e) {
-                                    print(e);
                                     setState(() {
                                       showSpinner = false;
                                     });
@@ -327,9 +319,9 @@ class _ProfileModState extends State<ProfileMod> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _label(fem, ffem, 'Nom et Prenom'),
+                            _label(fem, ffem, context.translate('name')), // 'Nom et Prénom'
                             CustomTextField(
-                              hintText: 'EX: Jean Michelle',
+                              hintText: context.translate('name_example'), // 'EX: Jean Michelle'
                               onChange: (val) {
                                 name = val;
                               },
@@ -344,7 +336,7 @@ class _ProfileModState extends State<ProfileMod> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _label(fem, ffem, 'Numero WhatsApp'),
+                            _label(fem, ffem, context.translate('whatsapp_number')), // 'Numero WhatsApp'
                             CustomTextField(
                               hintText: '',
                               onChange: (val) {
@@ -366,7 +358,7 @@ class _ProfileModState extends State<ProfileMod> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _label(fem, ffem, 'Code parrain'),
+                            _label(fem, ffem, context.translate('sponsor_code')), // 'Code parrain'
                             CustomTextField(
                               hintText: '',
                               onChange: (val) {
@@ -383,7 +375,7 @@ class _ProfileModState extends State<ProfileMod> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _label(fem, ffem, 'Ville'),
+                            _label(fem, ffem, context.translate('city')), // 'Ville'
                             CustomTextField(
                               hintText: '',
                               onChange: (val) {
@@ -397,8 +389,30 @@ class _ProfileModState extends State<ProfileMod> {
                         SizedBox(
                           height: 15 * fem,
                         ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _label(fem, ffem, context.translate('momo_number')), // 'Numero MOMO/OM'
+                            CustomTextField(
+                              hintText: '',
+                              onChange: (val) {
+                                momo = val;
+                              },
+                              getCountryCode: (code) {
+                                cCode = code;
+                              },
+                              initialCountryCode: cCode2,
+                              margin: 0,
+                              value: momo,
+                              type: 5,
+                            ),
+                          ],
+                        ),
+                        SizedBox(
+                          height: 15 * fem,
+                        ),
                         ReusableButton(
-                          title: 'Modifier',
+                          title: context.translate('modify'), // 'Modifier'
                           lite: false,
                           onPress: () async {
                             try {
@@ -413,9 +427,8 @@ class _ProfileModState extends State<ProfileMod> {
                               });
                             } catch (e) {
                               String msg = e.toString();
-                              String title = 'Error';
+                              String title = context.translate('error'); // 'Error'
                               showPopupMessage(context, title, msg);
-                              print(e);
                               setState(() {
                                 showSpinner = false;
                               });
@@ -426,10 +439,10 @@ class _ProfileModState extends State<ProfileMod> {
                           height: 15 * fem,
                         ),
                         ReusableButton(
-                          title: 'Modifier l\'adresse e-mail',
+                          title: context.translate('modify_email'), // 'Modifier l\'adresse e-mail'
                           lite: false,
                           onPress: () async {
-                            Navigator.pushNamed(context, ModifyEmail.id);
+                            context.pushNamed(ModifyEmail.id);
                           },
                         ),
                       ],
@@ -442,7 +455,7 @@ class _ProfileModState extends State<ProfileMod> {
     );
   }
 
-  Container _label(double fem, double ffem, title) {
+  Container _label(double fem, double ffem, String title) {
     return Container(
       margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 7 * fem),
       child: Text(

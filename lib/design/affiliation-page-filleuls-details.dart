@@ -2,11 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/filleulscard.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/splash1.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 
@@ -94,13 +95,13 @@ class _FilleulsState extends State<Filleuls> {
         isloading = false;
 
         if (fDirectUsers.length < 10 && mainType == 'Direct') hasMore = false;
-        if (fIndirectUsers.length < 10 && mainType == 'Indirect') hasMore = false;
+        if (fIndirectUsers.length < 10 && mainType == 'Indirect')
+          hasMore = false;
 
         if (mainType == 'Direct') directUsers.addAll(fDirectUsers);
         if (mainType == 'Indirect') indirectUsers.addAll(fIndirectUsers);
 
         if (mounted) setState(() {});
-
       } else {
         if (error == 'Accès refusé') {
           String title = "Erreur. Accès refusé.";
@@ -126,13 +127,8 @@ class _FilleulsState extends State<Filleuls> {
           await deleteNotifications();
           await deleteAllKindTransactions();
 
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Scene(),
-            ),
-            (route) => false,
-          );
+          context.go('/');
+
         }
 
         String title = 'Erreur';
@@ -157,7 +153,6 @@ class _FilleulsState extends State<Filleuls> {
     });
 
     await getReferedUersFunc();
-
   }
 
   @override
@@ -173,7 +168,7 @@ class _FilleulsState extends State<Filleuls> {
     double ffem = fem * 0.97;
 
     return SimpleScaffold(
-      title: 'Vos filleus',
+      title: context.translate('your_godchildren'),
       child: Container(
         width: double.infinity,
         child: Container(
@@ -195,8 +190,8 @@ class _FilleulsState extends State<Filleuls> {
                     Container(
                       child: Row(
                         children: [
-                          _topButton(fem, 'Direct'),
-                          _topButton(fem, 'Indirect'),
+                          _topButton(fem, context.translate('direct')),
+                          _topButton(fem, context.translate('indirect')),
                         ],
                       ),
                     ),
@@ -209,15 +204,16 @@ class _FilleulsState extends State<Filleuls> {
                         child: ListView.builder(
                           controller: scrollController,
                           shrinkWrap: true,
-                          itemCount: (mainType == 'Direct'
+                          itemCount: (mainType == context.translate('direct')
                                   ? directUsers.length
                                   : indirectUsers.length) +
                               (hasMore ? 1 : 0),
                           padding: EdgeInsets.all(8.0),
                           itemBuilder: ((context, index) {
-                            final usersUsed = mainType == 'Direct'
-                                ? directUsers
-                                : indirectUsers;
+                            final usersUsed =
+                                mainType == context.translate('direct')
+                                    ? directUsers
+                                    : indirectUsers;
 
                             final itemCount = usersUsed.length;
 
@@ -231,8 +227,6 @@ class _FilleulsState extends State<Filleuls> {
                                 name: user['name'],
                                 email: user['email'].toString(),
                               );
-
-                              
                             } else if (hasMore) {
                               // Only show CircularProgressIndicator if more data is loading
                               return Padding(

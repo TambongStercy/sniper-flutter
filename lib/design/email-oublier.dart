@@ -2,6 +2,7 @@ import 'dart:convert';
 // import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
@@ -12,6 +13,7 @@ import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/new-password.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/localization_extension.dart'; // Ensure localization is set up
 
 class EmailOublie extends StatefulWidget {
   static const id = 'emailOublie';
@@ -30,7 +32,7 @@ class _EmailOublieState extends State<EmailOublie> {
   late SharedPreferences prefs;
 
   Future<void> sendFOTP(context) async {
-    if ( email.isNotEmpty) {
+    if (email.isNotEmpty) {
       final regBody = {
         'email': email,
       };
@@ -43,29 +45,30 @@ class _EmailOublieState extends State<EmailOublie> {
 
       final jsonResponse = jsonDecode(response.body);
 
-      final msg = jsonResponse['message']??'';
+      final msg = jsonResponse['message'] ?? '';
 
       if (response.statusCode == 200) {
-        String title = 'Code Sent';
+        String title = context.translate('code_sent'); // Translated
 
-        Navigator.push(context, MaterialPageRoute(builder: ((context) => NewPassword(email: email) )));
+        context.pushNamed(
+          NewPassword.id,
+          extra: email,
+        );
 
         showPopupMessage(context, title, msg);
         return;
       } else {
-        // String msg = 'Please Try again';
-        String title = 'Something went wrong';
+        String title = context.translate('something_wrong'); // Translated
         showPopupMessage(context, title, msg);
-        return ;
+        return;
       }
     } else {
-      String msg = 'Please fill in all information asked';
-      String title = 'Information not complete';
+      String msg = context.translate('fill_info'); // Translated
+      String title = context.translate('incomplete_info'); // Translated
       showPopupMessage(context, title, msg);
-      return ;
+      return;
     }
   }
-
 
   @override
   void initState() {
@@ -115,7 +118,8 @@ class _EmailOublieState extends State<EmailOublie> {
                           Container(
                             margin: EdgeInsets.only(top: 46 * fem),
                             child: Text(
-                              'Sniper Business Center',
+                              context
+                                  .translate('app_name'), // Translated app name
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Mulish',
@@ -129,7 +133,8 @@ class _EmailOublieState extends State<EmailOublie> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Mot de passe oublié',
+                              context.translate(
+                                  'forgot_password'), // Translated heading
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -143,7 +148,8 @@ class _EmailOublieState extends State<EmailOublie> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Entrez  l\'adresse e-mail du mot de passe oublié',
+                              context.translate(
+                                  'enter_email'), // Translated description
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -162,9 +168,11 @@ class _EmailOublieState extends State<EmailOublie> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _fieldTitle(fem, ffem, 'Email'),
+                          _fieldTitle(fem, ffem,
+                              context.translate('email')), // Translated "Email"
                           CustomTextField(
-                            hintText: 'Ex: Jeanpierre@gmail.com',
+                            hintText: context
+                                .translate('email_hint'), // Translated hint
                             type: 4,
                             value: email,
                             onChange: (val) {
@@ -175,7 +183,8 @@ class _EmailOublieState extends State<EmailOublie> {
                             height: 20 * fem,
                           ),
                           ReusableButton(
-                            title: 'Envoyer le code OTP',
+                            title: context
+                                .translate('send_otp'), // Translated "Send OTP"
                             lite: false,
                             onPress: () async {
                               try {
@@ -183,15 +192,15 @@ class _EmailOublieState extends State<EmailOublie> {
                                   showSpinner = true;
                                 });
 
-                               await sendFOTP(context);
-
+                                await sendFOTP(context);
 
                                 setState(() {
                                   showSpinner = false;
                                 });
                               } catch (e) {
                                 String msg = e.toString();
-                                String title = 'Error';
+                                String title = context
+                                    .translate('error'); // Translated "Error"
                                 showPopupMessage(context, title, msg);
                                 print(e);
                                 setState(() {
@@ -206,22 +215,20 @@ class _EmailOublieState extends State<EmailOublie> {
                           Center(
                             child: TextButton(
                               onPressed: () {
-                                Navigator.popAndPushNamed(
-                                  context,
-                                  Inscription.id,
-                                );
+                                context.goNamed(Inscription.id);
                               },
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
                               ),
                               child: Text(
-                                'Pas de compte ? Inscription',
+                                context.translate(
+                                    'no_account'), // Translated "No account? Register"
                                 style: SafeGoogleFont(
                                   'Montserrat',
                                   fontSize: 16 * ffem,
                                   fontWeight: FontWeight.w700,
                                   height: 1.5 * ffem / fem,
-                                  color: Color(0xff25313c),
+                                  color: const Color(0xff25313c),
                                 ),
                               ),
                             ),
@@ -250,19 +257,13 @@ class _EmailOublieState extends State<EmailOublie> {
           fontWeight: FontWeight.w500,
           height: 1.3333333333 * ffem / fem,
           letterSpacing: 0.400000006 * fem,
-          color: Color(0xff6d7d8b),
+          color: const Color(0xff6d7d8b),
         ),
       ),
     );
   }
 
   void popUntilAndPush(BuildContext context) {
-    Navigator.popUntil(context, (route) => route.isFirst);
-
-    // Now, push the new page as the first page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => Accueil()),
-    );
+    context.goNamed(Accueil.id);
   }
 }

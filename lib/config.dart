@@ -1,7 +1,8 @@
 import 'dart:ui';
 
 // const host = 'http://127.0.0.1:5000/';//local host
-// const host = 'http://192.168.43.191:5000/'; //your hotspot
+// const host = 'http://192.168.225.238:5000/';// slade tech
+// const host = 'http://192.168.43.191:5000/';//your hotspot
 // const host = 'http://192.168.1.103:5000/';//wifi MTN BOX
 const host = 'https://sniper-xvs9.onrender.com/';//online
 
@@ -35,6 +36,7 @@ const deleteProduct = '${url}delete-product';
 
 const sendfOTP = '${url}send-fpw-otp';
 const modEmail = '${url}modify-email';
+const modMomo = '${url}modify-momo';
 const validatefOTP = '${url}validate-fpw-otp';
 const validateEOTP = '${url}validate-email-otp';
 
@@ -42,7 +44,6 @@ const blue = Color(0xff1862f0);
 const limeGreen = Color(0xff92b127);
 
 const subProducts = [
-  "",
   "mode et vêtements",
   "électronique et gadgets",
   "maison et jardin",
@@ -66,7 +67,6 @@ const subProducts = [
 ];
 
 const subServices = [
-  "",
   "consultation professionnelle",
   "services de formation et d'apprentissage",
   "services de design",

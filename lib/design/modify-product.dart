@@ -12,14 +12,16 @@ import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
 
 class ModifyProduct extends StatefulWidget {
-  // static const id = 'addProduct';
+  static const id = 'modProduct';
 
   ModifyProduct({required this.product});
 
   final Map<String, dynamic> product;
+
 
   @override
   State<ModifyProduct> createState() => _ModifyProductState();
@@ -205,6 +207,7 @@ class _ModifyProductState extends State<ModifyProduct> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     double baseWidth = 390;
@@ -212,7 +215,7 @@ class _ModifyProductState extends State<ModifyProduct> {
     double ffem = fem * 0.97;
 
     return SimpleScaffold(
-      title: 'Modifier le produit',
+      title: context.translate('modify_product'), // 'Modifier le produit'
       inAsyncCall: showSpinner,
       child: Container(
         padding: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 0 * fem),
@@ -237,9 +240,7 @@ class _ModifyProductState extends State<ModifyProduct> {
                 ],
               ),
             ),
-            SizedBox(
-              height: 15 * fem,
-            ),
+            SizedBox(height: 15 * fem),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 28.0, vertical: 10.0),
               child: Column(
@@ -247,7 +248,7 @@ class _ModifyProductState extends State<ModifyProduct> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Nom du produit/service'),
+                      _label(fem, ffem, context.translate('product_name')), // 'Nom du produit/service'
                       CustomTextField(
                         hintText: prdtName,
                         onChange: (val) {
@@ -258,13 +259,11 @@ class _ModifyProductState extends State<ModifyProduct> {
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
+                  SizedBox(height: 15 * fem),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Catégorie'),
+                      _label(fem, ffem, context.translate('category')), // 'Catégorie'
                       CustomDropdown(
                         items: categories,
                         value: category,
@@ -273,13 +272,11 @@ class _ModifyProductState extends State<ModifyProduct> {
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
+                  SizedBox(height: 15 * fem),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Sous-catégorie'),
+                      _label(fem, ffem, context.translate('subcategory')), // 'Sous-catégorie'
                       CustomDropdown(
                         items: subcategories,
                         value: subcategory,
@@ -288,13 +285,11 @@ class _ModifyProductState extends State<ModifyProduct> {
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
+                  SizedBox(height: 15 * fem),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Prix(FCFA)'),
+                      _label(fem, ffem, context.translate('price')), // 'Prix(FCFA)'
                       CustomTextField(
                         hintText: price,
                         value: price,
@@ -306,13 +301,11 @@ class _ModifyProductState extends State<ModifyProduct> {
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
+                  SizedBox(height: 15 * fem),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Déscription'),
+                      _label(fem, ffem, context.translate('description')), // 'Déscription'
                       CustomTextField(
                         hintText: description,
                         value: description,
@@ -324,17 +317,13 @@ class _ModifyProductState extends State<ModifyProduct> {
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
+                  SizedBox(height: 15 * fem),
                 ],
               ),
             ),
-            SizedBox(
-              height: 15 * fem,
-            ),
+            SizedBox(height: 15 * fem),
             ReusableButton(
-              title: 'Modifier',
+              title: context.translate('modify'), // 'Modifier'
               lite: false,
               onPress: () async {
                 try {
@@ -342,10 +331,7 @@ class _ModifyProductState extends State<ModifyProduct> {
                   await modifyProduct(context);
                   refreshPageRemove();
                 } catch (e) {
-                  String msg = e.toString();
-                  String title = 'Error';
-                  showPopupMessage(context, title, msg);
-                  print(e);
+                  showPopupMessage(context, context.translate('error'), e.toString());
                   refreshPageRemove();
                 }
               },
@@ -355,7 +341,7 @@ class _ModifyProductState extends State<ModifyProduct> {
       ),
     );
   }
-
+  
   void onChangeCategory(String? newValue) {
     if (mounted)
       setState(() {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
 
 class HistoryDropdown extends StatelessWidget {
@@ -38,7 +39,7 @@ class HistoryDropdown extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Historique',
+              context.translate('history'),
               style: SafeGoogleFont(
                 'Montserrat',
                 fontSize: 20,

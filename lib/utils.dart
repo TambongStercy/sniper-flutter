@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl_phone_field/countries.dart';
@@ -78,7 +79,7 @@ void showPopupMessage(BuildContext context, String title, String msg) {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              context.pop();
             },
             child: Text('Ok'),
           ),
@@ -502,8 +503,7 @@ Future<List<Map<String, dynamic>>> getPartnerTrans() async {
   }
 }
 
-Future<double> getTransactionsBenefit() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+double getTransactionsBenefit(SharedPreferences prefs) {
 
   // Retrieve the JSON string from shared preferences
   String? jsonList = prefs.getString('transaction');

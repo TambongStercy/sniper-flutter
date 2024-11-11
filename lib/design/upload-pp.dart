@@ -1,11 +1,8 @@
-// ignore_for_file: sort_child_properties_last
-// import 'dart:io';
-
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +10,7 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 class PpUpload extends StatefulWidget {
   const PpUpload({super.key});
@@ -35,10 +33,6 @@ class _PpUploadState extends State<PpUpload> {
     email = prefs.getString('email') ?? '';
     avatar = prefs.getString('avatar') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
-
-    print('token: $token');
-    print('email: $email');
-    print('avatar: $avatar');
   }
 
   String email = '';
@@ -58,16 +52,12 @@ class _PpUploadState extends State<PpUpload> {
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['email'] = email;
 
-      // String webFileName = generateUniqueFileName('pp', 'jpg');
       final avatarName = kIsWeb
           ? generateUniqueFileName('pp', 'jpg')
           : Uri.file(path).pathSegments.last;
 
       if (kIsWeb) {
-        print('filePath is fileBytes but in String form');
-
         final fileBytes = base64.decode(path);
-
         request.files.add(http.MultipartFile.fromBytes(
           'file',
           fileBytes,
@@ -84,30 +74,22 @@ class _PpUploadState extends State<PpUpload> {
         final jsonResponse = jsonDecode(responseString);
 
         String permanentPath = jsonResponse['imgaeUrl'];
-
         avatar = permanentPath;
-
         prefs.setString('avatar', permanentPath);
-
-        print(avatar);
 
         setState(() {});
       } else {
-        print('request failed with status: ${response.statusCode}');
-        // ignore: use_build_context_synchronously
         showPopupMessage(
           context,
-          'Error',
-          'An error occured please try again later',
+          context.translate('error'),
+          context.translate('error_occurred'),
         );
       }
-
       showSpinner = false;
     } catch (e) {
       String msg = e.toString();
-      String title = 'Error';
+      String title = context.translate('error');
       showPopupMessage(context, title, msg);
-      print(e);
       showSpinner = false;
     }
   }
@@ -115,12 +97,9 @@ class _PpUploadState extends State<PpUpload> {
   @override
   void initState() {
     super.initState();
-    // Create anonymous function:
     () async {
       await initSharedPref();
-      setState(() {
-        // Update your UI with the desired changes.
-      });
+      setState(() {});
     }();
   }
 
@@ -170,7 +149,7 @@ class _PpUploadState extends State<PpUpload> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Photo de profil',
+                              context.translate('profile_photo'),
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -184,7 +163,7 @@ class _PpUploadState extends State<PpUpload> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Veuillez fournir une photo pour votre profil.',
+                              context.translate('provide_profile_photo'),
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -226,9 +205,6 @@ class _PpUploadState extends State<PpUpload> {
                                     ? base64.encode(fileBytes!)
                                     : result.files.first.path!;
 
-                                print('filePath : $filePath');
-
-                                // ignore: use_build_context_synchronously
                                 await uploadAvatar(
                                   context: context,
                                   path: filePath,
@@ -237,8 +213,7 @@ class _PpUploadState extends State<PpUpload> {
                                 setState(() {
                                   showSpinner = false;
                                 });
-                              } on Exception catch (e) {
-                                print(e);
+                              } catch (e) {
                                 setState(() {
                                   showSpinner = false;
                                 });
@@ -269,23 +244,18 @@ class _PpUploadState extends State<PpUpload> {
                             vertical: 8.0,
                           ),
                           child: Text(
-                            !ppExist(avatar) ? 'Passer' : 'Suivant',
+                            !ppExist(avatar)
+                                ? context.translate('skip')
+                                : context.translate('next'),
                             style: TextStyle(fontSize: 17.0),
                           ),
                         ),
                         onPressed: () {
-                          isSubscribed
-                              ? Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => Accueil(),
-                                  ),
-                                  (route) => false,
-                                )
-                              : Navigator.pushNamed(
-                                  context,
-                                  Subscrition.id,
-                                );
+                          if (isSubscribed) {
+                            context.goNamed(Accueil.id);
+                          } else {
+                            context.goNamed(Subscrition.id);
+                          }
                         },
                       ),
                     ),

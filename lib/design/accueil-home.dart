@@ -1,5 +1,7 @@
 import 'package:another_carousel_pro/another_carousel_pro.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/adverscard.dart';
 import 'package:snipper_frontend/components/button.dart';
@@ -8,6 +10,7 @@ import 'package:snipper_frontend/components/videoitem.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 
 class MarketCard extends StatelessWidget {
   MarketCard({super.key});
@@ -32,13 +35,13 @@ class MarketCard extends StatelessWidget {
                 Text(
                   'Découvrez notre Marché',
                   style: SafeGoogleFont(
-                      'Montserrat',
-                      letterSpacing: 0.0,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      height: 1.4,
-                      color: Colors.white,
-                    ),
+                    'Montserrat',
+                    letterSpacing: 0.0,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    height: 1.4,
+                    color: Colors.white,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 8),
@@ -46,12 +49,12 @@ class MarketCard extends StatelessWidget {
                   'Vendez vos produits sans effort.\n'
                   'Connectez-vous avec des acheteurs et\n'
                   'boostez vos ventes dès aujourd\'hui!',
-                  style:  SafeGoogleFont(
-                      'Montserrat',
-                      fontSize: 14,
-                      height: 1.4,
-                      color: Colors.white,
-                    ),
+                  style: SafeGoogleFont(
+                    'Montserrat',
+                    fontSize: 14,
+                    height: 1.4,
+                    color: Colors.white,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -113,7 +116,7 @@ class _HomeState extends State<Home> {
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
     balance = prefs.getDouble('balance') ?? 0;
 
-    benefice = await getTransactionsBenefit();
+    benefice = getTransactionsBenefit(prefs);
   }
 
   void Function(int) get changePage => widget.changePage;
@@ -198,7 +201,6 @@ class _HomeState extends State<Home> {
     'slide 2 fr',
     'slide 3 fr',
   ];
-  
 
   void downloadPresentation() {
     launchURL('$downloadPres?language=fr');
@@ -210,7 +212,6 @@ class _HomeState extends State<Home> {
 
     unsubSlides.shuffle();
 
-    // Create anonymous function:
     () async {
       await initSharedPref();
       if (mounted) {
@@ -226,8 +227,6 @@ class _HomeState extends State<Home> {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
-
-    // widget.onSetState = false;
 
     final slides = isSubscribed ? subSlides : unsubSlides;
 
@@ -288,8 +287,8 @@ class _HomeState extends State<Home> {
                     color: Color(0xff25313c),
                   ),
                   children: <TextSpan>[
-                    const TextSpan(
-                      text: 'Sniper Business Center (',
+                    TextSpan(
+                      text: context.translate('welcome_sniper'),
                     ),
                     TextSpan(
                       text: 'SBC',
@@ -301,9 +300,9 @@ class _HomeState extends State<Home> {
                         color: limeGreen,
                       ),
                     ),
-                    const TextSpan(
-                      text: ') vous souhaite la bienvenue!',
-                    )
+                    TextSpan(
+                      text: context.translate('welcome_message'),
+                    ),
                   ],
                 ),
               ),
@@ -314,14 +313,18 @@ class _HomeState extends State<Home> {
             Image.asset('assets/assets/images/50 perc.png'),
             SizedBox(height: 20.0),
             ReusableButton(
-              title: 'Partagez mon code',
+              title: context.translate('share_link'),
               lite: false,
               onPress: () {
-                copyToClipboard(context, code??'');
+                final link =
+                    'https://sniperbuisnesscenter.com/?affiliationCode=$code';
+
+                Share.share(link);
+
               },
             ),
             Text(
-              'À propos de SBC',
+              context.translate('about_sbc'),
               style: SafeGoogleFont(
                 'Montserrat',
                 letterSpacing: 0.0 * fem,
@@ -333,7 +336,7 @@ class _HomeState extends State<Home> {
             ),
             SizedBox(height: 10),
             Text(
-              'SBC est la communauté la plus dynamique du Cameroun qui offre les services',
+              context.translate('sbc_description'),
               style: SafeGoogleFont(
                 'Montserrat',
                 fontSize: 15 * ffem,
@@ -347,18 +350,13 @@ class _HomeState extends State<Home> {
             MarketCard(),
             AdCard(
               height: 300,
-              buttonTitle: 'En savoir plus',
+              buttonTitle: context.translate('learn_more'),
               buttonAction: () {
-                //Go to marketPlace
                 changePage(1);
               },
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 5 * fem),
-                // width: double.infinity,
-                // margin: EdgeInsets.symmetric(
-                //     horizontal: 15 * fem, vertical: 5 * fem),
                 decoration: BoxDecoration(
-                  // borderRadius: BorderRadius.circular(12 * fem),
                   color: Colors.black26,
                 ),
                 child: AnotherCarousel(
@@ -369,13 +367,12 @@ class _HomeState extends State<Home> {
                   showIndicator: false,
                   dotSize: 3.0,
                   borderRadius: true,
-                  // animationDuration: const Duration(milliseconds: 10000),
                 ),
               ),
             ),
             AdCard(
               height: 300,
-              buttonTitle: 'Telecharger le document',
+              buttonTitle: context.translate('download_document'),
               buttonAction: downloadPresentation,
               child: Container(
                 width: double.infinity,
@@ -394,7 +391,7 @@ class _HomeState extends State<Home> {
                         margin: EdgeInsets.fromLTRB(
                             7 * fem, 0 * fem, 0 * fem, 9 * fem),
                         child: Text(
-                          'Rejoindre la communauté',
+                          context.translate('join_community'),
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 16 * ffem,
@@ -411,7 +408,7 @@ class _HomeState extends State<Home> {
                           color: Color.fromARGB(255, 244, 245, 248),
                         ),
                         child: Text(
-                          'Votre abonnement n’est pas encore activé. Pour profiter pleinement des avantages du réseau sniper business center , veuillez procéder au paiement de votre inscription.',
+                          context.translate('subscription_not_active'),
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 15 * ffem,
@@ -423,9 +420,9 @@ class _HomeState extends State<Home> {
                       ),
                       const SizedBox(height: 10.0),
                       ReusableButton(
-                        title: 'Payer mon inscription',
+                        title: context.translate('pay_subscription'),
                         onPress: () {
-                          Navigator.pushNamed(context, Subscrition.id);
+                          context.pushNamed(Subscrition.id);
                         },
                         lite: false,
                       ),
@@ -436,7 +433,7 @@ class _HomeState extends State<Home> {
                           color: Color.fromARGB(255, 244, 245, 248),
                         ),
                         child: Text(
-                          'Cependant, vous avez la possibilité de commencer à inviter d’autres personnes à rejoindre le réseau et payer votre inscription avec les commissions que vous recevez . Génial n’est ce pas ?',
+                          context.translate('invite_friends_message'),
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 15 * ffem,

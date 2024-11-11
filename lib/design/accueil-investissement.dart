@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:snipper_frontend/components/imagecard.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 class Investissement extends StatelessWidget {
   const Investissement({super.key});
@@ -22,7 +23,7 @@ class Investissement extends StatelessWidget {
               image: 'assets/design/images/rectangle-2771-x9F.png',
             ),
             Text(
-              'Nombre d’action disponible',
+              context.translate('available_shares'),
               style: SafeGoogleFont(
                 'Montserrat',
                 fontSize: 16 * ffem,
@@ -34,7 +35,7 @@ class Investissement extends StatelessWidget {
             SizedBox(height: 10.0),
             Align(
               child: Text(
-                '500/500',
+                '500/500', // This value is hardcoded and can be dynamic if needed
                 style: SafeGoogleFont(
                   'Montserrat',
                   fontSize: 12 * ffem,
@@ -48,7 +49,6 @@ class Investissement extends StatelessWidget {
               color: Color(0xff92b127),
               borderRadius: BorderRadius.circular(15),
             ),
-         
           ],
         ),
       ),

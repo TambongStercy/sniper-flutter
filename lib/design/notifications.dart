@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:flutter/gestures.dart';
 import 'package:snipper_frontend/components/notificationbox.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/utils.dart';
-// import 'dart:ui';
-// import 'package:google_fonts/google_fonts.dart';
-// import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 
 class Notifications extends StatefulWidget {
   static const id = 'notifications';
@@ -17,10 +14,10 @@ class Notifications extends StatefulWidget {
 
 class _NotificationsState extends State<Notifications> {
   late SharedPreferences prefs;
+
   @override
   void initState() {
     super.initState();
-    // Create anonymous function:
     () async {
       await initSharedPref();
       setState(() {
@@ -41,10 +38,9 @@ class _NotificationsState extends State<Notifications> {
   Widget build(BuildContext context) {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
-    // double ffem = fem * 0.97;
 
     return SimpleScaffold(
-      title: 'Notifications',
+      title: context.translate('notifications'), // Localized title
       child: Container(
         padding: EdgeInsets.fromLTRB(15 * fem, 20 * fem, 15 * fem, 14 * fem),
         width: double.infinity,

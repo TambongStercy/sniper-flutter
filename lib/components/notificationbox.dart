@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:snipper_frontend/design/portfeuille.dart';
 import 'package:snipper_frontend/utils.dart';
 
@@ -18,7 +19,8 @@ class NotifBox extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        Navigator.popAndPushNamed(context, Wallet.id);
+        context.goNamed(Wallet.id);
+
         print(message);
       },
       child: Container(

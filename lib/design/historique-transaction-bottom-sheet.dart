@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:snipper_frontend/components/historycard.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Assuming you have this for context.translate
 
 class BottomHitory extends StatelessWidget {
   final List<Map<String, dynamic>> transactions;
@@ -12,9 +13,10 @@ class BottomHitory extends StatelessWidget {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
+    
     return Container(
       decoration: BoxDecoration(
-        color: Color(0xffffffff),
+        color: const Color(0xffffffff),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(25 * fem),
           topRight: Radius.circular(25 * fem),
@@ -27,29 +29,31 @@ class BottomHitory extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                margin:
-                    EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 15 * fem),
+                margin: EdgeInsets.only(bottom: 15 * fem),
                 child: Text(
-                  'Historique transactions',
+                  context.translate('transaction_history'),
                   style: SafeGoogleFont(
                     'Montserrat',
                     fontSize: 20 * ffem,
                     fontWeight: FontWeight.w500,
                     height: 1 * ffem / fem,
-                    color: Color(0xff25313c),
+                    color: const Color(0xff25313c),
                   ),
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: transactions.map((trans) {
-                  final date = formatTime(trans['date']);
-                  final type = trans['transType'] == 'deposit';
-                  final amt = trans['amount'];
+                  final date = formatTime(trans['date']) ?? 'N/A';  // Formatting date safely
+                  final isDeposit = trans['transType'] == 'deposit';
+                  final amount = trans['amount'] != null
+                      ? int.tryParse(trans['amount'].toString()) ?? 0  // Safely parsing amount
+                      : 0;
+                      
                   return HistoryCard(
                     time: date,
-                    deposit: type,
-                    amount: int.parse(amt),
+                    deposit: isDeposit,
+                    amount: amount,
                   );
                 }).toList(),
               ),

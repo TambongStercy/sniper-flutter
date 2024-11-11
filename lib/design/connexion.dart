@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
@@ -13,6 +14,7 @@ import 'package:snipper_frontend/design/email-oublier.dart';
 import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 
@@ -38,86 +40,90 @@ class _ConnexionState extends State<Connexion> {
 
   late SharedPreferences prefs;
 
-Future<bool> loginUser(context) async {
-  String msg = '';
+  Future<bool> loginUser(context) async {
+    String msg = '';
 
-  try {
-    if (password.isNotEmpty && email.isNotEmpty) {
-      final regBody = {
-        'email': email,
-        'password': password,
-      };
+    try {
+      if (password.isNotEmpty && email.isNotEmpty) {
+        final regBody = {
+          'email': email,
+          'password': password,
+        };
 
-      final response = await http.post(
-        Uri.parse(login),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
+        final response = await http.post(
+          Uri.parse(login),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(regBody),
+        );
 
-      final jsonResponse = jsonDecode(response.body);
-      msg = jsonResponse['message'] ?? '';
+        final jsonResponse = jsonDecode(response.body);
+        msg = jsonResponse['message'] ?? '';
 
-      if (response.statusCode == 200) {
-        final myToken = jsonResponse['token'];
-        final user = jsonResponse['user'];
+        if (response.statusCode == 200) {
+          final myToken = jsonResponse['token'];
+          final user = jsonResponse['user'];
 
-        final name = user['name'];
-        final region = user['region'];
-        final phone = user['phoneNumber'].toString();
+          final name = user['name'];
+          final region = user['region'];
+          final phone = user['phoneNumber'].toString();
 
-        final userCode = user['code'];
-        final balance = user['balance'].toDouble();
+          final momo = user['momoNumber'];
 
-        final id = user['id'];
-        avatar = user['avatar'] ?? user['url'];
-        isSubscribed = user['isSubscribed'] ?? false;
-        if (avatar != null && avatar != '') {
-          hasPP = true;
+          final userCode = user['code'];
+          final balance = user['balance'].toDouble();
+
+          final id = user['id'];
+          avatar = user['avatar'] ?? user['url'];
+          isSubscribed = user['isSubscribed'] ?? false;
+          if (avatar != null && avatar != '') {
+            hasPP = true;
+          } else {
+            avatar = d_PP;
+            hasPP = false;
+          }
+
+          token = myToken;
+          prefs.setString('id', id);
+          prefs.setString('token', myToken);
+          prefs.setString('email', email);
+          prefs.setString('name', name);
+          prefs.setString('region', region);
+          prefs.setString('phone', phone);
+          if (momo != null) {
+            prefs.setString('momo', momo.toString());
+          }
+          prefs.setString('code', userCode);
+          prefs.setString('avatar', avatar ?? '');
+          prefs.setDouble('balance', balance);
+          prefs.setBool('isSubscribed', isSubscribed);
+
+          return true;
         } else {
-          avatar = d_PP;
-          hasPP = false;
+          String title = 'Erreur';
+          showPopupMessage(context, title, msg);
+          return false;
         }
-
-        token = myToken;
-        prefs.setString('id', id);
-        prefs.setString('token', myToken);
-        prefs.setString('email', email);
-        prefs.setString('name', name);
-        prefs.setString('region', region);
-        prefs.setString('phone', phone);
-        prefs.setString('code', userCode);
-        prefs.setString('avatar', avatar ?? '');
-        prefs.setDouble('balance', balance);
-        prefs.setBool('isSubscribed', isSubscribed);
-
-        return true;
       } else {
-        String title = 'Erreur';
+        String msg = context.translate("fill_info");
+        String title = context.translate("incomplete_info");
         showPopupMessage(context, title, msg);
         return false;
       }
-    } else {
-      String msg = "Veuillez remplir toutes les informations demandées.";
-      String title = "Information incomplète.";
+    } on http.ClientException catch (e) {
+      print('ClientException occurred: $e');
+      print('An error occurred. Please be careful when trying to login.');
+      String title = context.translate("network_error");
+      String errorMsg = context.translate("network_error_message");
+      showPopupMessage(context, title, errorMsg);
+      return false;
+    } catch (e) {
+      print('An unexpected error occurred: $e');
+      print('An error occurred. Please be careful when trying to login.');
+      String title = context.translate("error");
       showPopupMessage(context, title, msg);
       return false;
     }
-  } on http.ClientException catch (e) {
-    print('ClientException occurred: $e');
-    print('An error occurred. Please be careful when trying to login.');
-    String title = 'Erreur réseau';
-    String errorMsg = 'Une erreur réseau s\'est produite. Veuillez vérifier votre connexion.';
-    showPopupMessage(context, title, errorMsg);
-    return false;
-  } catch (e) {
-    print('An unexpected error occurred: $e');
-    print('An error occurred. Please be careful when trying to login.');
-    String title = 'Erreur';
-    showPopupMessage(context, title, msg);
-    return false;
   }
-}
-
 
   Future<void> downloadAvatar(BuildContext context) async {
     try {
@@ -223,7 +229,7 @@ Future<bool> loginUser(context) async {
                           Container(
                             margin: EdgeInsets.only(top: 46 * fem),
                             child: Text(
-                              'Sniper Business Center',
+                              context.translate("sniper_business_center"),
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Mulish',
@@ -237,7 +243,7 @@ Future<bool> loginUser(context) async {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Connexion',
+                              context.translate("login"),
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -251,7 +257,7 @@ Future<bool> loginUser(context) async {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Créez un compte pour développez votre réseau et augmentez vos revenus😊',
+                              context.translate("create_account_msg"),
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -271,7 +277,7 @@ Future<bool> loginUser(context) async {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           CustomTextField(
-                            hintText: 'Email',
+                            hintText: context.translate('email'),
                             type: 4,
                             value: email,
                             onChange: (val) {
@@ -279,7 +285,7 @@ Future<bool> loginUser(context) async {
                             },
                           ),
                           CustomTextField(
-                            hintText: 'Mot de passe',
+                            hintText: context.translate('password'),
                             type: 3,
                             value: password,
                             onChange: (val) {
@@ -290,7 +296,7 @@ Future<bool> loginUser(context) async {
                             height: 20 * fem,
                           ),
                           ReusableButton(
-                            title: 'Connexion',
+                            title: context.translate("login"),
                             lite: false,
                             onPress: () async {
                               try {
@@ -301,41 +307,28 @@ Future<bool> loginUser(context) async {
                                 final hasLogged = await loginUser(context);
 
                                 if (hasLogged) {
-                                  // ignore: use_build_context_synchronously
                                   await downloadAvatar(context);
-
                                   setState(() {
                                     showSpinner = false;
                                   });
 
-                                  if (hasPP && isSubscribed) {
-                                    // ignore: use_build_context_synchronously
-                                    return Navigator.pushAndRemoveUntil(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => Accueil(),
-                                      ),
-                                      (route) => false,
-                                    );
+                                  if (isSubscribed) {
+                                    if (hasPP) {
+                                      context.goNamed(Accueil.id);
+                                    } else {
+                                      context.goNamed(PpUpload.id);
+                                    }
+                                  } else {
+                                    context.goNamed(Subscrition.id);
                                   }
-
-                                  final pageToGo =
-                                      hasPP ? Subscrition.id : PpUpload.id;
-
-                                  // ignore: use_build_context_synchronously
-                                  return Navigator.pushNamed(
-                                    context,
-                                    pageToGo,
-                                  );
                                 }
 
                                 setState(() {
                                   showSpinner = false;
                                 });
                               } catch (e) {
-                                String msg =
-                                    'Impossible de se connecter. Veuillez réessayer ou contacter les développeurs';
-                                String title = 'Erreur';
+                                String msg = context.translate("login_failed");
+                                String title = context.translate("error");
                                 showPopupMessage(context, title, msg);
                                 print(e);
                                 setState(() {
@@ -349,16 +342,13 @@ Future<bool> loginUser(context) async {
                           ),
                           TextButton(
                             onPressed: () {
-                              Navigator.popAndPushNamed(
-                                context,
-                                Inscription.id,
-                              );
+                              context.goNamed(Inscription.id);
                             },
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                             ),
                             child: Text(
-                              'Pas de compte ? Inscription',
+                              context.translate("no_account_signup"),
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 16 * ffem,
@@ -373,17 +363,13 @@ Future<bool> loginUser(context) async {
                           ),
                           TextButton(
                             onPressed: () {
-                              // Navigate to email of forgotten password page
-                              Navigator.pushNamed(
-                                context,
-                                EmailOublie.id,
-                              );
+                              context.pushNamed(EmailOublie.id);
                             },
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                             ),
                             child: Text(
-                              'Mot de passe oublié?',
+                              context.translate("forgot_password"),
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 16 * ffem,
@@ -407,12 +393,6 @@ Future<bool> loginUser(context) async {
   }
 
   void popUntilAndPush(BuildContext context) {
-    Navigator.popUntil(context, (route) => route.isFirst);
-
-    // Now, push the new page as the first page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => Accueil()),
-    );
+    context.goNamed('/');
   }
 }

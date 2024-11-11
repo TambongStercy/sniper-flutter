@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/imagecard.dart';
-// import 'package:snipper_frontend/config.dart';
+import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 
 class PrdtPost extends StatelessWidget {
   const PrdtPost({
@@ -11,8 +13,13 @@ class PrdtPost extends StatelessWidget {
     required this.onContact,
     required this.title,
     required this.price,
-    this.rating = null,
+    required this.prdtId,
+    required this.sellerId,
+    this.rating,
   });
+
+  final String prdtId;
+  final String sellerId;
 
   final String image;
   final String title;
@@ -63,10 +70,12 @@ class PrdtPost extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 5.0,),
+                        const SizedBox(height: 5.0),
                         Container(
                           child: Text(
-                            price == 0 ? 'GRATUIT' : '${formatAmount(price)} FCFA',
+                            price == 0
+                                ? context.translate('free')
+                                : '${formatAmount(price)} FCFA',
                             textAlign: TextAlign.left,
                             style: SafeGoogleFont(
                               'Mulish',
@@ -84,9 +93,37 @@ class PrdtPost extends StatelessWidget {
               ),
             ),
           ),
-          ReusableButton(
-            title: 'Contacter maintenant',
-            onPress: onContact,
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: ReusableButton(
+                  mh: 10,
+                  title: context.translate('contact_now'),
+                  onPress: onContact,
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Container(
+                  padding:
+                      EdgeInsets.fromLTRB(0 * fem, 0 * fem, 10 * fem, 13 * fem),
+                  child: TextButton.icon(
+                    onPressed: () {
+                      final shareLink =
+                          'https://sniperbuisnesscenter.com/?sellerId=$sellerId&prdtId=$prdtId';
+
+                      Share.share(shareLink);
+                    },
+                    label: Icon(
+                      Icons.share,
+                      color: orange,
+                      size: 30,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           Divider(
             thickness: 1,

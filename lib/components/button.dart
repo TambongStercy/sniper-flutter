@@ -10,6 +10,7 @@ class ReusableButton extends StatelessWidget {
     this.lite,
     this.clickable,
     this.cancel,
+    this.mh,
   });
 
   final String title;
@@ -18,6 +19,7 @@ class ReusableButton extends StatelessWidget {
   final Color? mainColor;
   final bool? lite;
   final bool? clickable;
+  final double? mh;
 
   @override
   Widget build(BuildContext context) {
@@ -33,8 +35,10 @@ class ReusableButton extends StatelessWidget {
     Color white = const Color(0xffffffff);
     bool liteColor = lite ?? true;
 
+
+
     return Container(
-      margin: EdgeInsets.fromLTRB(30 * fem, 0 * fem, 30 * fem, 13 * fem),
+      margin: EdgeInsets.fromLTRB((mh??30) * fem, 0 * fem, (mh??30) * fem, 13 * fem),
       child: TextButton(
         onPressed: isClickable ? onPress : cancel,
         style: TextButton.styleFrom(

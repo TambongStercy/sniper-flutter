@@ -12,6 +12,7 @@ import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
 
 class AjouterProduit extends StatefulWidget {
@@ -53,18 +54,18 @@ class _AjouterProduitState extends State<AjouterProduit> {
   String price = '';
   String description = '';
 
+  List<String> categories = [];
+  String category = '';
+  List<String> subcategories = [];
+  String subcategory = '';
+
   @override
   void initState() {
     super.initState();
-    subcategories = List.from(subProducts);
-
-    // Create anonymous function:
     () async {
       await initSharedPref();
       if (mounted) {
-        setState(() {
-          // Update your UI with the desired changes.
-        });
+        setState(() {});
       }
     }();
   }
@@ -100,21 +101,11 @@ class _AjouterProduitState extends State<AjouterProduit> {
     }
   }
 
-  List<String> categories = [
-    "services",
-    "produits",
-  ];
-
-  String category = "produits";
-
-  List<String> subcategories = [];
-  String subcategory = "électronique et gadgets";
-
   Future<void> addProduct(BuildContext context) async {
     try {
       if (!isSubscribed) {
-        String msg = 'Vous n\'etes pas abonner😔';
-        String title = 'Erreur';
+        String msg = context.translate('not_subscribed_message');
+        String title = context.translate('error');
         return showPopupMessage(context, title, msg);
       }
 
@@ -126,8 +117,8 @@ class _AjouterProduitState extends State<AjouterProduit> {
           category == '') {
         return showPopupMessage(
           context,
-          'Erreur',
-          'Veillez remplir tous les champs',
+          context.translate('error'),
+          context.translate('fill_all_fields_message'),
         );
       }
 
@@ -147,15 +138,11 @@ class _AjouterProduitState extends State<AjouterProduit> {
       request.fields['email'] = email ?? '';
 
       for (final filePath in images) {
-        // request.files.add(await http.MultipartFile.fromPath('files', filePath));
-
         final fileName = kIsWeb
             ? generateUniqueFileName('prdt', 'jpg')
             : Uri.file(filePath).pathSegments.last;
 
         if (kIsWeb) {
-          print('filePath is fileBytes but in String form');
-
           final fileBytes = base64.decode(filePath);
 
           request.files.add(http.MultipartFile.fromBytes(
@@ -169,7 +156,6 @@ class _AjouterProduitState extends State<AjouterProduit> {
         }
       }
 
-      // Add body parameters
       request.fields.addAll(body);
 
       final response = await request.send();
@@ -177,48 +163,38 @@ class _AjouterProduitState extends State<AjouterProduit> {
       if (response.statusCode == 200) {
         showPopupMessage(
           context,
-          'Success',
-          'Produit ajouter avec succes',
+          context.translate('success'),
+          context.translate('product_added_successfully'),
         );
 
         refresh();
       } else {
-        // Read the response as a stream
         final stream = response.stream;
 
-        // Create a string buffer to accumulate the chunks of data
         final buffer = StringBuffer();
 
-        // Listen to the stream
         stream.listen((data) {
-          // Append the chunk of data to the buffer
           buffer.write(utf8.decode(data));
         }, onDone: () {
-          // When the stream is done, parse the accumulated JSON string
           final jsonString = buffer.toString();
           final jsonData = jsonDecode(jsonString);
 
-          // Now you can access the JSON values
           print('Received JSON data: $jsonData');
 
           final message = jsonData['message'] ?? '';
-          final title = 'Erreur';
+          final title = context.translate('error');
 
-          // ignore: use_build_context_synchronously
           showPopupMessage(
             context,
             title,
             message,
           );
-
         }, onError: (error) {
-          // ignore: use_build_context_synchronously
           showPopupMessage(
             context,
-            'Erreur',
-            'Une erreur est survenue. Veuillez reessayer plus tard',
+            context.translate('error'),
+            context.translate('try_again_message'),
           );
-          // Handle any errors that occur during streaming
           print('Error occurred during streaming: $error');
         });
       }
@@ -226,7 +202,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
       showSpinner = false;
     } catch (e) {
       String msg = e.toString();
-      String title = 'Error';
+      String title = context.translate('error');
       showPopupMessage(context, title, msg);
       print(e);
       showSpinner = false;
@@ -235,6 +211,15 @@ class _AjouterProduitState extends State<AjouterProduit> {
 
   @override
   Widget build(BuildContext context) {
+    // Initialize categories and subcategories inside build() where `context` is available
+    categories = [
+      context.translate('services'),
+      context.translate('products'),
+    ];
+    category = context.translate('products');
+    subcategories = subProducts;
+    subcategory = context.translate('electronics_and_gadgets');
+
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
@@ -275,7 +260,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Nom du produit/service'),
+                      _label(fem, ffem, context.translate('product_name')),
                       CustomTextField(
                         hintText: '',
                         onChange: (val) {
@@ -292,10 +277,10 @@ class _AjouterProduitState extends State<AjouterProduit> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Catégorie'),
+                      _label(fem, ffem, context.translate('category')),
                       CustomDropdown(
                         items: categories,
-                        value: category,
+                        value: categories.contains(category) ? category : categories.first,
                         ffem: ffem,
                         onChange: onChangeCategory,
                       ),
@@ -307,10 +292,10 @@ class _AjouterProduitState extends State<AjouterProduit> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Sous-catégorie'),
+                      _label(fem, ffem, context.translate('subcategory')),
                       CustomDropdown(
                         items: subcategories,
-                        value: subcategory,
+                        value: subcategories.contains(subcategory) ? subcategory : subcategories.first,
                         ffem: ffem,
                         onChange: onChangeSubCategory,
                       ),
@@ -322,7 +307,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Prix(FCFA)'),
+                      _label(fem, ffem, context.translate('price')),
                       CustomTextField(
                         hintText: '',
                         onChange: (val) {
@@ -339,7 +324,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, 'Déscription'),
+                      _label(fem, ffem, context.translate('description')),
                       CustomTextField(
                         hintText: '',
                         onChange: (val) {
@@ -360,7 +345,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
               height: 15 * fem,
             ),
             ReusableButton(
-              title: 'Poster',
+              title: context.translate('post'),
               lite: false,
               onPress: () async {
                 try {
@@ -371,7 +356,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                   refreshPageRemove();
                 } catch (e) {
                   String msg = e.toString();
-                  String title = 'Error';
+                  String title = context.translate('error');
                   showPopupMessage(context, title, msg);
                   print(e);
                   refreshPageRemove();
@@ -387,17 +372,16 @@ class _AjouterProduitState extends State<AjouterProduit> {
   void onChangeCategory(String? newValue) {
     category = newValue!;
 
-    // Initialize subcategories based on the selected category
     subcategories.clear();
-    if (category == 'produits') {
+    if (category == context.translate('products')) {
       subcategories.addAll(subProducts);
-    } else if (category == 'services') {
+    } else if (category == context.translate('services')) {
       subcategories.addAll(subServices);
     }
 
-    subcategory = category == 'produits'
-        ? 'électronique et gadgets'
-        : 'services de design';
+    subcategory = category == context.translate('products')
+        ? context.translate('electronics_and_gadgets')
+        : context.translate('design_services');
     refresh();
   }
 
@@ -439,8 +423,6 @@ class _AjouterProduitState extends State<AjouterProduit> {
             bool heavy = false;
 
             for (final file in result.files) {
-              print(file);
-
               if (images.length >= 5) break;
 
               if (file.size > 5242880) {
@@ -457,8 +439,8 @@ class _AjouterProduitState extends State<AjouterProduit> {
             if (heavy)
               showPopupMessage(
                 context,
-                'Fichier trop volumineux',
-                'Un ou plusieures images sont trop lourdes, chaque ficher dois être inferieur a 5Mo',
+                context.translate('file_too_large'),
+                context.translate('image_size_warning'),
               );
 
             refreshPageRemove();
@@ -492,7 +474,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                       color: blue,
                     ),
                     Text(
-                      'Ajouter une image',
+                      context.translate('add_image'),
                       style: SafeGoogleFont(
                         'Mulish',
                         height: 1.255,
@@ -561,11 +543,8 @@ class _AjouterProduitState extends State<AjouterProduit> {
     }
 
     if (ppExist(avatarPath)) {
-      // Check if the user's profile picture path is not empty and the file exists.
-
       return FileImage(File(avatarPath));
     }
-    // Return the default profile picture from the asset folder.
     return const AssetImage(
       'assets/design/images/your picture.png',
     );

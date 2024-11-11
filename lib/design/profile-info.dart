@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
@@ -11,6 +12,8 @@ import 'package:snipper_frontend/design/affiliation-page.dart';
 import 'package:snipper_frontend/design/espace-partenaire.dart';
 import 'package:snipper_frontend/design/profile-modify.dart';
 import 'package:snipper_frontend/design/splash1.dart';
+import 'package:snipper_frontend/localization_extension.dart';
+import 'package:snipper_frontend/main.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart' show rootBundle;
@@ -57,7 +60,7 @@ class _ProfileState extends State<Profile> {
     downloadUpdateUrl = '${downloadContactsUpdates}?email=$email';
   }
 
-  Future<void> logoutUser(context) async {
+  Future<void> logoutUser() async {
     final email = prefs.getString('email');
     final token = prefs.getString('token');
     final avatar = prefs.getString('avatar');
@@ -96,13 +99,7 @@ class _ProfileState extends State<Profile> {
 
     showPopupMessage(context, title, msg);
 
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scene(),
-      ),
-      (route) => false,
-    );
+    context.go('/');
   }
 
   String? email;
@@ -182,6 +179,7 @@ class _ProfileState extends State<Profile> {
     }();
   }
 
+
   refreshPage() {
     if (mounted) {
       setState(() {
@@ -207,6 +205,8 @@ class _ProfileState extends State<Profile> {
     }
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     double baseWidth = 390;
@@ -214,7 +214,34 @@ class _ProfileState extends State<Profile> {
     // double ffem = fem * 0.97;
 
     return SimpleScaffold(
-      title: 'Profile',
+      actions: [
+        IconButton(
+          icon: Row(
+            children: [
+              Icon(Icons.language),
+              Text(
+                Localizations.localeOf(context).languageCode.toUpperCase(),
+                style: SafeGoogleFont(
+                  'Montserrat',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.5,
+                ),
+              ),
+              SizedBox(width: 5),
+            ],
+          ),
+          onPressed: () {
+            // Toggle between English and French
+            Locale newLocale =
+                Localizations.localeOf(context).languageCode == 'en'
+                    ? Locale('fr')
+                    : Locale('en');
+            MyApp.setLocale(context, newLocale);
+          },
+        ),
+      ],
+      title: context.translate('profile'), // 'Profile'
       inAsyncCall: showSpinner,
       child: Container(
         padding: EdgeInsets.fromLTRB(0 * fem, 15 * fem, 0 * fem, 0 * fem),
@@ -235,10 +262,6 @@ class _ProfileState extends State<Profile> {
                             height: 102 * fem,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(61 * fem),
-                              // border: Border.all(
-                              //   color: Color(0xffffffff),
-                              //   width: 2.0,
-                              // ),
                               color: Color(0xffc4c4c4),
                               image: DecorationImage(
                                 fit: BoxFit.cover,
@@ -273,7 +296,7 @@ class _ProfileState extends State<Profile> {
                             ),
                           ),
                           Text(
-                            '${isSubscribed ? (isPartner ? 'Partenaire' : 'Abonné') : 'Utilisatuer'} SBC',
+                            '${isSubscribed ? (isPartner ? context.translate('partner') : context.translate('subscriber')) : context.translate('user')} SBC',
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -292,7 +315,6 @@ class _ProfileState extends State<Profile> {
                     height: 25.0,
                   ),
                   SizedBox(height: 12),
-                  // Options List
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
@@ -302,7 +324,8 @@ class _ProfileState extends State<Profile> {
                               vertical: 5.0, horizontal: 40.0),
                           leading: Icon(Icons.person),
                           title: Text(
-                            'Modifier profil',
+                            context.translate(
+                                'modify_profile'), // 'Modifier profil'
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -311,8 +334,8 @@ class _ProfileState extends State<Profile> {
                             ),
                           ),
                           onTap: () {
-                            Navigator.pushNamed(context, ProfileMod.id)
-                                .then((value) => refreshPage());
+                            context.pushNamed(ProfileMod.id).then((value) => refreshPage());
+
                           },
                         ),
                         ListTile(
@@ -320,7 +343,7 @@ class _ProfileState extends State<Profile> {
                               vertical: 5.0, horizontal: 40.0),
                           leading: Icon(Icons.people_rounded),
                           title: Text(
-                            'Affiliation',
+                            context.translate('affiliation'), // 'Affiliation'
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -329,7 +352,8 @@ class _ProfileState extends State<Profile> {
                             ),
                           ),
                           onTap: () {
-                            Navigator.pushNamed(context, Affiliation.id);
+                            context.pushNamed(Affiliation.id);
+
                           },
                         ),
                         ListTile(
@@ -337,7 +361,7 @@ class _ProfileState extends State<Profile> {
                               vertical: 5.0, horizontal: 40.0),
                           leading: Icon(Icons.phone_rounded),
                           title: Text(
-                            'Contacts',
+                            context.translate('contacts'), // 'Contacts'
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -366,13 +390,17 @@ class _ProfileState extends State<Profile> {
                                   await saveContacts(contacts);
                                 }
                               } else {
-                                String msg = 'Vous n\'êtes pas abonné😔';
-                                String title = 'Erreur';
+                                String msg = context.translate(
+                                    'not_subscribed'); // 'Vous n\'êtes pas abonné😔'
+                                String title =
+                                    context.translate('error'); // 'Erreur'
                                 showPopupMessage(context, title, msg);
                               }
                             } catch (e) {
-                              String msg = 'An Error occured😥';
-                              String title = 'Error';
+                              String msg = context.translate(
+                                  'error_occurred'); // 'An Error occured😥'
+                              String title =
+                                  context.translate('error'); // 'Error'
                               showPopupMessage(context, title, msg);
                               print(e);
                               refreshPageRemove();
@@ -384,7 +412,8 @@ class _ProfileState extends State<Profile> {
                               vertical: 5.0, horizontal: 40.0),
                           leading: Icon(Icons.settings_phone_rounded),
                           title: Text(
-                            'Mise a jour contacts',
+                            context.translate(
+                                'update_contacts'), // 'Mise a jour contacts'
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -411,13 +440,17 @@ class _ProfileState extends State<Profile> {
                                   await saveContacts(contacts);
                                 }
                               } else {
-                                String msg = 'Vous n\'êtes pas abonné😔';
-                                String title = 'Erreur';
+                                String msg = context.translate(
+                                    'not_subscribed'); // 'Vous n\'êtes pas abonné😔'
+                                String title =
+                                    context.translate('error'); // 'Erreur'
                                 showPopupMessage(context, title, msg);
                               }
                             } catch (e) {
-                              String msg = 'An Error occured😥';
-                              String title = 'Error';
+                              String msg = context.translate(
+                                  'error_occurred'); // 'An Error occured😥'
+                              String title =
+                                  context.translate('error'); // 'Error'
                               showPopupMessage(context, title, msg);
                               print(e);
                               refreshPageRemove();
@@ -429,7 +462,8 @@ class _ProfileState extends State<Profile> {
                               vertical: 5.0, horizontal: 40.0),
                           leading: Icon(Icons.handshake),
                           title: Text(
-                            'Espace partenaire',
+                            context.translate(
+                                'partner_space'), // 'Espace partenaire'
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -439,10 +473,12 @@ class _ProfileState extends State<Profile> {
                           ),
                           onTap: () {
                             if (isSubscribed && isPartner) {
-                              Navigator.pushNamed(context, EspacePartenaire.id);
+                              context.pushNamed(EspacePartenaire.id);
                             } else {
-                              String msg = 'Vous n\'etes pas partenaire😔';
-                              String title = 'Erreur';
+                              String msg = context.translate(
+                                  'not_partner'); // 'Vous n\'etes pas partenaire😔'
+                              String title =
+                                  context.translate('error'); // 'Erreur'
                               showPopupMessage(context, title, msg);
                             }
                           },
@@ -457,7 +493,8 @@ class _ProfileState extends State<Profile> {
                             height: 23,
                           ),
                           title: Text(
-                            'Rejoindre la Communauté SBC',
+                            context.translate(
+                                'join_sbc_community'), // 'Rejoindre la Communauté SBC'
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -469,8 +506,10 @@ class _ProfileState extends State<Profile> {
                             if (isSubscribed) {
                               launchURL(whatsappLink);
                             } else {
-                              String msg = 'Vous n\'etes pas abonné😔';
-                              String title = 'Erreur';
+                              String msg = context.translate(
+                                  'not_subscribed'); // 'Vous n\'etes pas abonné😔'
+                              String title =
+                                  context.translate('error'); // 'Erreur'
                               showPopupMessage(context, title, msg);
                             }
                           },
@@ -484,7 +523,8 @@ class _ProfileState extends State<Profile> {
                             height: 23,
                           ),
                           title: Text(
-                            'Rejoindre la Formation en Trading',
+                            context.translate(
+                                'join_trading_training'), // 'Rejoindre la Formation en Trading'
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -496,8 +536,10 @@ class _ProfileState extends State<Profile> {
                             if (isSubscribed) {
                               launchURL(telegramLink);
                             } else {
-                              String msg = 'Vous n\'etes pas abonné😔';
-                              String title = 'Erreur';
+                              String msg = context.translate(
+                                  'not_subscribed'); // 'Vous n\'etes pas abonné😔'
+                              String title =
+                                  context.translate('error'); // 'Erreur'
                               showPopupMessage(context, title, msg);
                             }
                           },
@@ -511,7 +553,8 @@ class _ProfileState extends State<Profile> {
                             height: 23,
                           ),
                           title: Text(
-                            'MARKETING 360°',
+                            context
+                                .translate('marketing_360'), // 'MARKETING 360°'
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -523,8 +566,10 @@ class _ProfileState extends State<Profile> {
                             if (isSubscribed) {
                               launchURL('https://t.me/+BLBOGqPGjSwwNmE0');
                             } else {
-                              String msg = 'Vous n\'etes pas abonné😔';
-                              String title = 'Erreur';
+                              String msg = context.translate(
+                                  'not_subscribed'); // 'Vous n\'etes pas abonné😔'
+                              String title =
+                                  context.translate('error'); // 'Erreur'
                               showPopupMessage(context, title, msg);
                             }
                           },
@@ -537,28 +582,30 @@ class _ProfileState extends State<Profile> {
                     height: 15.0 * fem,
                   ),
                   ReusableButton(
-                    title: 'Deconnexion',
+                    title: context.translate('logout'), // 'Deconnexion'
                     onPress: () async {
                       try {
                         setState(() {
                           showSpinner = true;
                         });
 
-                        await logoutUser(context);
+                        await logoutUser();
 
                         setState(() {
                           showSpinner = false;
                         });
 
-                        String msg = 'You where successfully logged out';
-                        String title = 'Logout';
+                        String msg = context.translate(
+                            'logged_out_successfully'); // 'You were successfully logged out'
+                        String title = context.translate('logout'); // 'Logout'
                         showPopupMessage(context, title, msg);
                       } catch (e) {
                         setState(() {
                           showSpinner = false;
                         });
-                        String msg = 'An Error has occured please try again';
-                        String title = 'Error';
+                        String msg = context.translate(
+                            'error_occurred'); // 'An Error has occurred please try again'
+                        String title = context.translate('error'); // 'Error'
                         showPopupMessage(context, title, msg);
                         print(e);
                       }
@@ -585,7 +632,8 @@ class _ProfileState extends State<Profile> {
                     ),
                     child: Center(
                       child: Text(
-                        'Developpé par Simbtech\n copyright ©',
+                        context.translate(
+                            'developed_by_simbtech'), // 'Developpé par Simbtech\n copyright ©'
                         textAlign: TextAlign.center,
                         style: SafeGoogleFont(
                           'Montserrat',
@@ -609,13 +657,7 @@ class _ProfileState extends State<Profile> {
   int percSaved = 0;
 
   void popUntilAndPush(BuildContext context) {
-    Navigator.popUntil(context, (route) => route.isFirst);
-
-    // Now, push the new page as the first page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => Scene()),
-    );
+    context.go('/');
   }
 
   Future<String> getVcfFilePath() async {
@@ -698,7 +740,7 @@ class _ProfileState extends State<Profile> {
     final isGranted = await requestContactPermission();
 
     if (!isGranted) {
-      Navigator.pop(context);
+      context.pop();
       String msg = 'L\'access a vos contacts a ete refuser';
       String title = 'Erreur';
       showPopupMessage(context, title, msg);
@@ -711,7 +753,8 @@ class _ProfileState extends State<Profile> {
       await ContactsService.addContact(contact);
     }
 
-    Navigator.pop(context);
+          context.pop();
+
 
     String msg =
         'Les $contactsLength contacts de la SBC ont été enregistrés avec succès san répétition.';

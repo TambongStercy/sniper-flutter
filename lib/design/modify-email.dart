@@ -2,6 +2,7 @@ import 'dart:convert';
 // import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
@@ -12,6 +13,7 @@ import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/new-email.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/localization_extension.dart'; // For localization
 
 class ModifyEmail extends StatefulWidget {
   static const id = 'modifyEmail';
@@ -33,13 +35,11 @@ class _ModifyEmailState extends State<ModifyEmail> {
 
   Future<void> ModifyEmail(context) async {
     if (email.isNotEmpty) {
-
       final regBody = {
         'email': email,
         'id': id,
       };
 
-      
       final headers = {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -53,29 +53,31 @@ class _ModifyEmailState extends State<ModifyEmail> {
 
       final jsonResponse = jsonDecode(response.body);
 
-      final msg = jsonResponse['message']??'';
+      final msg = jsonResponse['message'] ?? '';
 
       if (response.statusCode == 200) {
-        String title = 'Code Sent';
+        String title = context.translate('code_sent');
 
-        Navigator.push(context, MaterialPageRoute(builder: ((context) => NewEmail(email: email) )));
+
+        context.pushNamed(
+          NewEmail.id,
+          extra: email,
+        );
 
         showPopupMessage(context, title, msg);
         return;
       } else {
-        // String msg = 'Please Try again';
-        String title = 'Something went wrong';
+        String title = context.translate('something_went_wrong');
         showPopupMessage(context, title, msg);
-        return ;
+        return;
       }
     } else {
-      String msg = 'Please fill in all information asked';
-      String title = 'Information not complete';
+      String msg = context.translate('fill_all_information');
+      String title = context.translate('information_incomplete');
       showPopupMessage(context, title, msg);
-      return ;
+      return;
     }
   }
-
 
   @override
   void initState() {
@@ -85,8 +87,8 @@ class _ModifyEmailState extends State<ModifyEmail> {
 
   void initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
-    id = prefs.getString('id')??'';
-    token = prefs.getString('token')??'';
+    id = prefs.getString('id') ?? '';
+    token = prefs.getString('token') ?? '';
   }
 
   @override
@@ -141,7 +143,8 @@ class _ModifyEmailState extends State<ModifyEmail> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Modifiez votre e-mail.',
+                              context.translate(
+                                  'modify_email'), // 'Modifiez votre e-mail'
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -155,7 +158,8 @@ class _ModifyEmailState extends State<ModifyEmail> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              'Entrez la nouvelle adresse e-mail',
+                              context.translate(
+                                  'enter_new_email'), // 'Entrez la nouvelle adresse e-mail'
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -174,7 +178,8 @@ class _ModifyEmailState extends State<ModifyEmail> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _fieldTitle(fem, ffem, 'Email'),
+                          _fieldTitle(
+                              fem, ffem, context.translate('email')), // 'Email'
                           CustomTextField(
                             hintText: 'Ex: Jeanpierre@gmail.com',
                             type: 4,
@@ -183,11 +188,10 @@ class _ModifyEmailState extends State<ModifyEmail> {
                               email = val;
                             },
                           ),
-                          SizedBox(
-                            height: 20 * fem,
-                          ),
+                          SizedBox(height: 20 * fem),
                           ReusableButton(
-                            title: 'Envoyer le code OTP',
+                            title: context.translate(
+                                'send_otp_code'), // 'Envoyer le code OTP'
                             lite: false,
                             onPress: () async {
                               try {
@@ -195,15 +199,14 @@ class _ModifyEmailState extends State<ModifyEmail> {
                                   showSpinner = true;
                                 });
 
-                               await ModifyEmail(context);
-
+                                await ModifyEmail(context);
 
                                 setState(() {
                                   showSpinner = false;
                                 });
                               } catch (e) {
                                 String msg = e.toString();
-                                String title = 'Error';
+                                String title = context.translate('error');
                                 showPopupMessage(context, title, msg);
                                 print(e);
                                 setState(() {
@@ -212,32 +215,8 @@ class _ModifyEmailState extends State<ModifyEmail> {
                               }
                             },
                           ),
-                          SizedBox(
-                            height: 20 * fem,
-                          ),
-                          Center(
-                            child: TextButton(
-                              onPressed: () {
-                                Navigator.popAndPushNamed(
-                                  context,
-                                  Inscription.id,
-                                );
-                              },
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                              ),
-                              child: Text(
-                                'Pas de compte ? Inscription',
-                                style: SafeGoogleFont(
-                                  'Montserrat',
-                                  fontSize: 16 * ffem,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.5 * ffem / fem,
-                                  color: Color(0xff25313c),
-                                ),
-                              ),
-                            ),
-                          ),
+                          SizedBox(height: 20 * fem),
+                          
                         ],
                       ),
                     ),
@@ -269,12 +248,6 @@ class _ModifyEmailState extends State<ModifyEmail> {
   }
 
   void popUntilAndPush(BuildContext context) {
-    Navigator.popUntil(context, (route) => route.isFirst);
-
-    // Now, push the new page as the first page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => Accueil()),
-    );
+    context.goNamed(Accueil.id);
   }
 }

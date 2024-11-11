@@ -17,19 +17,19 @@ class CustomDropdown extends StatelessWidget {
   final Function(String) onChange;
 
   List<DropdownMenuItem<String>> get dropdownItems {
-    List<DropdownMenuItem<String>> menuItems =
-        items.where((item) => item != '').map((item) {
-      String capitalizedStr =
-          item.substring(0, 1).toUpperCase() + item.substring(1);
-
-      return DropdownMenuItem(child: Text(capitalizedStr), value: item);
-    }).toList();
-
-    return menuItems;
+    return items
+        .where((item) => item.isNotEmpty) // Exclude empty strings
+        .map((item) {
+          String capitalizedStr = item[0].toUpperCase() + item.substring(1);
+          return DropdownMenuItem(child: Text(capitalizedStr), value: item);
+        }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Ensure `value` is in items, else set a default
+    String? selectedValue = items.contains(value) ? value : items.first;
+
     return DropdownButtonFormField(
       isExpanded: true,
       decoration: InputDecoration(
@@ -48,9 +48,8 @@ class CustomDropdown extends StatelessWidget {
           borderRadius: BorderRadius.circular(5),
         ),
       ),
-      value: value,
+      value: selectedValue, // Use the verified `selectedValue`
       onChanged: (String? newValue) {
-        print(newValue);
         onChange(newValue ?? '');
       },
       items: dropdownItems,

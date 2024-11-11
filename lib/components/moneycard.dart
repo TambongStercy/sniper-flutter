@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 
 // ignore: must_be_immutable
 class MoneyCard extends StatelessWidget {
   MoneyCard({
     super.key,
     this.isSold,
-    required this.amount
+    required this.amount,
   });
 
   bool? isSold;
@@ -15,18 +16,21 @@ class MoneyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-    final isRSold = isSold??false;
+    final isRSold = isSold ?? false;
 
     final color = isRSold ? blue : limeGreen;
-    final icon = isRSold ? Icons.account_balance_wallet_rounded : Icons.keyboard_double_arrow_up_rounded;
-    final text = isRSold ? 'Sold current' :'Benefice total';
+    final icon = isRSold
+        ? Icons.account_balance_wallet_rounded
+        : Icons.keyboard_double_arrow_up_rounded;
+    final text = isRSold
+        ? context.translate('sold_current')
+        : context.translate('total_profit');
 
     return Container(
       padding: EdgeInsets.all(16),
       margin: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color, 
+        color: color,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Stack(
@@ -37,8 +41,7 @@ class MoneyCard extends StatelessWidget {
             child: Icon(
               icon,
               size: 72,
-              color:
-                  Colors.white.withOpacity(0.2), // Transparent background icon
+              color: Colors.white.withOpacity(0.2), // Transparent background icon
             ),
           ),
           Column(
@@ -58,7 +61,7 @@ class MoneyCard extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                '${amount.toStringAsFixed(1)}FCFA',
+                '${amount.toStringAsFixed(1)} FCFA',
                 style: SafeGoogleFont(
                   'Montserrat',
                   fontSize: 32,

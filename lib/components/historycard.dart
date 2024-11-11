@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 
 class HistoryCard extends StatelessWidget {
   const HistoryCard({
@@ -22,12 +23,12 @@ class HistoryCard extends StatelessWidget {
     Color color;
     String action;
 
-    if(deposit){
+    if (deposit) {
       color = Color(0xff00bf4c);
-      action = 'Reception';
-    }else{
-      color = Color((0xffed445d));
-      action = 'Retrait';
+      action = context.translate('deposit_action');
+    } else {
+      color = Color(0xffed445d);
+      action = context.translate('withdraw_action');
     }
 
     return Container(
@@ -55,7 +56,7 @@ class HistoryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$action d’argent',
+                  '${action} ${context.translate('money')}',
                   style: SafeGoogleFont(
                     'Montserrat',
                     fontSize: 14 * ffem,

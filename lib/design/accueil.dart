@@ -1,12 +1,12 @@
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/accueil-divertissement.dart';
 import 'package:snipper_frontend/design/accueil-home.dart';
@@ -15,15 +15,21 @@ import 'package:snipper_frontend/design/accueil-market.dart';
 import 'package:snipper_frontend/design/accueil-publier.dart';
 import 'package:snipper_frontend/design/add-product.dart';
 import 'package:snipper_frontend/design/portfeuille.dart';
+import 'package:snipper_frontend/design/produit-page.dart';
 import 'package:snipper_frontend/design/profile-info.dart';
 import 'package:http/http.dart' as http;
-import 'package:snipper_frontend/design/splash1.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/your-products.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 class Accueil extends StatefulWidget {
   static const id = 'accueil';
+
+  final String? prdtId;
+  final String? sellerId;
+
+  const Accueil({Key? key, this.prdtId, this.sellerId}) : super(key: key);
 
   @override
   State<Accueil> createState() => _AccueilState();
@@ -42,11 +48,20 @@ class _AccueilState extends State<Accueil> {
   bool isPartner = false;
   bool showSpinner = true;
 
+  String countryCode = '237';
+  String momo = '';
+
   late SharedPreferences prefs;
+  TextEditingController phoneNumberController = TextEditingController();
+
+  get sellerId => widget.sellerId;
+  get prdtId => widget.prdtId;
 
   @override
   void initState() {
     super.initState();
+
+    _selectedIndex = (prdtId != null && sellerId != null)?3:2;
 
     _pages = <Widget>[
       const Publicite(),
@@ -56,10 +71,19 @@ class _AccueilState extends State<Accueil> {
       const Investissement(),
     ];
 
-    // Create anonymous function:
     () async {
       try {
         await getInfos();
+
+        if (prdtId != null && sellerId != '') {
+          final prdtAndUser = await getProductOnline(sellerId, prdtId);
+
+          context.pushNamed(
+            ProduitPage.id,
+            extra: prdtAndUser, // Pass the prdtAndUser object directly
+          );
+        }
+
         showSpinner = false;
         refreshPage();
       } catch (e) {
@@ -79,6 +103,7 @@ class _AccueilState extends State<Accueil> {
         Market(),
         const Investissement(),
       ];
+
       setState(() {
         // Update your UI with the desired changes.
       });
@@ -140,6 +165,13 @@ class _AccueilState extends State<Accueil> {
         name = user['name'] ?? name;
         isSubscribed = user['isSubscribed'] ?? false;
 
+        final momo = user['momoNumber'];
+        print(user);
+        print(momo);
+
+        if (momo != null) {
+          prefs.setString('momo', momo.toString());
+        }
         prefs.setString('name', name);
         prefs.setString('whatsapp', whatsappLink);
         prefs.setString('telegram', telegramLink);
@@ -150,12 +182,9 @@ class _AccueilState extends State<Accueil> {
         await saveTransactionList(gottenTransactions);
 
         if (!isSubscribed) {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            Subscrition.id,
-            (route) => false,
-          );
           print('stay here');
+          print(isSubscribed);
+          context.go(Subscrition.id);
         }
 
         if (partner != null) {
@@ -174,66 +203,178 @@ class _AccueilState extends State<Accueil> {
         if (!isSubscribed) {
           print('add Notification');
         }
+        if (momo == null) {
+          _showPhoneNumberDialog();
+        }
       } else {
         if (error == 'Accès refusé') {
-          String title = "Erreur. Accès refusé.";
+          String title = context.translate('error_access_denied');
           showPopupMessage(context, title, msg);
 
           if (!kIsWeb) {
             await deleteFile(avatar);
-            // await unInitializeOneSignal();
           }
 
-          prefs.setString('token', '');
-          prefs.setString('id', '');
-          prefs.setString('email', '');
-          prefs.setString('name', '');
-          prefs.setString('token', '');
-          prefs.setString('region', '');
-          prefs.setString('phone', '');
-          prefs.setString('code', '');
-          prefs.setString('avatar', '');
-          prefs.setDouble('balance', 0);
-          prefs.setBool('isSubscribed', false);
+          prefs.clear();
           await deleteNotifications();
           await deleteAllKindTransactions();
 
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Scene(),
-            ),
-            (route) => false,
-          );
-
-          // String logoutMsg = 'You where successfully logged out';
-          // String logoutTitle = 'Logout';
-
-          // showPopupMessage(context, logoutTitle, logoutMsg);
+          context.go('/');
         }
 
-        String title = 'Erreur';
+        String title = context.translate('error');
         showPopupMessage(context, title, msg);
 
-        // Handle errors,
         print('something went wrong');
       }
     } catch (e) {
       print(e);
-      String title = error;
+      String title = context.translate('error');
+      showPopupMessage(context, title, msg);
+    }
+  }
+
+  Future<dynamic> getProductOnline(String sellerId, String prdtId) async {
+    String msg = '';
+    String error = '';
+    try {
+      await initSharedPref();
+
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
+
+      final url = Uri.parse('$getProduct?seller=$sellerId&id=$prdtId&email=$email');
+
+      print(url);
+      
+      final response = await http.get(url, headers: headers);
+
+      final jsonResponse = jsonDecode(response.body);
+
+      msg = jsonResponse['message'] ?? '';
+      error = jsonResponse['error'] ?? '';
+
+      print(jsonResponse);
+
+      if (response.statusCode == 200) {
+
+        final userAndPrdt = jsonResponse['userPrdt'];
+
+        if (mounted) setState(() {});
+
+        return userAndPrdt;
+      } else {
+        if (error == 'Accès refusé') {
+          String title = context.translate('error_access_denied');
+          showPopupMessage(context, title, msg);
+        }
+
+        String title = context.translate('error');
+        showPopupMessage(context, title, msg);
+
+        print('something went wrong');
+      }
+    } catch (e) {
+      print(e);
+      String title = context.translate('error');
       showPopupMessage(context, title, msg);
     }
   }
 
   int notifCount = 0;
-
   int selected = 0;
+
+  void _showPhoneNumberDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            context.translate('enter_mobile_money'),
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: CustomTextField(
+            margin: 5,
+            hintText: context.translate('mobile_number_example'),
+            value: momo,
+            onChange: (val) {
+              momo = val;
+            },
+            getCountryCode: (code) {
+              countryCode = code;
+            },
+            type: 5,
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text(context.translate('ok')),
+              onPressed: () async {
+                await addMOMO();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> addMOMO() async {
+    String msg = '';
+    String error = '';
+    setState(() {
+      showSpinner = true;
+    });
+    try {
+      final sendPone = countryCode + momo;
+
+      final regBody = {
+        'id': id,
+        'email': email,
+        'momo': sendPone,
+      };
+
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+
+      final response = await http.post(
+        Uri.parse(modMomo),
+        headers: headers,
+        body: jsonEncode(regBody),
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+
+      msg = jsonResponse['message'] ?? '';
+      error = jsonResponse['error'] ?? '';
+
+      final title = (response.statusCode == 200)
+          ? context.translate('success')
+          : context.translate('error');
+
+      prefs.setString('momo', sendPone);
+      if (email != '') prefs.setString('email', email);
+
+      context.pop();
+      showPopupMessage(context, title, msg);
+      print(msg);
+    } catch (e) {
+      print(e);
+      String title = context.translate('error');
+      showPopupMessage(context, title, msg);
+    }
+    setState(() {
+      showSpinner = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
-    // double ffem = fem * 0.97;
 
     return Scaffold(
       appBar: AppBar(
@@ -252,22 +393,14 @@ class _AccueilState extends State<Accueil> {
             IconButton(
               icon: Icon(Icons.download_rounded),
               color: Colors.black,
-              onPressed: () {
-                // Navigator.pushNamed(context, Notifications.id).then((value) {
-                //   if (mounted) {
-                //     setState(() {
-                //       initSharedPref();
-                //     });
-                //   }
-                // });
-              },
+              onPressed: () {},
             ),
           IconButton(
             icon: Icon(Icons.wallet),
             color: Colors.black,
             iconSize: 24,
             onPressed: () {
-              Navigator.pushNamed(context, Wallet.id).then((value) {
+              context.pushNamed(Wallet.id).then((value) {
                 if (mounted) {
                   setState(() {
                     initSharedPref();
@@ -300,7 +433,7 @@ class _AccueilState extends State<Accueil> {
             color: Colors.black,
             iconSize: 24,
             onPressed: () {
-              Navigator.pushNamed(context, Profile.id).then((value) {
+              context.pushNamed(Profile.id).then((value) {
                 if (mounted) {
                   setState(() {
                     initSharedPref();
@@ -309,9 +442,7 @@ class _AccueilState extends State<Accueil> {
               });
             },
           ),
-          SizedBox(
-            width: 20.0,
-          ),
+          SizedBox(width: 20.0),
         ],
       ),
       body: ModalProgressHUD(
@@ -321,50 +452,26 @@ class _AccueilState extends State<Accueil> {
       floatingActionButton: _selectedIndex == 3 && isSubscribed
           ? SpeedDial(
               animatedIcon: AnimatedIcons.menu_close,
-              animatedIconTheme: const IconThemeData(
-                size: 22.0,
-                color: Colors.white,
-              ),
+              animatedIconTheme:
+                  const IconThemeData(size: 22.0, color: Colors.white),
               overlayColor: Colors.black,
               overlayOpacity: 0.4,
               backgroundColor: blue,
               children: [
                 SpeedDialChild(
                   onTap: () {
-                    Navigator.pushNamed(context, AjouterProduit.id);
+                    context.pushNamed(AjouterProduit.id);
                   },
-                  child: Icon(
-                    Icons.add,
-                    color: Colors.black,
-                    size: 30,
-                  ),
-                  // label: 'Ajouter un produit',
+                  child: Icon(Icons.add, color: Colors.black, size: 30),
                 ),
                 SpeedDialChild(
                   onTap: () {
-                    Navigator.pushNamed(context, YourProducts.id);
+                    context.pushNamed(YourProducts.id);
                   },
-                  child: Icon(
-                    Icons.edit,
-                    color: Colors.black,
-                    size: 30,
-                  ),
-                  // label: 'Modifier vos produits',
+                  child: Icon(Icons.edit, color: Colors.black, size: 30),
                 ),
               ],
             )
-
-          // FloatingActionButton(
-          //     backgroundColor: limeGreen,
-          //     onPressed: () {
-          //       Navigator.pushNamed(context, AjouterProduit.id);
-          //     },
-          // child: Icon(
-          //   Icons.add,
-          //   color: Colors.white,
-          //   size: 30,
-          // ),
-          //   )
           : null,
       bottomNavigationBar: Container(
         color: Colors.white,
@@ -381,79 +488,47 @@ class _AccueilState extends State<Accueil> {
           tabs: [
             GButton(
               icon: Icons.remove_red_eye_sharp,
-              text: 'Publicité',
-              textStyle: SafeGoogleFont(
-                'Montserrat',
-                fontWeight: FontWeight.w600,
-                height: 1 * fem,
-                color: Colors.white,
-              ),
+              text: context.translate('advertising'),
+              textStyle: SafeGoogleFont('Montserrat',
+                  fontWeight: FontWeight.w600,
+                  height: 1 * fem,
+                  color: Colors.white),
             ),
             GButton(
-              icon: (Icons.hail_rounded),
-              text: 'Divertissement',
-              textStyle: SafeGoogleFont(
-                'Montserrat',
-                fontWeight: FontWeight.w600,
-                height: 1 * fem,
-                color: Colors.white,
-              ),
+              icon: Icons.hail_rounded,
+              text: context.translate('entertainment'),
+              textStyle: SafeGoogleFont('Montserrat',
+                  fontWeight: FontWeight.w600,
+                  height: 1 * fem,
+                  color: Colors.white),
             ),
             GButton(
               icon: Icons.home,
-              text: 'Accueil',
-              textStyle: SafeGoogleFont(
-                'Montserrat',
-                fontWeight: FontWeight.w600,
-                height: 1 * fem,
-                color: Colors.white,
-              ),
+              text: context.translate('home'),
+              textStyle: SafeGoogleFont('Montserrat',
+                  fontWeight: FontWeight.w600,
+                  height: 1 * fem,
+                  color: Colors.white),
             ),
             GButton(
               icon: Icons.shopping_cart,
-              text: 'Market place',
-              textStyle: SafeGoogleFont(
-                'Montserrat',
-                fontWeight: FontWeight.w600,
-                height: 1 * fem,
-                color: Colors.white,
-              ),
+              text: context.translate('marketplace'),
+              textStyle: SafeGoogleFont('Montserrat',
+                  fontWeight: FontWeight.w600,
+                  height: 1 * fem,
+                  color: Colors.white),
             ),
             GButton(
               icon: Icons.monetization_on,
-              text: 'Investissement',
-              textStyle: SafeGoogleFont(
-                'Montserrat',
-                fontWeight: FontWeight.w600,
-                height: 1 * fem,
-                color: Colors.white,
-              ),
+              text: context.translate('investment'),
+              textStyle: SafeGoogleFont('Montserrat',
+                  fontWeight: FontWeight.w600,
+                  height: 1 * fem,
+                  color: Colors.white),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class CustomNavigationDestination extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final double fontSize;
-
-  CustomNavigationDestination(
-      {required this.icon, required this.label, this.fontSize = 12});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon),
-        Text(
-          label,
-          style: TextStyle(fontSize: fontSize),
-        ),
-      ],
     );
   }
 }

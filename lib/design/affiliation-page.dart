@@ -3,16 +3,16 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/bonuscard.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/affiliation-page-filleuls-details.dart';
 import 'package:http/http.dart' as http;
-import 'package:snipper_frontend/design/splash1.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 
 import 'package:snipper_frontend/utils.dart';
 
@@ -25,7 +25,9 @@ class Affiliation extends StatefulWidget {
 
 class _AffiliationState extends State<Affiliation> {
   String? code;
+  String? link;
   bool showSpinner = true;
+  bool isCode = true;
   String email = '';
   int directCount = 0;
   int indirectCount = 0;
@@ -44,6 +46,7 @@ class _AffiliationState extends State<Affiliation> {
     prefs = await SharedPreferences.getInstance();
     code = prefs.getString('code');
     email = prefs.getString('email') ?? '';
+    link = 'https://sniperbuisnesscenter.com/?affiliationCode=$code';
   }
 
   @override
@@ -139,13 +142,7 @@ class _AffiliationState extends State<Affiliation> {
           await deleteNotifications();
           await deleteAllKindTransactions();
 
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Scene(),
-            ),
-            (route) => false,
-          );
+          context.go('/');
         }
 
         String title = 'Erreur';
@@ -179,14 +176,16 @@ class _AffiliationState extends State<Affiliation> {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
+
+    String? copy = isCode ? code : link;
     final directL = directCount;
     final indirectL = indirectCount;
 
     final directSubL = directSubEmails.length;
     final indirectSubL = indirectSubEmails.length;
 
-    final directNonSubL = directNonSubEmails.length;
-    final indirectNonSubL = indirectNonSubEmails.length;
+    // final directNonSubL = directNonSubEmails.length;
+    // final indirectNonSubL = indirectNonSubEmails.length;
 
     final basic = max((directSubL / basicRequirements),
             (indirectSubL / basicRequirements)) *
@@ -199,7 +198,7 @@ class _AffiliationState extends State<Affiliation> {
         100;
 
     return SimpleScaffold(
-      title: 'Vos Affiliates',
+      title: context.translate('your_affiliates'),
       inAsyncCall: showSpinner,
       child: Container(
         padding: EdgeInsets.fromLTRB(25 * fem, 20 * fem, 25 * fem, 100 * fem),
@@ -217,22 +216,59 @@ class _AffiliationState extends State<Affiliation> {
                       Row(
                         children: [
                           Expanded(
-                            child: Container(
-                              padding: EdgeInsets.fromLTRB(
-                                  15 * fem, 12 * fem, 15 * fem, 12 * fem),
-                              decoration: BoxDecoration(
-                                color: Color(0xfff49101),
-                                borderRadius: BorderRadius.circular(3 * fem),
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  isCode = true;
+                                });
+                              },
+                              child: Container(
+                                padding: EdgeInsets.fromLTRB(
+                                    15 * fem, 12 * fem, 15 * fem, 12 * fem),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isCode ? Color(0xfff49101) : Colors.grey,
+                                  borderRadius: BorderRadius.circular(3 * fem),
+                                ),
+                                child: Text(
+                                  context.translate('sponsor_code'),
+                                  style: SafeGoogleFont(
+                                    'Montserrat',
+                                    fontSize: 12 * ffem,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.4166666667 * ffem / fem,
+                                    letterSpacing: -0.5 * fem,
+                                    color: Color(0xffffffff),
+                                  ),
+                                ),
                               ),
-                              child: Text(
-                                'Code parrain',
-                                style: SafeGoogleFont(
-                                  'Montserrat',
-                                  fontSize: 12 * ffem,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.4166666667 * ffem / fem,
-                                  letterSpacing: -0.5 * fem,
-                                  color: Color(0xffffffff),
+                            ),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  isCode = false;
+                                });
+                              },
+                              child: Container(
+                                padding: EdgeInsets.fromLTRB(
+                                    15 * fem, 12 * fem, 15 * fem, 12 * fem),
+                                decoration: BoxDecoration(
+                                  color:
+                                      !isCode ? Color(0xfff49101) : Colors.grey,
+                                  borderRadius: BorderRadius.circular(3 * fem),
+                                ),
+                                child: Text(
+                                  context.translate('sponsor_link'),
+                                  style: SafeGoogleFont(
+                                    'Montserrat',
+                                    fontSize: 12 * ffem,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.4166666667 * ffem / fem,
+                                    letterSpacing: -0.5 * fem,
+                                    color: Color(0xffffffff),
+                                  ),
                                 ),
                               ),
                             ),
@@ -259,25 +295,34 @@ class _AffiliationState extends State<Affiliation> {
                         ),
                         child: IconButton(
                           padding: EdgeInsets.fromLTRB(
-                              14 * fem, 16 * fem, 14 * fem, 15 * fem),
+                            14 * fem,
+                            16 * fem,
+                            14 * fem,
+                            15 * fem,
+                          ),
                           onPressed: () async {
-                            copyToClipboard(context, code ?? '');
+                            copyToClipboard(context, copy ?? '');
                           },
                           icon: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                margin: EdgeInsets.fromLTRB(
-                                    0 * fem, 1 * fem, 0 * fem, 0 * fem),
-                                child: Text(
-                                  code ?? '',
-                                  style: SafeGoogleFont(
-                                    'Montserrat',
-                                    fontSize: 12 * ffem,
-                                    fontWeight: FontWeight.w400,
-                                    height: 1.2175 * ffem / fem,
-                                    color: Color(0xff25313c),
+                              Expanded(
+                                // Wrap the text in Expanded
+                                child: Container(
+                                  margin: EdgeInsets.fromLTRB(
+                                      0 * fem, 1 * fem, 0 * fem, 0 * fem),
+                                  child: Text(
+                                    copy ?? '',
+                                    style: SafeGoogleFont(
+                                      'Montserrat',
+                                      fontSize: 12 * ffem,
+                                      fontWeight: FontWeight.w400,
+                                      height: 1.2175 * ffem / fem,
+                                      color: Color(0xff25313c),
+                                    ),
+                                    overflow: TextOverflow
+                                        .ellipsis, // Use ellipsis overflow
                                   ),
                                 ),
                               ),
@@ -296,13 +341,9 @@ class _AffiliationState extends State<Affiliation> {
                         EdgeInsets.fromLTRB(0 * fem, 0 * fem, 1 * fem, 0 * fem),
                     child: TextButton(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => Filleuls(
-                              email: email,
-                            ),
-                          ),
+                        context.pushNamed(
+                          Filleuls.id,
+                          extra: email,
                         );
                       },
                       style: TextButton.styleFrom(
@@ -317,16 +358,15 @@ class _AffiliationState extends State<Affiliation> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(
                             10.0,
-                          ), // Optional: Add border radius
+                          ),
                           boxShadow: const [
                             BoxShadow(
-                              color: Colors
-                                  .black26, // You can set the shadow color as needed
+                              color: Colors.black26,
                               spreadRadius: 1,
                               offset: Offset(
                                 0,
                                 1,
-                              ), // Changes the position of the shadow
+                              ),
                             ),
                           ],
                         ),
@@ -353,7 +393,8 @@ class _AffiliationState extends State<Affiliation> {
                                             margin: EdgeInsets.fromLTRB(0 * fem,
                                                 0 * fem, 29 * fem, 1 * fem),
                                             child: Text(
-                                              'Nombre de filleuls direct: ',
+                                              context.translate(
+                                                  'direct_godchilds'),
                                               style: SafeGoogleFont(
                                                 'Montserrat',
                                                 fontSize: 12 * ffem,
@@ -389,7 +430,8 @@ class _AffiliationState extends State<Affiliation> {
                                             margin: EdgeInsets.fromLTRB(0 * fem,
                                                 0 * fem, 29 * fem, 1 * fem),
                                             child: Text(
-                                              'Nombre de filleuls indirect: ',
+                                              context.translate(
+                                                  'indirect_godchilds'),
                                               style: SafeGoogleFont(
                                                 'Montserrat',
                                                 fontSize: 12 * ffem,
@@ -439,7 +481,7 @@ class _AffiliationState extends State<Affiliation> {
                     height: 15 * fem,
                   ),
                   Text(
-                    'Bonus A gagner',
+                    context.translate('bonus_to_win'),
                     style: SafeGoogleFont(
                       'Montserrat',
                       fontSize: 14 * ffem,
@@ -473,7 +515,7 @@ class _AffiliationState extends State<Affiliation> {
                     height: 15 * fem,
                   ),
                   Text(
-                    'Nombre d’actions : 0',
+                    context.translate('number_of_shares', args: {'count': 0}),
                     style: SafeGoogleFont(
                       'Montserrat',
                       fontSize: 14 * ffem,

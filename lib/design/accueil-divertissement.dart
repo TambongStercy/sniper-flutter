@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/imagecard.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 class Divertissement extends StatelessWidget {
   const Divertissement({super.key});
@@ -22,7 +23,7 @@ class Divertissement extends StatelessWidget {
             Container(
               margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 15 * fem),
               child: Text(
-                'Nos sortie passee ',
+                context.translate('past_outings'),
                 style: SafeGoogleFont(
                   'Montserrat',
                   fontSize: 16 * ffem,
@@ -38,7 +39,7 @@ class Divertissement extends StatelessWidget {
             Container(
               margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 15 * fem),
               child: Text(
-                'En programme',
+                context.translate('upcoming'),
                 style: SafeGoogleFont(
                   'Montserrat',
                   fontSize: 16 * ffem,
@@ -55,7 +56,7 @@ class Divertissement extends StatelessWidget {
               height: 10 * fem,
             ),
             Text(
-              'Visite de waza park',
+              context.translate('waza_park_visit'),
               style: SafeGoogleFont(
                 'Montserrat',
                 fontSize: 16 * ffem,
@@ -68,7 +69,7 @@ class Divertissement extends StatelessWidget {
               height: 10 * fem,
             ),
             ReusableButton(
-              title: 'Reservez maintenant',
+              title: context.translate('book_now'),
               lite: false,
               onPress: () {},
             ),
