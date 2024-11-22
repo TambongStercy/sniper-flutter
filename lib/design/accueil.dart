@@ -24,7 +24,7 @@ import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 class Accueil extends StatefulWidget {
-  static const id = 'accueil';
+  // static const id = 'accueil';
 
   final String? prdtId;
   final String? sellerId;
@@ -111,6 +111,7 @@ class _AccueilState extends State<Accueil> {
   }
 
   Future<void> initSharedPref() async {
+
     prefs = await SharedPreferences.getInstance();
 
     id = prefs.getString('id') ?? '';
@@ -119,6 +120,7 @@ class _AccueilState extends State<Accueil> {
     name = prefs.getString('name') ?? '';
     avatar = prefs.getString('avatar') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
+    
   }
 
   void onItemTapped(int index) {

@@ -44,7 +44,7 @@ class BottomHitory extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: transactions.map((trans) {
-                  final date = formatTime(trans['date']) ?? 'N/A';  // Formatting date safely
+                  final date = formatTime(trans['date']);  // Formatting date safely
                   final isDeposit = trans['transType'] == 'deposit';
                   final amount = trans['amount'] != null
                       ? int.tryParse(trans['amount'].toString()) ?? 0  // Safely parsing amount

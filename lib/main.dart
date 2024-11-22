@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:snipper_frontend/localization/app_localizations.dart';
 import 'package:snipper_frontend/router.dart';
@@ -14,16 +13,13 @@ void main() async {
   // Call the platform-specific setPathUrlStrategy function
   setPathUrlStrategy();
 
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('token');
-
-  runApp(MyApp(token: token));
+  final router = await AppRouter.router();
+  runApp(MyApp(router: router));
 }
 
 class MyApp extends StatefulWidget {
-  final String? token;
-
-  const MyApp({Key? key, required this.token}) : super(key: key);
+  final GoRouter router;
+  const MyApp({Key? key, required this.router}) : super(key: key);
 
   static void setLocale(BuildContext context, Locale newLocale) {
     _MyAppState? state = context.findAncestorStateOfType<_MyAppState>();
@@ -35,18 +31,22 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  Locale? _locale;
 
+  // For languages
+  Locale? _locale;
   void setLocale(Locale locale) {
     setState(() {
       _locale = locale;
     });
   }
 
+  // For router
+  get router => widget.router;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      routerConfig: AppRouter.router(widget.token),
+      routerConfig: router,
       locale: _locale,
       supportedLocales: const [
         Locale('en', ''),

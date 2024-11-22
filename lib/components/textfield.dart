@@ -180,7 +180,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
               controller: _textFieldController,
               keyboardType: keyboard,
               obscureText: passwordVisible,
-              readOnly: readOnly ?? false,
+              readOnly: readOnly,
               flagsButtonPadding: const EdgeInsets.all(8),
               dropdownIconPosition: IconPosition.trailing,
               decoration: InputDecoration(

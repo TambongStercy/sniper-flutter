@@ -9,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/email-oublier.dart';
 import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
@@ -40,7 +39,7 @@ class _ConnexionState extends State<Connexion> {
 
   late SharedPreferences prefs;
 
-  Future<bool> loginUser(context) async {
+  Future<bool> loginUser() async {
     String msg = '';
 
     try {
@@ -125,7 +124,7 @@ class _ConnexionState extends State<Connexion> {
     }
   }
 
-  Future<void> downloadAvatar(BuildContext context) async {
+  Future<void> downloadAvatar() async {
     try {
       final avatarPath = avatar;
 
@@ -304,17 +303,17 @@ class _ConnexionState extends State<Connexion> {
                                   showSpinner = true;
                                 });
 
-                                final hasLogged = await loginUser(context);
+                                final hasLogged = await loginUser();
 
                                 if (hasLogged) {
-                                  await downloadAvatar(context);
+                                  await downloadAvatar();
                                   setState(() {
                                     showSpinner = false;
                                   });
 
                                   if (isSubscribed) {
                                     if (hasPP) {
-                                      context.goNamed(Accueil.id);
+                                      context.go('/');
                                     } else {
                                       context.goNamed(PpUpload.id);
                                     }
@@ -393,6 +392,6 @@ class _ConnexionState extends State<Connexion> {
   }
 
   void popUntilAndPush(BuildContext context) {
-    context.goNamed('/');
+    context.go('/');
   }
 }

@@ -8,8 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/accueil.dart';
-import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/new-email.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
@@ -33,7 +31,7 @@ class _ModifyEmailState extends State<ModifyEmail> {
 
   late SharedPreferences prefs;
 
-  Future<void> ModifyEmail(context) async {
+  Future<void> ModifyEmail() async {
     if (email.isNotEmpty) {
       final regBody = {
         'email': email,
@@ -67,7 +65,8 @@ class _ModifyEmailState extends State<ModifyEmail> {
         showPopupMessage(context, title, msg);
         return;
       } else {
-        String title = context.translate('something_went_wrong');
+        String title = context.translate('something_went_wrong'); 
+
         showPopupMessage(context, title, msg);
         return;
       }
@@ -199,7 +198,7 @@ class _ModifyEmailState extends State<ModifyEmail> {
                                   showSpinner = true;
                                 });
 
-                                await ModifyEmail(context);
+                                await ModifyEmail();
 
                                 setState(() {
                                   showSpinner = false;
@@ -248,6 +247,6 @@ class _ModifyEmailState extends State<ModifyEmail> {
   }
 
   void popUntilAndPush(BuildContext context) {
-    context.goNamed(Accueil.id);
+    context.go('/');
   }
 }

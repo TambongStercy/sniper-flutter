@@ -1,5 +1,4 @@
 import 'dart:convert';
-// import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +7,6 @@ import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
@@ -42,7 +40,7 @@ class _NewEmailState extends State<NewEmail> {
 
   late SharedPreferences prefs;
 
-  Future<void> changeAndValidate(context) async {
+  Future<void> changeAndValidate() async {
     if (id.isNotEmpty && email.isNotEmpty && otp.isNotEmpty && otp.length == 4) {
       final regBody = {
         'email': email,
@@ -87,7 +85,7 @@ class _NewEmailState extends State<NewEmail> {
         prefs.setInt('balance', balance);
         prefs.setBool('isSubscribed', isSubscribed);
 
-        context.goNamed(Accueil.id);
+        context.go('/');
 
       } else {
         showPopupMessage(context, context.translate('error'), msg);
@@ -97,7 +95,7 @@ class _NewEmailState extends State<NewEmail> {
     }
   }
 
-  Future<void> modifyEmailOTP(context) async {
+  Future<void> modifyEmailOTP() async {
     if (email.isNotEmpty) {
       final regBody = {
         'email': email,
@@ -247,7 +245,7 @@ class _NewEmailState extends State<NewEmail> {
                                   showSpinner = true;
                                 });
 
-                                await changeAndValidate(context);
+                                await changeAndValidate();
 
                                 setState(() {
                                   showSpinner = false;
@@ -269,7 +267,7 @@ class _NewEmailState extends State<NewEmail> {
                                     showSpinner = true;
                                   });
 
-                                  await modifyEmailOTP(context);
+                                  await modifyEmailOTP();
 
                                   setState(() {
                                     showSpinner = false;
@@ -325,6 +323,6 @@ class _NewEmailState extends State<NewEmail> {
   }
 
   void popUntilAndPush(BuildContext context) {
-    context.goNamed(Accueil.id);
+    context.go('/');
   }
 }

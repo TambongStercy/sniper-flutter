@@ -101,7 +101,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
     }
   }
 
-  Future<void> addProduct(BuildContext context) async {
+  Future<void> addProduct() async {
     try {
       if (!isSubscribed) {
         String msg = context.translate('not_subscribed_message');
@@ -351,7 +351,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                 try {
                   refreshPageWait();
 
-                  await addProduct(context);
+                  await addProduct();
 
                   refreshPageRemove();
                 } catch (e) {

@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/utils.dart';
@@ -45,7 +44,7 @@ class _NewPasswordState extends State<NewPassword> {
 
   late SharedPreferences prefs;
 
-  Future<bool> changeAndValidate(context) async {
+  Future<bool> changeAndValidate() async {
     if (password.isNotEmpty &&
         email.isNotEmpty &&
         otp.isNotEmpty &&
@@ -109,7 +108,7 @@ class _NewPasswordState extends State<NewPassword> {
     }
   }
 
-  Future<void> downloadAvatar(BuildContext context) async {
+  Future<void> downloadAvatar() async {
     try {
       final avatarPath = avatar;
 
@@ -149,7 +148,7 @@ class _NewPasswordState extends State<NewPassword> {
     }
   }
 
-  Future<void> sendFOTP(context) async {
+  Future<void> sendFOTP() async {
     if (email.isNotEmpty) {
       final regBody = {
         'email': email,
@@ -305,16 +304,16 @@ class _NewPasswordState extends State<NewPassword> {
                               });
 
                               final hasLogged =
-                                  await changeAndValidate(context);
+                                  await changeAndValidate();
 
                               if (hasLogged) {
-                                await downloadAvatar(context);
+                                await downloadAvatar();
                                 setState(() {
                                   showSpinner = false;
                                 });
 
                                 if (hasPP && isSubscribed) {
-                                  context.goNamed(Accueil.id);
+                                  context.go('/');
                                   return;
                                 }
 
@@ -345,7 +344,7 @@ class _NewPasswordState extends State<NewPassword> {
                                   showSpinner = true;
                                 });
 
-                                await sendFOTP(context);
+                                await sendFOTP();
 
                                 setState(() {
                                   showSpinner = false;
@@ -403,6 +402,6 @@ class _NewPasswordState extends State<NewPassword> {
   }
 
   void popUntilAndPush(BuildContext context) {
-    context.goNamed(Accueil.id);
+    context.go('/');
   }
 }

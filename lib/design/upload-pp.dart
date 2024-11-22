@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
@@ -228,7 +227,7 @@ class _PpUploadState extends State<PpUpload> {
                                       size: 120.0,
                                     )
                                   : null,
-                              backgroundImage: profileImage(avatar),
+                              // backgroundImage: profileImage(avatar),
                               backgroundColor: Colors.blueGrey[100],
                             ),
                           ),
@@ -252,7 +251,7 @@ class _PpUploadState extends State<PpUpload> {
                         ),
                         onPressed: () {
                           if (isSubscribed) {
-                            context.goNamed(Accueil.id);
+                            context.go('/');
                           } else {
                             context.goNamed(Subscrition.id);
                           }

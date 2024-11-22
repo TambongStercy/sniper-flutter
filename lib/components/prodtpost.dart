@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/imagecard.dart';
-import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 

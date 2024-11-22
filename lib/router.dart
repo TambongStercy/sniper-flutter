@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/add-product.dart';
 import 'package:snipper_frontend/design/affiliation-page-filleuls-details.dart';
@@ -24,9 +25,54 @@ import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/design/your-products.dart';
 
 class AppRouter {
-  static GoRouter router(String? token) {
+  static Future<GoRouter> router() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    String? token = prefs.getString('token');
+    bool isSubscribed = prefs.getBool('isSubscribed') ?? false;
+
+    Future<void> refreshPref() async {
+      prefs = await SharedPreferences.getInstance();
+
+      token = prefs.getString('token');
+      isSubscribed = prefs.getBool('isSubscribed') ?? false;
+    }
+
+    bool canAccessRoute(String route) {
+      // Only allow access to these routes without subscription
+      return [
+        '/${Connexion.id}',
+        '/${Inscription.id}',
+        '/${PpUpload.id}',
+        '/${Subscrition.id}',
+        '/${NewPassword.id}',
+        '/${EmailOublie.id}',
+        '/${NewEmail.id}',
+        '/',
+      ].contains(route);
+    }
+
     return GoRouter(
       initialLocation: '/',
+      redirect: (context, state) async {
+        await refreshPref();
+
+        final isLoggedIn = token != null && token!.isNotEmpty;
+
+        // If the user is not logged in and tries to access a restricted page, redirect to login
+        if (!isLoggedIn && !canAccessRoute(state.topRoute!.path)) {
+          return '/';
+        }
+
+        // If the user is logged in but not subscribed, restrict access to subscription page
+        if (isLoggedIn &&
+            !isSubscribed &&
+            !canAccessRoute(state.topRoute!.path)) {
+          return '/${Subscrition.id}';
+        }
+
+        return null; // No redirect
+      },
       routes: [
         GoRoute(
           path: '/',
@@ -37,18 +83,14 @@ class AppRouter {
                 state.uri.queryParametersAll['sellerId']?[0];
             final String? prdtId = state.uri.queryParametersAll['prdtId']?[0];
 
-            print(token);
-            
+            print(affiliationCode);
+            print(sellerId);
+            print(prdtId);
 
-            return (token != null && token.isNotEmpty)
+            return (token != null && token!.isNotEmpty)
                 ? Accueil(sellerId: sellerId, prdtId: prdtId)
                 : Scene(affiliationCode: affiliationCode);
           },
-        ),
-        GoRoute(
-          path: '/accueil',
-          name: Accueil.id, // Use `Accueil.id` as the name here
-          builder: (context, state) => Accueil(),
         ),
         GoRoute(
           path: '/${Inscription.id}',

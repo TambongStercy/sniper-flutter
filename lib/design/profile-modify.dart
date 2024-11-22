@@ -72,7 +72,7 @@ class _ProfileModState extends State<ProfileMod> {
   String countryCode = '237';
   String countryCode2 = 'CM';
 
-  Future<void> modifyUser(context) async {
+  Future<void> modifyUser() async {
     String msg = '';
     String error = '';
     try {
@@ -303,7 +303,7 @@ class _ProfileModState extends State<ProfileMod> {
                                     setState(() {
                                       showSpinner = false;
                                     });
-                                  } on Exception catch (e) {
+                                  } on Exception {
                                     setState(() {
                                       showSpinner = false;
                                     });
@@ -420,7 +420,7 @@ class _ProfileModState extends State<ProfileMod> {
                                 showSpinner = true;
                               });
 
-                              await modifyUser(context);
+                              await modifyUser();
 
                               setState(() {
                                 showSpinner = false;

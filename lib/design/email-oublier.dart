@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/new-password.dart';
 import 'package:snipper_frontend/utils.dart';
@@ -31,7 +30,7 @@ class _EmailOublieState extends State<EmailOublie> {
 
   late SharedPreferences prefs;
 
-  Future<void> sendFOTP(context) async {
+  Future<void> sendFOTP() async {
     if (email.isNotEmpty) {
       final regBody = {
         'email': email,
@@ -192,7 +191,7 @@ class _EmailOublieState extends State<EmailOublie> {
                                   showSpinner = true;
                                 });
 
-                                await sendFOTP(context);
+                                await sendFOTP();
 
                                 setState(() {
                                   showSpinner = false;
@@ -264,6 +263,6 @@ class _EmailOublieState extends State<EmailOublie> {
   }
 
   void popUntilAndPush(BuildContext context) {
-    context.goNamed(Accueil.id);
+    context.go('/');
   }
 }

@@ -40,7 +40,7 @@ class _SubscritionState extends State<Subscrition> {
     email = prefs.getString('email') ?? '';
   }
 
-  Future<void> subscribe(context) async {
+  Future<void> subscribe() async {
     try {
       if (token != '' && email != '') {
         final regBody = {
@@ -154,7 +154,7 @@ class _SubscritionState extends State<Subscrition> {
                       showSpinner = true;
                     });
 
-                    await subscribe(context);
+                    await subscribe();
 
                     setState(() {
                       showSpinner = false;

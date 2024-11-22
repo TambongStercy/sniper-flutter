@@ -11,7 +11,6 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/affiliation-page.dart';
 import 'package:snipper_frontend/design/espace-partenaire.dart';
 import 'package:snipper_frontend/design/profile-modify.dart';
-import 'package:snipper_frontend/design/splash1.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/main.dart';
 import 'package:snipper_frontend/utils.dart';
@@ -204,8 +203,6 @@ class _ProfileState extends State<Profile> {
       });
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {

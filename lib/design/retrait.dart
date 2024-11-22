@@ -61,7 +61,7 @@ class _RetraitState extends State<Retrait> {
     phone = phone.substring(country.dialCode.length);
   }
 
-  Future<void> withdrawal(context) async {
+  Future<void> withdrawal() async {
     try {
       if (phone.isNotEmpty && amount.isNotEmpty) {
         final intAmt = int.parse(amount);
@@ -319,7 +319,7 @@ class _RetraitState extends State<Retrait> {
                         showSpinner = true;
                       });
 
-                      await withdrawal(context);
+                      await withdrawal();
 
                       setState(() {
                         showSpinner = false;

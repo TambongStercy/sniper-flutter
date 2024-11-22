@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/design/connexion.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/utils.dart';
@@ -41,7 +40,7 @@ class _InscriptionState extends State<Inscription> {
 
   late SharedPreferences prefs;
 
-  Future<void> registerUser(context) async {
+  Future<void> registerUser() async {
     String msg = '';
 
     try {
@@ -56,6 +55,9 @@ class _InscriptionState extends State<Inscription> {
           city.isNotEmpty &&
           code.isNotEmpty) {
             
+          print(code);
+
+
         final regBody = {
           'name': name,
           'email': email.trim(),
@@ -275,7 +277,7 @@ class _InscriptionState extends State<Inscription> {
                               CustomTextField(
                                 hintText: 'EX: eG7iOp3',
                                 value: affiliationCode ?? code,
-                                readOnly: affiliationCode != null,
+                                // readOnly: affiliationCode != null,
                                 onChange: (val) {
                                   code = val;
                                 },
@@ -380,7 +382,7 @@ class _InscriptionState extends State<Inscription> {
                                   return print(msg);
                                 }
 
-                                await registerUser(context);
+                                await registerUser();
 
                                 setState(() {
                                   showSpinner = false;
@@ -448,6 +450,6 @@ class _InscriptionState extends State<Inscription> {
   }
 
   void popUntilAndPush(BuildContext context) {
-    context.goNamed(Accueil.id);
+    context.go('/');
   }
 }
