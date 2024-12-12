@@ -25,6 +25,10 @@ class _ProfileModState extends State<ProfileMod> {
   late SharedPreferences prefs;
   bool showSpinner = false;
 
+
+  String dropdownValue = 'MTN_MOMO_CMR';
+  List<String> correspondents = ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'];
+
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
 
@@ -36,6 +40,7 @@ class _ProfileModState extends State<ProfileMod> {
     code = prefs.getString('code');
     phone = prefs.getString('phone') ?? '';
     momo = prefs.getString('momo');
+    dropdownValue = prefs.getString('momoCorrespondent') ?? 'MTN_MOMO_CMR';
     avatar = prefs.getString('avatar') ?? "";
 
     final country1 = getCountryFromPhoneNumber(phone);
@@ -72,6 +77,39 @@ class _ProfileModState extends State<ProfileMod> {
   String countryCode = '237';
   String countryCode2 = 'CM';
 
+
+  void updateCorrespondents(String countryCode) {
+    final correspondentMap = {
+      'BJ': ['MTN_MOMO_BEN', 'MOOV_MOMO_BEN'], // Benin
+      'CM': ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'], // Cameroon
+      'BF': ['ORANGE_MOMO_BFA', 'MOOV_MOMO_BFA'], // Burkina Faso
+      'CD': [
+        'AIRTEL_MOMO_COD',
+        'VODACOM_MOMO_COD',
+        'ORANGE_MOMO_COD'
+      ], // Congo (DRC)
+      'KE': ['SAFARICOM_MOMO_KEN'], // Kenya
+      'NG': ['MTN_MOMO_NGA', 'AIRTEL_MOMO_NGA'], // Nigeria
+      'SN': [
+        'ORANGE_MOMO_SEN',
+        'FREE_MOMO_SEN',
+        'EXPRESSO_MOMO_SEN'
+      ], // Senegal
+      'CG': ['MTN_MOMO_COG', 'AIRTEL_MOMO_COG'], // Congo-Brazzaville
+      'GA': ['AIRTEL_MOMO_GAB', 'MOOV_MOMO_GAB'], // Gabon
+      'CI': [
+        'MTN_MOMO_CIV',
+        'MOOV_MOMO_CIV',
+        'ORANGE_MOMO_CIV'
+      ], // Côte d'Ivoire
+    };
+
+    setState(() {
+      correspondents = correspondentMap[countryCode] ?? ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'];
+      dropdownValue = correspondents.first;
+    });
+  }
+
   Future<void> modifyUser() async {
     String msg = '';
     String error = '';
@@ -93,6 +131,7 @@ class _ProfileModState extends State<ProfileMod> {
           'momo': sendMomo,
           'code': code,
           'token': token,
+          'momoCorrespondent': dropdownValue,
         };
 
         final headers = {
@@ -342,7 +381,7 @@ class _ProfileModState extends State<ProfileMod> {
                               onChange: (val) {
                                 phone = val;
                               },
-                              getCountryCode: (code) {
+                              getCountryDialCode: (code) {
                                 countryCode = code;
                               },
                               initialCountryCode: countryCode2,
@@ -398,13 +437,40 @@ class _ProfileModState extends State<ProfileMod> {
                               onChange: (val) {
                                 momo = val;
                               },
-                              getCountryCode: (code) {
+                              getCountryDialCode: (code) {
                                 cCode = code;
+                              },
+                              getCountryCode: (code) {
+                                updateCorrespondents(code);
                               },
                               initialCountryCode: cCode2,
                               margin: 0,
                               value: momo,
                               type: 5,
+                            ),
+                          ],
+                        ),
+                        SizedBox(
+                          height: 15 * fem,
+                        ),
+                         Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _label(fem, ffem, context.translate('momo_correspondent')), // 'Correspondent'
+                            DropdownButtonFormField<String>(
+                              value: dropdownValue,
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  dropdownValue = newValue!;
+                                });
+                              },
+                              items: correspondents
+                                  .map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
                             ),
                           ],
                         ),

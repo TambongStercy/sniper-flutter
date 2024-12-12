@@ -168,12 +168,18 @@ class _AccueilState extends State<Accueil> {
         isSubscribed = user['isSubscribed'] ?? false;
 
         final momo = user['momoNumber'];
+        final momoCorrespondent = user['momoCorrespondent'];
         print(user);
         print(momo);
 
         if (momo != null) {
           prefs.setString('momo', momo.toString());
+
+          if(momoCorrespondent != null) {
+            prefs.setString('momoCorrespondent', momoCorrespondent);
+          }
         }
+
         prefs.setString('name', name);
         prefs.setString('whatsapp', whatsappLink);
         prefs.setString('telegram', telegramLink);
@@ -186,7 +192,7 @@ class _AccueilState extends State<Accueil> {
         if (!isSubscribed) {
           print('stay here');
           print(isSubscribed);
-          context.go(Subscrition.id);
+          context.goNamed(Subscrition.id);
         }
 
         if (partner != null) {
@@ -304,7 +310,7 @@ class _AccueilState extends State<Accueil> {
             onChange: (val) {
               momo = val;
             },
-            getCountryCode: (code) {
+            getCountryDialCode: (code) {
               countryCode = code;
             },
             type: 5,

@@ -9,7 +9,6 @@ import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 class Scene extends StatelessWidget {
-  
   final String? affiliationCode;
 
   const Scene({Key? key, this.affiliationCode}) : super(key: key);
@@ -42,7 +41,8 @@ class Scene extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    margin: EdgeInsets.fromLTRB(24 * fem, 0 * fem, 0 * fem, 0 * fem),
+                    margin: EdgeInsets.fromLTRB(
+                        24 * fem, 0 * fem, 0 * fem, 0 * fem),
                     child: Text(
                       title,
                       textAlign: TextAlign.center,
@@ -141,7 +141,8 @@ class Scene extends StatelessWidget {
                         onPressed: () {
                           // Toggle between English and French
                           Locale newLocale =
-                              Localizations.localeOf(context).languageCode == 'en'
+                              Localizations.localeOf(context).languageCode ==
+                                      'en'
                                   ? Locale('fr')
                                   : Locale('en');
                           MyApp.setLocale(context, newLocale);
@@ -156,7 +157,10 @@ class Scene extends StatelessWidget {
                   ReusableButton(
                     title: context.translate('login'),
                     onPress: () {
-                      context.pushNamed(Connexion.id);
+                      context.pushNamed(
+                        Connexion.id,
+                        queryParameters: {'affiliationCode': affiliationCode},
+                      );
                     },
                   ),
                   ReusableButton(

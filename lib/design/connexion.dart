@@ -20,7 +20,9 @@ import 'package:http/http.dart' as http;
 class Connexion extends StatefulWidget {
   static const id = 'connexion';
 
-  const Connexion({Key? key}) : super(key: key);
+  final String? affiliationCode;
+
+  const Connexion({Key? key, this.affiliationCode}) : super(key: key);
 
   @override
   State<Connexion> createState() => _ConnexionState();
@@ -190,6 +192,8 @@ class _ConnexionState extends State<Connexion> {
     prefs = await SharedPreferences.getInstance();
   }
 
+  String? get affiliationCode => widget.affiliationCode;
+
   @override
   Widget build(BuildContext context) {
     double baseWidth = 390;
@@ -341,7 +345,12 @@ class _ConnexionState extends State<Connexion> {
                           ),
                           TextButton(
                             onPressed: () {
-                              context.goNamed(Inscription.id);
+                              context.goNamed(
+                                Inscription.id,
+                                queryParameters: {
+                                  'affiliationCode': affiliationCode
+                                },
+                              );
                             },
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,

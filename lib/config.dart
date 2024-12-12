@@ -3,8 +3,8 @@ import 'dart:ui';
 // const host = 'http://127.0.0.1:5000/';//local host
 // const host = 'http://192.168.225.238:5000/';// slade tech
 // const host = 'http://192.168.43.191:5000/';//your hotspot
-// const host = 'http://192.168.1.103:5000/';//wifi MTN BOX
-const host = 'https://sniper-xvs9.onrender.com/';//online
+const host = 'http://192.168.1.103:5000/';//wifi MTN BOX
+// const host = 'https://sniper-xvs9.onrender.com/';//online
 
 const url = '${host}api/user/';
 const registration = "${url}register";

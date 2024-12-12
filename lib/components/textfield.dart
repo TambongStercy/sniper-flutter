@@ -11,6 +11,7 @@ class CustomTextField extends StatefulWidget {
     required this.onChange,
     this.searchMode,
     this.onSearch,
+    this.getCountryDialCode,
     this.getCountryCode,
     this.margin,
     this.type,
@@ -25,6 +26,7 @@ class CustomTextField extends StatefulWidget {
   final String? value;
   final int? margin;
   final Function(String) onChange;
+  final Function(String)? getCountryDialCode;
   final Function(String)? getCountryCode;
   final Function()? onSearch;
   final bool? searchMode;
@@ -76,6 +78,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   String? get value => widget.value;
   int? get margin => widget.margin;
   Function(String) get onChange => widget.onChange;
+  Function(String)? get getCountryDialCode => widget.getCountryDialCode;
   Function(String)? get getCountryCode => widget.getCountryCode;
   Function()? get onSearch => widget.onSearch;
   bool? get searchMode => widget.searchMode;
@@ -204,7 +207,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
               onCountryChanged: (Country country) {
                 print(country.dialCode);
                 if (getCountryCode != null) {
-                  getCountryCode!(country.dialCode);
+                  getCountryCode!(country.code);
+                }
+                if(getCountryDialCode != null){
+                  getCountryDialCode!(country.dialCode);
                 }
               },
               style: SafeGoogleFont(

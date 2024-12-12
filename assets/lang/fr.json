@@ -257,5 +257,7 @@
   "share": "Partager",
   "sponsor_link": "Lien de parrainage",
   "share_link": "Partagez mon lien",
-  "not_partner": "Vous n'avez pas de partenariat"
+  "not_partner": "Vous n'avez pas de partenariat",
+  "momo_correspondent": "Operateur MOMO",
+  "currency": "Devise"
 }

@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:snipper_frontend/localization_extension.dart'; // Import localization extension
+import 'package:snipper_frontend/localization_extension.dart';
 
 class Retrait extends StatefulWidget {
   static const id = 'retrait';
@@ -17,7 +17,10 @@ class Retrait extends StatefulWidget {
 }
 
 class _RetraitState extends State<Retrait> {
-  String dropdownValue = 'MTN';
+  String dropdownValue = 'MTN_MOMO_CMR';
+  List<String> operators = ['MTN_MOMO_CMR', 'ORANGE_CMR'];
+  String selectedCurrency = 'XAF';
+  List<String> availableCurrencies = ['XAF'];
 
   String phone = '';
   String amount = '';
@@ -25,7 +28,7 @@ class _RetraitState extends State<Retrait> {
   String email = '';
   String countryCode = '237';
   String password = '';
-  String countryCode2 = 'CM';
+  String countryCode2 = 'CM'; // Default to Cameroon (2-letter country code)
   double balance = 0;
   bool isSubscribed = false;
 
@@ -39,7 +42,7 @@ class _RetraitState extends State<Retrait> {
     () async {
       await initSharedPref();
       setState(() {
-        // Update your UI with the desired changes.
+        updateOperatorsAndCurrencies(countryCode2); // Default to Cameroon
       });
     }();
   }
@@ -59,6 +62,60 @@ class _RetraitState extends State<Retrait> {
     countryCode2 = country.code;
 
     phone = phone.substring(country.dialCode.length);
+  }
+
+  void updateOperatorsAndCurrencies(String countryCode) {
+    final correspondents = {
+      'BJ': {
+        'operators': ['MTN_MOMO_BEN', 'MOOV_BEN'], // Benin
+        'currencies': ['XOF']
+      },
+      'CM': {
+        'operators': ['MTN_MOMO_CMR', 'ORANGE_CMR'], // Cameroon
+        'currencies': ['XAF']
+      },
+      'BF': {
+        'operators': ['MOOV_BFA', 'ORANGE_BFA'], // Burkina Faso
+        'currencies': ['XOF']
+      },
+      'CD': {
+        'operators': ['VODACOM_MPESA_COD', 'AIRTEL_COD', 'ORANGE_COD'], // DRC
+        'currencies': ['CDF']
+      },
+      'KE': {
+        'operators': ['MPESA_KEN'], // Kenya
+        'currencies': ['KES']
+      },
+      'NG': {
+        'operators': ['MTN_MOMO_NGA', 'AIRTEL_NGA'], // Nigeria
+        'currencies': ['NGN']
+      },
+      'SN': {
+        'operators': ['FREE_SEN', 'ORANGE_SEN'], // Senegal
+        'currencies': ['XOF']
+      },
+      'CG': {
+        'operators': ['AIRTEL_COG', 'MTN_MOMO_COG'], // Republic of the Congo
+        'currencies': ['XAF']
+      },
+      'GA': {
+        'operators': ['AIRTEL_GAB'], // Gabon
+        'currencies': ['XAF']
+      },
+      'CI': {
+        'operators': ['MTN_MOMO_CIV', 'ORANGE_CIV'], // Côte d'Ivoire
+        'currencies': ['XOF']
+      },
+    };
+
+    setState(() {
+      operators = correspondents[countryCode]?['operators'] ??
+          ['MTN_MOMO_CMR', 'ORANGE_CMR'];
+      availableCurrencies =
+          correspondents[countryCode]?['currencies'] ?? ['XAF'];
+      dropdownValue = operators.first;
+      selectedCurrency = availableCurrencies.first;
+    });
   }
 
   Future<void> withdrawal() async {
@@ -93,6 +150,7 @@ class _RetraitState extends State<Retrait> {
           'amount': amount,
           'operator': dropdownValue,
           'password': password,
+          'currency': selectedCurrency
         };
 
         final headers = {
@@ -132,6 +190,8 @@ class _RetraitState extends State<Retrait> {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
+
+    print(selectedCurrency);
 
     return SimpleScaffold(
       title: context.translate('withdrawal'),
@@ -181,37 +241,13 @@ class _RetraitState extends State<Retrait> {
                         ),
                       ),
                       DropdownButtonFormField<String>(
-                        hint: Text(
-                          dropdownValue,
-                          style: SafeGoogleFont(
-                            'Montserrat',
-                            fontSize: 14 * ffem,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4285714286 * ffem / fem,
-                            color: Color(0xfff49101),
-                          ),
-                        ),
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Color(0xffbbc8d4),
-                              width: 1,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Color(0xffbbc8d4),
-                              width: 1,
-                            ),
-                          ),
-                        ),
                         value: dropdownValue,
                         onChanged: (String? newValue) {
                           setState(() {
                             dropdownValue = newValue!;
                           });
                         },
-                        items: <String>['MTN', 'ORANGE']
+                        items: operators
                             .map<DropdownMenuItem<String>>((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
@@ -245,8 +281,16 @@ class _RetraitState extends State<Retrait> {
                         onChange: (val) {
                           phone = val;
                         },
+                        getCountryDialCode: (code) {
+                          setState(() {
+                            countryCode = code;
+                          });
+                        },
                         getCountryCode: (code) {
-                          countryCode = code;
+                          setState(() {
+                            countryCode2 = code;
+                            updateOperatorsAndCurrencies(code);
+                          });
                         },
                         initialCountryCode: countryCode2,
                         margin: 0,
@@ -262,7 +306,7 @@ class _RetraitState extends State<Retrait> {
                         margin: EdgeInsets.fromLTRB(
                             0 * fem, 0 * fem, 0 * fem, 10 * fem),
                         child: Text(
-                          context.translate('amount'),
+                          '${context.translate('amount')} in ${selectedCurrency}',
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 14 * ffem,

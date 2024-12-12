@@ -260,7 +260,7 @@ class _InscriptionState extends State<Inscription> {
                                 onChange: (val) {
                                   whatsapp = val;
                                 },
-                                getCountryCode: (code) {
+                                getCountryDialCode: (code) {
                                   countryCode = code;
                                 },
                                 type: 5,

@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/pricingcard.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
@@ -74,6 +76,48 @@ class _SubscritionState extends State<Subscrition> {
       String title = context.translate('error');
       showPopupMessage(context, title, msg);
     }
+  }
+
+  Future<void> logoutUser() async {
+    final email = prefs.getString('email');
+    final token = prefs.getString('token');
+    final avatar = prefs.getString('avatar');
+
+    var regBody = {
+      'email': email,
+      'token': token,
+    };
+
+    await http.post(
+      Uri.parse(logout),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode(regBody),
+    );
+
+    await deleteFile(avatar ?? '');
+    // await unInitializeOneSignal();
+    prefs.setString('token', '');
+    prefs.setString('id', '');
+    prefs.setString('email', '');
+    prefs.setString('name', '');
+    prefs.setString('token', '');
+    prefs.setString('region', '');
+    prefs.setString('phone', '');
+    prefs.setString('code', '');
+    prefs.setString('avatar', '');
+    prefs.setInt('balance', 0);
+    prefs.setBool('isSubscribed', false);
+    await deleteNotifications();
+    await deleteAllKindTransactions();
+
+    String msg = 'You where successfully logged out';
+    String title = 'Logout';
+
+    showPopupMessage(context, title, msg);
+
+    context.go('/');
   }
 
   @override
@@ -163,6 +207,36 @@ class _SubscritionState extends State<Subscrition> {
                 ),
                 SizedBox(
                   height: 20 * fem,
+                ),
+                ReusableButton(
+                  title: context.translate('logout'), // 'Deconnexion'
+                  onPress: () async {
+                    try {
+                      setState(() {
+                        showSpinner = true;
+                      });
+
+                      await logoutUser();
+
+                      setState(() {
+                        showSpinner = false;
+                      });
+
+                      String msg = context.translate(
+                          'logged_out_successfully'); // 'You were successfully logged out'
+                      String title = context.translate('logout'); // 'Logout'
+                      showPopupMessage(context, title, msg);
+                    } catch (e) {
+                      setState(() {
+                        showSpinner = false;
+                      });
+                      String msg = context.translate(
+                          'error_occurred'); // 'An Error has occurred please try again'
+                      String title = context.translate('error'); // 'Error'
+                      showPopupMessage(context, title, msg);
+                      print(e);
+                    }
+                  },
                 ),
               ],
             ),

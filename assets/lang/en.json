@@ -257,5 +257,7 @@
   "share": "Share",
   "sponsor_link": "Sponsor Link",
   "share_link": "Share My Link",
-  "not_partner": "You are not a partner"
+  "not_partner": "You are not a partner",
+  "momo_correspondent": "MOMO operator",
+  "currency": "Currency"
 }
