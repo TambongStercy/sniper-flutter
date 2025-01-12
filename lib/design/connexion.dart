@@ -29,6 +29,9 @@ class Connexion extends StatefulWidget {
 }
 
 class _ConnexionState extends State<Connexion> {
+  FocusNode emailFocusNode = FocusNode();
+  FocusNode passwordFocusNode = FocusNode();
+
   String email = '';
   String token = '';
   String? avatar = '';
@@ -283,6 +286,7 @@ class _ConnexionState extends State<Connexion> {
                             hintText: context.translate('email'),
                             type: 4,
                             value: email,
+                            focusNode: emailFocusNode,
                             onChange: (val) {
                               email = val;
                             },
@@ -291,6 +295,7 @@ class _ConnexionState extends State<Connexion> {
                             hintText: context.translate('password'),
                             type: 3,
                             value: password,
+                            focusNode: passwordFocusNode,
                             onChange: (val) {
                               password = val;
                             },

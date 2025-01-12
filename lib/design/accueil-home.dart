@@ -103,6 +103,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   late SharedPreferences prefs;
 
+
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
 
@@ -117,6 +118,11 @@ class _HomeState extends State<Home> {
     balance = prefs.getDouble('balance') ?? 0;
 
     benefice = getTransactionsBenefit(prefs);
+
+    // Construct the URI
+    Uri uri = Uri.parse('$frontEnd/inscription').replace(queryParameters: {'affiliationCode': code});
+
+    link = uri.toString();
   }
 
   void Function(int) get changePage => widget.changePage;
@@ -124,6 +130,7 @@ class _HomeState extends State<Home> {
   String? email;
   String name = '';
   String? code;
+  String link = '';
   String? region;
   String? phone;
   String? token;
@@ -316,11 +323,7 @@ class _HomeState extends State<Home> {
               title: context.translate('share_link'),
               lite: false,
               onPress: () {
-                final link =
-                    'https://sniperbuisnesscenter.com/?affiliationCode=$code';
-
                 Share.share(link);
-
               },
             ),
             Text(

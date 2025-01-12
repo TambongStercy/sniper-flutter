@@ -259,5 +259,18 @@
   "share_link": "Partagez mon lien",
   "not_partner": "Vous n'avez pas de partenariat",
   "momo_correspondent": "Operateur MOMO",
-  "currency": "Devise"
+  "currency": "Devise",
+  "user_not_found": "Utilisateur introuvable",
+  "feature_not_available_web": "Cette fonctionnalité n'est pas encore disponible sur le web.",
+  "contacts_permission_denied": "L'accès à vos contacts a été refusé",
+  "saving_contacts": "Enregistrement des contacts",
+  "saving_contacts_message": "Cela peut prendre environ une minute ou plus.",
+  "contacts_saved_successfully": "Les {count} contacts SBC ont été enregistrés avec succès sans répétition.",
+  "congratulations": "Félicitations 🥳",
+  "select_date": "Sélectionnez une date",
+  "select_both_dates": "Veuillez sélectionner une date de début et de fin",
+  "end_date_before_start": "La date de fin ne peut pas être antérieure à la date de début",
+  "select_date_range": "Sélectionnez la période",
+  "start_date": "Date de début",
+  "end_date": "Date de fin"
 }

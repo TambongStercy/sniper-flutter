@@ -18,6 +18,7 @@ class CustomTextField extends StatefulWidget {
     this.value,
     this.initialCountryCode,
     this.readOnly,
+    this.focusNode,
   });
 
   ///1 = text, 2 = numbers, 3 = password, 4 = email, 5 = phonenumber, 6 = long text
@@ -32,6 +33,8 @@ class CustomTextField extends StatefulWidget {
   final bool? searchMode;
   final String? initialCountryCode;
   final bool? readOnly;
+  final FocusNode? focusNode;
+
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -83,6 +86,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   Function()? get onSearch => widget.onSearch;
   bool? get searchMode => widget.searchMode;
   bool get readOnly => widget.readOnly ?? false;
+  FocusNode? get focusNode => widget.focusNode;
 
   ///Should be the code without +
   String get initialCountryCode => widget.initialCountryCode ?? 'CM';
@@ -108,6 +112,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
               controller: _textFieldController,
               keyboardType: keyboard,
               obscureText: passwordVisible,
+              focusNode: focusNode,
               readOnly: readOnly,
               inputFormatters:
                   type == 2 ? [FilteringTextInputFormatter.digitsOnly] : null,
@@ -183,9 +188,19 @@ class _CustomTextFieldState extends State<CustomTextField> {
               controller: _textFieldController,
               keyboardType: keyboard,
               obscureText: passwordVisible,
+              focusNode: focusNode,
               readOnly: readOnly,
               flagsButtonPadding: const EdgeInsets.all(8),
               dropdownIconPosition: IconPosition.trailing,
+              disableLengthCheck: true,
+              // validator: (phoneNumber) {
+              //   // Implement custom validation logic here
+              //   if (phoneNumber?.number.length != 9 &&
+              //       phoneNumber?.countryISOCode == 'KE') {
+              //     return 'Phone number must be 9 digits for Kenya';
+              //   }
+              //   return null;
+              // },
               decoration: InputDecoration(
                 hintText: hintText,
                 hintStyle: SafeGoogleFont(
@@ -209,7 +224,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 if (getCountryCode != null) {
                   getCountryCode!(country.code);
                 }
-                if(getCountryDialCode != null){
+                if (getCountryDialCode != null) {
                   getCountryDialCode!(country.dialCode);
                 }
               },

@@ -5,6 +5,7 @@ import 'package:snipper_frontend/design/add-product.dart';
 import 'package:snipper_frontend/design/affiliation-page-filleuls-details.dart';
 import 'package:snipper_frontend/design/affiliation-page.dart';
 import 'package:snipper_frontend/design/connexion.dart';
+import 'package:snipper_frontend/design/contact-update.dart';
 import 'package:snipper_frontend/design/email-oublier.dart';
 import 'package:snipper_frontend/design/espace-partenaire.dart';
 import 'package:snipper_frontend/design/fiche-contact.dart';
@@ -55,6 +56,8 @@ class AppRouter {
     return GoRouter(
       initialLocation: '/',
       redirect: (context, state) async {
+        print('Navigating to: ${state.topRoute!.path}');
+
         await refreshPref();
 
         final isLoggedIn = token != null && token!.isNotEmpty;
@@ -83,11 +86,12 @@ class AppRouter {
                 state.uri.queryParametersAll['sellerId']?[0];
             final String? prdtId = state.uri.queryParametersAll['prdtId']?[0];
 
-            print(affiliationCode);
-            print(sellerId);
-            print(prdtId);
+            final isSub = prefs.getBool('isSubscribed');
 
-            return (token != null && token!.isNotEmpty)
+            return (token != null &&
+                    token!.isNotEmpty &&
+                    isSub != null &&
+                    isSub)
                 ? Accueil(sellerId: sellerId, prdtId: prdtId)
                 : Scene(affiliationCode: affiliationCode);
           },
@@ -224,6 +228,11 @@ class AppRouter {
           path: '/${Subscrition.id}',
           name: Subscrition.id,
           builder: (context, state) => Subscrition(),
+        ),
+        GoRoute(
+          path: '/${ContactUpdate.id}',
+          name: ContactUpdate.id,
+          builder: (context, state) => ContactUpdate(),
         ),
       ],
     );

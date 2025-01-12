@@ -118,13 +118,36 @@ class _RetraitState extends State<Retrait> {
     });
   }
 
+  Future<double> convertCurrencyToXAF(String amount, String currency) async {
+    try {
+      // Construct the API URL
+      final url =
+          Uri.parse('${convertToXAF}?amount=$amount&currency=$currency');
+
+      // Send the GET request
+      final response = await http.get(url);
+
+      // Parse the response
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        return double.parse(jsonResponse['amount'].toString());
+      } else {
+        throw Exception(
+            'Failed to convert currency. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error during currency conversion: $e');
+      throw Exception('Currency conversion failed');
+    }
+  }
+
   Future<void> withdrawal() async {
     try {
       if (phone.isNotEmpty && amount.isNotEmpty) {
         final intAmt = int.parse(amount);
         final fee = intAmt * 0.05;
 
-        final sendPone = countryCode + phone;
+        final sendPhone = countryCode + phone;
 
         if (!isSubscribed) {
           String msg = context.translate('not_subscribed');
@@ -132,7 +155,12 @@ class _RetraitState extends State<Retrait> {
           return showPopupMessage(context, title, msg);
         }
 
-        if (intAmt > balance || balance < (intAmt + fee)) {
+        // Convert the amount to XAF
+        final amountInXAF =
+            await convertCurrencyToXAF(amount, selectedCurrency);
+
+        // Check if the balance is sufficient
+        if (amountInXAF > balance || balance < (amountInXAF + fee)) {
           String msg = context.translate('insufficient_balance');
           String title = context.translate('insufficient_funds');
           return showPopupMessage(context, title, msg);
@@ -146,11 +174,11 @@ class _RetraitState extends State<Retrait> {
 
         final regBody = {
           'email': email,
-          'phone': sendPone,
+          'phone': sendPhone,
           'amount': amount,
           'operator': dropdownValue,
           'password': password,
-          'currency': selectedCurrency
+          'currency': selectedCurrency,
         };
 
         final headers = {
@@ -159,7 +187,7 @@ class _RetraitState extends State<Retrait> {
         };
 
         final response = await http.post(
-          Uri.parse(withdraw),
+          Uri.parse(withdraw), // Ensure the correct endpoint
           headers: headers,
           body: jsonEncode(regBody),
         );

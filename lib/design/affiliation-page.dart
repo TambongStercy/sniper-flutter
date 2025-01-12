@@ -46,7 +46,13 @@ class _AffiliationState extends State<Affiliation> {
     prefs = await SharedPreferences.getInstance();
     code = prefs.getString('code');
     email = prefs.getString('email') ?? '';
-    link = 'https://sniperbuisnesscenter.com/?affiliationCode=$code';
+
+    // Construct the URI
+    Uri uri = Uri.parse('$frontEnd/inscription')
+        .replace(queryParameters: {'affiliationCode': code});
+    
+
+    link = uri.toString();
   }
 
   @override

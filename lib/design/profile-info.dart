@@ -9,6 +9,7 @@ import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/affiliation-page.dart';
+import 'package:snipper_frontend/design/contact-update.dart';
 import 'package:snipper_frontend/design/espace-partenaire.dart';
 import 'package:snipper_frontend/design/profile-modify.dart';
 import 'package:snipper_frontend/localization_extension.dart';
@@ -178,7 +179,6 @@ class _ProfileState extends State<Profile> {
     }();
   }
 
-
   refreshPage() {
     if (mounted) {
       setState(() {
@@ -331,8 +331,9 @@ class _ProfileState extends State<Profile> {
                             ),
                           ),
                           onTap: () {
-                            context.pushNamed(ProfileMod.id).then((value) => refreshPage());
-
+                            context
+                                .pushNamed(ProfileMod.id)
+                                .then((value) => refreshPage());
                           },
                         ),
                         ListTile(
@@ -350,7 +351,6 @@ class _ProfileState extends State<Profile> {
                           ),
                           onTap: () {
                             context.pushNamed(Affiliation.id);
-
                           },
                         ),
                         ListTile(
@@ -418,39 +418,15 @@ class _ProfileState extends State<Profile> {
                               color: Color(0xff212121),
                             ),
                           ),
-                          onTap: () async {
-                            try {
-                              if (isSubscribed) {
-                                refreshPageWait();
-                                if (kIsWeb) {
-                                  launchURL(downloadUpdateUrl);
-                                  refreshPageRemove();
-                                } else {
-                                  final path = await downloadVCF(context);
-
-                                  refreshPageRemove();
-                                  if (path == null) {
-                                    return print('Error somewhere');
-                                  }
-
-                                  final contacts = await readVcfFile(path);
-                                  await saveContacts(contacts);
-                                }
-                              } else {
-                                String msg = context.translate(
-                                    'not_subscribed'); // 'Vous n\'êtes pas abonné😔'
-                                String title =
-                                    context.translate('error'); // 'Erreur'
-                                showPopupMessage(context, title, msg);
-                              }
-                            } catch (e) {
+                          onTap: () {
+                            if (isSubscribed) {
+                              context.pushNamed(ContactUpdate.id);
+                            } else {
                               String msg = context.translate(
-                                  'error_occurred'); // 'An Error occured😥'
+                                  'not_subscribed'); // 'Vous n\'êtes pas abonné😔'
                               String title =
-                                  context.translate('error'); // 'Error'
+                                  context.translate('error'); // 'Erreur'
                               showPopupMessage(context, title, msg);
-                              print(e);
-                              refreshPageRemove();
                             }
                           },
                         ),
@@ -750,8 +726,7 @@ class _ProfileState extends State<Profile> {
       await ContactsService.addContact(contact);
     }
 
-          context.pop();
-
+    context.pop();
 
     String msg =
         'Les $contactsLength contacts de la SBC ont été enregistrés avec succès san répétition.';

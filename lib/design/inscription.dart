@@ -33,6 +33,8 @@ class _InscriptionState extends State<Inscription> {
   String countryCode = '237';
   String city = '';
   String code = '';
+  String? affiliationName;
+  bool isFetchingAffiliation = false; // Track if fetching is in progress
 
   bool isSubscribed = false;
   bool? check = false;
@@ -54,9 +56,7 @@ class _InscriptionState extends State<Inscription> {
           countryCode.isNotEmpty &&
           city.isNotEmpty &&
           code.isNotEmpty) {
-            
-          print(code);
-
+        print(code);
 
         final regBody = {
           'name': name,
@@ -97,16 +97,13 @@ class _InscriptionState extends State<Inscription> {
           prefs.setString('avatar', '');
           prefs.setBool('isSubscribed', isSubscribed);
 
-
           print('1');
           String title = context.translate('error');
           print('2');
           showPopupMessage(context, title, msg);
           print('3');
 
-
           context.goNamed(PpUpload.id);
-
         } else {
           String title = context.translate('error');
           showPopupMessage(context, title, msg);
@@ -140,10 +137,55 @@ class _InscriptionState extends State<Inscription> {
     print(affiliationCode);
   }
 
+  Future<void> fetchAffiliationName(String code) async {
+    if (code.isEmpty) {
+      setState(() {
+        affiliationName = null;
+      });
+      return;
+    }
+
+    setState(() {
+      isFetchingAffiliation = true; // Show progress indicator
+    });
+
+    try {
+      final response =
+          await http.get(Uri.parse('${url}get-affiliation?code=$code'));
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        final fetchedName = jsonResponse['name'];
+
+        setState(() {
+          affiliationName = fetchedName; // Set the fetched name
+        });
+      } else {
+        setState(() {
+          affiliationName = context.translate('user_not_found'); // Set as not found
+        });
+      }
+    } catch (e) {
+      print('Error fetching affiliation: $e');
+      setState(() {
+        affiliationName = context.translate('user_not_found'); // Set as not found
+      });
+    } finally {
+      setState(() {
+        isFetchingAffiliation = false; // Hide progress indicator
+      });
+    }
+  }
+
   String? get affiliationCode => widget.affiliationCode;
+
+
 
   @override
   Widget build(BuildContext context) {
+
+    print('affiliationCode: is');
+    print(affiliationCode);
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
@@ -160,7 +202,8 @@ class _InscriptionState extends State<Inscription> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      margin: EdgeInsets.fromLTRB(25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
+                      margin: EdgeInsets.fromLTRB(
+                          25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
                       width: 771.27 * fem,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +226,8 @@ class _InscriptionState extends State<Inscription> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              context.translate('registration'), // 'Inscription'
+                              context
+                                  .translate('registration'), // 'Inscription'
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -197,7 +241,8 @@ class _InscriptionState extends State<Inscription> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              context.translate('create_account_msg'), // 'Créez un compte pour développez votre réseau...'
+                              context.translate(
+                                  'create_account_msg'), // 'Créez un compte pour développez votre réseau...'
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -218,9 +263,14 @@ class _InscriptionState extends State<Inscription> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _fieldTitle(fem, ffem, context.translate('full_name')), // 'Nom et prenom'
+                              _fieldTitle(
+                                  fem,
+                                  ffem,
+                                  context.translate(
+                                      'full_name')), // 'Nom et prenom'
                               CustomTextField(
-                                hintText: context.translate('example_name'), // 'Ex: Jean Paul'
+                                hintText: context.translate(
+                                    'example_name'), // 'Ex: Jean Paul'
                                 value: name,
                                 onChange: (val) {
                                   name = val;
@@ -228,34 +278,50 @@ class _InscriptionState extends State<Inscription> {
                               ),
                               _fieldTitle(fem, ffem, 'Email'),
                               CustomTextField(
-                                hintText: context.translate('example_email'), // 'Ex: Jeanpierre@gmail.com'
+                                hintText: context.translate(
+                                    'example_email'), // 'Ex: Jeanpierre@gmail.com'
                                 type: 4,
                                 value: email,
                                 onChange: (val) {
                                   email = val;
                                 },
                               ),
-                              _fieldTitle(fem, ffem, context.translate('password')), // 'Mot de passe'
+                              _fieldTitle(
+                                  fem,
+                                  ffem,
+                                  context
+                                      .translate('password')), // 'Mot de passe'
                               CustomTextField(
-                                hintText: context.translate('password'), // 'Mot de passe'
+                                hintText: context
+                                    .translate('password'), // 'Mot de passe'
                                 type: 3,
                                 value: pw,
                                 onChange: (val) {
                                   pw = val;
                                 },
                               ),
-                              _fieldTitle(fem, ffem, context.translate('confirm_password')), // 'Confirmez mot de passe'
+                              _fieldTitle(
+                                  fem,
+                                  ffem,
+                                  context.translate(
+                                      'confirm_password')), // 'Confirmez mot de passe'
                               CustomTextField(
-                                hintText: context.translate('confirm_password'), // 'Confirmez mot de passe'
+                                hintText: context.translate(
+                                    'confirm_password'), // 'Confirmez mot de passe'
                                 type: 3,
                                 value: pwconfirm,
                                 onChange: (val) {
                                   pwconfirm = val;
                                 },
                               ),
-                              _fieldTitle(fem, ffem, context.translate('whatsapp_number')), // 'Numero WhatsApp'
+                              _fieldTitle(
+                                  fem,
+                                  ffem,
+                                  context.translate(
+                                      'whatsapp_number')), // 'Numero WhatsApp'
                               CustomTextField(
-                                hintText: context.translate('example_whatsapp'), // 'Ex: 675090755'
+                                hintText: context.translate(
+                                    'example_whatsapp'), // 'Ex: 675090755'
                                 value: whatsapp,
                                 onChange: (val) {
                                   whatsapp = val;
@@ -265,27 +331,36 @@ class _InscriptionState extends State<Inscription> {
                                 },
                                 type: 5,
                               ),
-                              _fieldTitle(fem, ffem, context.translate('city')), // 'Ville'
+                              _fieldTitle(fem, ffem,
+                                  context.translate('city')), // 'Ville'
                               CustomTextField(
-                                hintText: context.translate('example_city'), // 'Ex: Douala'
+                                hintText: context
+                                    .translate('example_city'), // 'Ex: Douala'
                                 value: city,
                                 onChange: (val) {
                                   city = val;
                                 },
                               ),
-                              _fieldTitle(fem, ffem, context.translate('sponsor_code')), // 'Code parrain'
+                              _fieldTitle(fem, ffem,
+                                  context.translate('sponsor_code') + ':',
+                                  subtitle:
+                                      (affiliationName ?? '').toLowerCase()),
                               CustomTextField(
                                 hintText: 'EX: eG7iOp3',
-                                value: affiliationCode ?? code,
-                                // readOnly: affiliationCode != null,
+                                value: affiliationCode??'',
                                 onChange: (val) {
-                                  code = val;
+                                  setState(() {
+                                    code = val;
+                                  });
+                                  fetchAffiliationName(
+                                      val); // Fetch affiliation on code change
                                 },
                               ),
                             ],
                           ),
                           Container(
-                            padding: EdgeInsets.fromLTRB(10 * fem, 20 * fem, 0 * fem, 0 * fem),
+                            padding: EdgeInsets.fromLTRB(
+                                10 * fem, 20 * fem, 0 * fem, 0 * fem),
                             width: double.infinity,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -293,13 +368,16 @@ class _InscriptionState extends State<Inscription> {
                                 TextButton(
                                   onPressed: downloadPolicies,
                                   child: Container(
-                                    margin: EdgeInsets.fromLTRB(20 * fem, 0 * fem, 10 * fem, 20 * fem),
+                                    margin: EdgeInsets.fromLTRB(
+                                        20 * fem, 0 * fem, 10 * fem, 20 * fem),
                                     width: double.infinity,
                                     child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
                                       children: [
                                         Container(
-                                          margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 17 * fem, 0 * fem),
+                                          margin: EdgeInsets.fromLTRB(0 * fem,
+                                              0 * fem, 17 * fem, 0 * fem),
                                           width: 20 * fem,
                                           height: 20 * fem,
                                           child: Image.asset(
@@ -309,7 +387,8 @@ class _InscriptionState extends State<Inscription> {
                                           ),
                                         ),
                                         Text(
-                                          context.translate('terms_conditions'), // 'Conditions generales d’utilisations'
+                                          context.translate(
+                                              'terms_conditions'), // 'Conditions generales d’utilisations'
                                           style: SafeGoogleFont(
                                             'Montserrat',
                                             fontSize: 16 * ffem,
@@ -329,13 +408,16 @@ class _InscriptionState extends State<Inscription> {
                                     });
                                   },
                                   child: Container(
-                                    margin: EdgeInsets.fromLTRB(20 * fem, 0 * fem, 20 * fem, 0 * fem),
+                                    margin: EdgeInsets.fromLTRB(
+                                        20 * fem, 0 * fem, 20 * fem, 0 * fem),
                                     width: double.infinity,
                                     child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
                                       children: [
                                         Container(
-                                          margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 10 * fem, 0 * fem),
+                                          margin: EdgeInsets.fromLTRB(0 * fem,
+                                              0 * fem, 10 * fem, 0 * fem),
                                           width: 24 * fem,
                                           height: 24 * fem,
                                           child: Checkbox(
@@ -348,7 +430,8 @@ class _InscriptionState extends State<Inscription> {
                                           ),
                                         ),
                                         Text(
-                                          context.translate('accept_terms_conditions'), // 'J’accepte les termes et conditions'
+                                          context.translate(
+                                              'accept_terms_conditions'), // 'J’accepte les termes et conditions'
                                           style: SafeGoogleFont(
                                             'Montserrat',
                                             fontSize: 16 * ffem,
@@ -367,7 +450,8 @@ class _InscriptionState extends State<Inscription> {
                           SizedBox(height: 20 * fem),
                           ReusableButton(
                             clickable: check,
-                            title: context.translate('sign_up'), // 'Inscription'
+                            title:
+                                context.translate('sign_up'), // 'Inscription'
                             lite: false,
                             onPress: () async {
                               try {
@@ -375,8 +459,10 @@ class _InscriptionState extends State<Inscription> {
                                   showSpinner = true;
                                 });
                                 if (pw != pwconfirm) {
-                                  String msg = context.translate('password_confirmation_error');
-                                  String title = context.translate('false_confirmation');
+                                  String msg = context
+                                      .translate('password_confirmation_error');
+                                  String title =
+                                      context.translate('false_confirmation');
                                   showPopupMessage(context, title, msg);
                                   showSpinner = false;
                                   return print(msg);
@@ -408,7 +494,8 @@ class _InscriptionState extends State<Inscription> {
                                 padding: EdgeInsets.zero,
                               ),
                               child: Text(
-                                context.translate('already_have_account_login'), // 'Un compte ? Connexion'
+                                context.translate(
+                                    'already_have_account_login'), // 'Un compte ? Connexion'
                                 style: SafeGoogleFont(
                                   'Montserrat',
                                   fontSize: 16 * ffem,
@@ -432,18 +519,35 @@ class _InscriptionState extends State<Inscription> {
     );
   }
 
-  Container _fieldTitle(double fem, double ffem, String title) {
+  Container _fieldTitle(double fem, double ffem, String title,
+      {String subtitle = ""}) {
     return Container(
       margin: EdgeInsets.fromLTRB(49 * fem, 0 * fem, 49 * fem, 5 * fem),
-      child: Text(
-        title,
-        style: SafeGoogleFont(
-          'Montserrat',
-          fontSize: 12 * ffem,
-          fontWeight: FontWeight.w500,
-          height: 1.3333333333 * ffem / fem,
-          letterSpacing: 0.400000006 * fem,
-          color: const Color(0xff6d7d8b),
+      child: Text.rich(
+        TextSpan(
+          text: title, // Main title text
+          style: SafeGoogleFont(
+            'Montserrat',
+            fontSize: 12 * ffem,
+            fontWeight: FontWeight.w500,
+            height: 1.3333333333 * ffem / fem,
+            letterSpacing: 0.400000006 * fem,
+            color: const Color(0xff6d7d8b), // Default color for the title
+          ),
+          children: subtitle.isNotEmpty
+              ? [
+                  TextSpan(
+                    text: ' $subtitle', // Subtitle text
+                    style: SafeGoogleFont(
+                      'Montserrat',
+                      fontSize: 12 * ffem,
+                      fontWeight: FontWeight.bold, // Bold font for the subtitle
+                      height: 1.3333333333 * ffem / fem,
+                      color: Colors.red, // Red color for the subtitle
+                    ),
+                  ),
+                ]
+              : [],
         ),
       ),
     );
