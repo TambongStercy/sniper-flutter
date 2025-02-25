@@ -75,6 +75,7 @@ class _ConnexionState extends State<Connexion> {
 
           final userCode = user['code'];
           final balance = user['balance'].toDouble();
+          final benefit = user['benefits'].floorToDouble();
 
           final id = user['id'];
           avatar = user['avatar'] ?? user['url'];
@@ -99,6 +100,7 @@ class _ConnexionState extends State<Connexion> {
           prefs.setString('code', userCode);
           prefs.setString('avatar', avatar ?? '');
           prefs.setDouble('balance', balance);
+          prefs.setDouble('benefit', benefit);
           prefs.setBool('isSubscribed', isSubscribed);
 
           return true;

@@ -25,15 +25,13 @@ class _WalletState extends State<Wallet> {
   double benefice = 0;
   String email = '';
   bool showSpinner = true;
-  List<Map<String, dynamic>> transactions = [];
   late SharedPreferences prefs;
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
-    balance = prefs.getDouble('balance') ?? 0;
+    balance = (prefs.getDouble('balance') ?? 0).floorToDouble();
     email = prefs.getString('email') ?? '';
-    transactions = await getTransactions();
-    benefice = getTransactionsBenefit(prefs);
+    benefice = (prefs.getDouble('benefit') ?? 0).floorToDouble();
   }
 
   @override
@@ -94,10 +92,9 @@ class _WalletState extends State<Wallet> {
         email = user['email'] ?? '';
         final phone = user['phoneNumber'].toString();
         final userCode = user['code'];
-        balance = user['balance'].toDouble();
+        balance = user['balance'].floorToDouble();
         final name = user['name'] ?? '';
         final isSubscribed = user['isSubscribed'] ?? false;
-        final gottenTransactions = user['transactions'] ?? [];
         prefs.setString('name', name);
         prefs.setString('email', email);
         prefs.setString('region', region);
@@ -105,8 +102,6 @@ class _WalletState extends State<Wallet> {
         prefs.setString('code', userCode);
         prefs.setDouble('balance', balance);
         prefs.setBool('isSubscribed', isSubscribed);
-        await saveTransactionList(gottenTransactions);
-        transactions = await getTransactions();
 
         setState(() {});
 
@@ -229,7 +224,7 @@ class _WalletState extends State<Wallet> {
                   useSafeArea: true,
                   context: context,
                   builder: (context) {
-                    return BottomHitory(transactions: transactions);
+                    return BottomHitory();
                   },
                 );
               },

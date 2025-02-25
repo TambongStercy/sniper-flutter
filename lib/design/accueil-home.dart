@@ -103,7 +103,6 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   late SharedPreferences prefs;
 
-
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
 
@@ -116,11 +115,11 @@ class _HomeState extends State<Home> {
     avatar = prefs.getString('avatar') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
     balance = prefs.getDouble('balance') ?? 0;
-
-    benefice = getTransactionsBenefit(prefs);
+    benefice = prefs.getDouble('benefit') ?? 0;
 
     // Construct the URI
-    Uri uri = Uri.parse('$frontEnd/inscription').replace(queryParameters: {'affiliationCode': code});
+    Uri uri = Uri.parse('${frontEnd}inscription')
+        .replace(queryParameters: {'affiliationCode': code});
 
     link = uri.toString();
   }
@@ -237,219 +236,233 @@ class _HomeState extends State<Home> {
 
     final slides = isSubscribed ? subSlides : unsubSlides;
 
-    return SingleChildScrollView(
-      child: Container(
-        padding: EdgeInsets.fromLTRB(0 * fem, 25 * fem, 0 * fem, 14 * fem),
-        width: double.infinity,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: 170 * fem,
+    return RefreshIndicator(
+      onRefresh: () async {
+        await initSharedPref();
+        if (mounted) {
+          setState(() {});
+        }
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(0 * fem, 25 * fem, 0 * fem, 14 * fem),
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    constraints: BoxConstraints(
+                      maxWidth: 170 * fem,
+                    ),
+                    child: Text(
+                      capitalizeWords(name),
+                      overflow: TextOverflow.ellipsis,
+                      style: SafeGoogleFont(
+                        'Montserrat',
+                        letterSpacing: 0.0 * fem,
+                        fontSize: 25 * ffem,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4 * ffem / fem,
+                        color: Colors.black,
+                      ),
+                    ),
                   ),
-                  child: Text(
-                    capitalizeWords(name),
+                  Text(
+                    ',',
                     overflow: TextOverflow.ellipsis,
                     style: SafeGoogleFont(
                       'Montserrat',
                       letterSpacing: 0.0 * fem,
-                      fontSize: 25 * ffem,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 22 * ffem,
+                      fontWeight: FontWeight.w700,
                       height: 1.4 * ffem / fem,
                       color: Colors.black,
                     ),
                   ),
+                ],
+              ),
+              Container(
+                margin:
+                    EdgeInsets.fromLTRB(7 * fem, 0 * fem, 0 * fem, 20 * fem),
+                constraints: BoxConstraints(
+                  maxWidth: 325 * fem,
                 ),
-                Text(
-                  ',',
-                  overflow: TextOverflow.ellipsis,
-                  style: SafeGoogleFont(
-                    'Montserrat',
-                    letterSpacing: 0.0 * fem,
-                    fontSize: 22 * ffem,
-                    fontWeight: FontWeight.w700,
-                    height: 1.4 * ffem / fem,
-                    color: Colors.black,
+                child: RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                    style: SafeGoogleFont(
+                      'Montserrat',
+                      fontSize: 17 * ffem,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4 * ffem / fem,
+                      color: Color(0xff25313c),
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: context.translate('welcome_sniper'),
+                      ),
+                      TextSpan(
+                        text: 'SBC',
+                        style: SafeGoogleFont(
+                          'Montserrat',
+                          fontSize: 20 * ffem,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4 * ffem / fem,
+                          color: limeGreen,
+                        ),
+                      ),
+                      TextSpan(
+                        text: context.translate('welcome_message'),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-            Container(
-              margin: EdgeInsets.fromLTRB(7 * fem, 0 * fem, 0 * fem, 20 * fem),
-              constraints: BoxConstraints(
-                maxWidth: 325 * fem,
               ),
-              child: RichText(
-                textAlign: TextAlign.center,
-                text: TextSpan(
+              MoneyCard(isSold: true, amount: balance),
+              MoneyCard(isSold: false, amount: benefice),
+              SizedBox(height: 20.0),
+              Image.asset('assets/assets/images/50 perc.png'),
+              SizedBox(height: 20.0),
+              ReusableButton(
+                title: context.translate('share_link'),
+                lite: false,
+                onPress: () {
+                  Share.share(link);
+                },
+              ),
+              Text(
+                context.translate('about_sbc'),
+                style: SafeGoogleFont(
+                  'Montserrat',
+                  letterSpacing: 0.0 * fem,
+                  fontSize: 22 * ffem,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4 * ffem / fem,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 20 * fem),
+                width: double.infinity,
+                child: Text(
+                  context.translate('sbc_description'),
                   style: SafeGoogleFont(
                     'Montserrat',
-                    fontSize: 17 * ffem,
+                    fontSize: 15 * ffem,
                     fontWeight: FontWeight.w500,
                     height: 1.4 * ffem / fem,
                     color: Color(0xff25313c),
                   ),
-                  children: <TextSpan>[
-                    TextSpan(
-                      text: context.translate('welcome_sniper'),
-                    ),
-                    TextSpan(
-                      text: 'SBC',
-                      style: SafeGoogleFont(
-                        'Montserrat',
-                        fontSize: 20 * ffem,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4 * ffem / fem,
-                        color: limeGreen,
-                      ),
-                    ),
-                    TextSpan(
-                      text: context.translate('welcome_message'),
-                    ),
-                  ],
+                  textAlign: TextAlign.center,
                 ),
               ),
-            ),
-            MoneyCard(isSold: true, amount: balance),
-            MoneyCard(isSold: false, amount: benefice),
-            SizedBox(height: 20.0),
-            Image.asset('assets/assets/images/50 perc.png'),
-            SizedBox(height: 20.0),
-            ReusableButton(
-              title: context.translate('share_link'),
-              lite: false,
-              onPress: () {
-                Share.share(link);
-              },
-            ),
-            Text(
-              context.translate('about_sbc'),
-              style: SafeGoogleFont(
-                'Montserrat',
-                letterSpacing: 0.0 * fem,
-                fontSize: 22 * ffem,
-                fontWeight: FontWeight.w600,
-                height: 1.4 * ffem / fem,
-                color: Colors.black,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              context.translate('sbc_description'),
-              style: SafeGoogleFont(
-                'Montserrat',
-                fontSize: 15 * ffem,
-                fontWeight: FontWeight.w500,
-                height: 1.4 * ffem / fem,
-                color: Color(0xff25313c),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 20),
-            MarketCard(),
-            AdCard(
-              height: 300,
-              buttonTitle: context.translate('learn_more'),
-              buttonAction: () {
-                changePage(1);
-              },
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 5 * fem),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                ),
-                child: AnotherCarousel(
-                  images: slides.map((name) {
-                    return AssetImage('assets/slides/$name.jpg');
-                  }).toList(),
-                  boxFit: BoxFit.contain,
-                  showIndicator: false,
-                  dotSize: 3.0,
-                  borderRadius: true,
+              SizedBox(height: 20),
+              MarketCard(),
+              AdCard(
+                height: 300,
+                buttonTitle: context.translate('learn_more'),
+                buttonAction: () {
+                  changePage(1);
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 5 * fem),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                  ),
+                  child: AnotherCarousel(
+                    images: slides.map((name) {
+                      return AssetImage('assets/slides/$name.jpg');
+                    }).toList(),
+                    boxFit: BoxFit.contain,
+                    showIndicator: false,
+                    dotSize: 3.0,
+                    borderRadius: true,
+                  ),
                 ),
               ),
-            ),
-            AdCard(
-              height: 300,
-              buttonTitle: context.translate('download_document'),
-              buttonAction: downloadPresentation,
-              child: Container(
-                width: double.infinity,
-                margin: EdgeInsets.symmetric(
-                    horizontal: 15 * fem, vertical: 5 * fem),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12 * fem),
+              AdCard(
+                height: 300,
+                buttonTitle: context.translate('download_document'),
+                buttonAction: downloadPresentation,
+                child: Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.symmetric(
+                      horizontal: 15 * fem, vertical: 5 * fem),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12 * fem),
+                  ),
+                  child: const VideoItem(),
                 ),
-                child: const VideoItem(),
               ),
-            ),
-            !isSubscribed
-                ? Column(
-                    children: [
-                      Container(
-                        margin: EdgeInsets.fromLTRB(
-                            7 * fem, 0 * fem, 0 * fem, 9 * fem),
-                        child: Text(
-                          context.translate('join_community'),
-                          style: SafeGoogleFont(
-                            'Montserrat',
-                            fontSize: 16 * ffem,
-                            fontWeight: FontWeight.w600,
-                            height: 1.25 * ffem / fem,
-                            color: Color(0xfff49101),
+              !isSubscribed
+                  ? Column(
+                      children: [
+                        Container(
+                          margin: EdgeInsets.fromLTRB(
+                              7 * fem, 0 * fem, 0 * fem, 9 * fem),
+                          child: Text(
+                            context.translate('join_community'),
+                            style: SafeGoogleFont(
+                              'Montserrat',
+                              fontSize: 16 * ffem,
+                              fontWeight: FontWeight.w600,
+                              height: 1.25 * ffem / fem,
+                              color: Color(0xfff49101),
+                            ),
                           ),
                         ),
-                      ),
-                      Container(
-                        padding: EdgeInsets.all(7 * fem),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(5 * fem),
-                          color: Color.fromARGB(255, 244, 245, 248),
-                        ),
-                        child: Text(
-                          context.translate('subscription_not_active'),
-                          style: SafeGoogleFont(
-                            'Montserrat',
-                            fontSize: 15 * ffem,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4 * ffem / fem,
-                            color: Color.fromARGB(255, 91, 92, 96),
+                        Container(
+                          padding: EdgeInsets.all(7 * fem),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(5 * fem),
+                            color: Color.fromARGB(255, 244, 245, 248),
+                          ),
+                          child: Text(
+                            context.translate('subscription_not_active'),
+                            style: SafeGoogleFont(
+                              'Montserrat',
+                              fontSize: 15 * ffem,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4 * ffem / fem,
+                              color: Color.fromARGB(255, 91, 92, 96),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 10.0),
-                      ReusableButton(
-                        title: context.translate('pay_subscription'),
-                        onPress: () {
-                          context.pushNamed(Subscrition.id);
-                        },
-                        lite: false,
-                      ),
-                      Container(
-                        padding: EdgeInsets.all(7 * fem),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(5 * fem),
-                          color: Color.fromARGB(255, 244, 245, 248),
+                        const SizedBox(height: 10.0),
+                        ReusableButton(
+                          title: context.translate('pay_subscription'),
+                          onPress: () {
+                            context.pushNamed(Subscrition.id);
+                          },
+                          lite: false,
                         ),
-                        child: Text(
-                          context.translate('invite_friends_message'),
-                          style: SafeGoogleFont(
-                            'Montserrat',
-                            fontSize: 15 * ffem,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4 * ffem / fem,
-                            color: Color.fromARGB(255, 91, 92, 96),
+                        Container(
+                          padding: EdgeInsets.all(7 * fem),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(5 * fem),
+                            color: Color.fromARGB(255, 244, 245, 248),
+                          ),
+                          child: Text(
+                            context.translate('invite_friends_message'),
+                            style: SafeGoogleFont(
+                              'Montserrat',
+                              fontSize: 15 * ffem,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4 * ffem / fem,
+                              color: Color.fromARGB(255, 91, 92, 96),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  )
-                : const SizedBox(),
-          ],
+                      ],
+                    )
+                  : const SizedBox(),
+            ],
+          ),
         ),
       ),
     );

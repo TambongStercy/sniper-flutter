@@ -39,6 +39,7 @@ class _InscriptionState extends State<Inscription> {
   bool isSubscribed = false;
   bool? check = false;
   bool showSpinner = false;
+  bool isChanged = false;
 
   late SharedPreferences prefs;
 
@@ -128,6 +129,9 @@ class _InscriptionState extends State<Inscription> {
   void initState() {
     super.initState();
     initSharedPref();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchAffiliationName(affiliationCode ?? '');
+    });
   }
 
   void initSharedPref() async {
@@ -162,13 +166,13 @@ class _InscriptionState extends State<Inscription> {
         });
       } else {
         setState(() {
-          affiliationName = context.translate('user_not_found'); // Set as not found
+          affiliationName = null; // Set as not found
         });
       }
     } catch (e) {
       print('Error fetching affiliation: $e');
       setState(() {
-        affiliationName = context.translate('user_not_found'); // Set as not found
+        affiliationName = null; // Set as not found
       });
     } finally {
       setState(() {
@@ -179,11 +183,8 @@ class _InscriptionState extends State<Inscription> {
 
   String? get affiliationCode => widget.affiliationCode;
 
-
-
   @override
   Widget build(BuildContext context) {
-
     print('affiliationCode: is');
     print(affiliationCode);
     double baseWidth = 390;
@@ -347,13 +348,16 @@ class _InscriptionState extends State<Inscription> {
                                       (affiliationName ?? '').toLowerCase()),
                               CustomTextField(
                                 hintText: 'EX: eG7iOp3',
-                                value: affiliationCode??'',
+                                value: affiliationCode ?? '',
+                                readOnly: affiliationCode != null &&
+                                    affiliationName != null &&
+                                    !isChanged,
                                 onChange: (val) {
                                   setState(() {
                                     code = val;
+                                    isChanged = true;
                                   });
-                                  fetchAffiliationName(
-                                      val); // Fetch affiliation on code change
+                                  fetchAffiliationName(val); // Fetch affiliation on code change
                                 },
                               ),
                             ],

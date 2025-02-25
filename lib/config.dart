@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 // const host = 'http://127.0.0.1:5000/';//local host
-// const host = 'http://192.168.225.238:5000/';// slade tech
-// const host = 'http://192.168.43.191:5000/';//your hotspot
+// const host = 'http://192.168.225.234:5000/';// slade tech
+// const host = 'http://192.168.43.191:5000/'; //your hotspot
 // const host = 'http://192.168.1.103:5000/';//wifi MTN BOX
 const host = 'https://sniper-xvs9.onrender.com/'; //online
 
@@ -21,14 +21,18 @@ const downloadVcf = '${url}download-vcf';
 
 const downloadPoliss = '${url}download-policies';
 const downloadPres = '${url}download-presentation';
+const createOTPLink = '${url}create-otp';
 const downloadContacts = '${url}download-contacts';
 const downloadContactsUpdates = '${url}download-contacts-updates';
 
 const subscriptiion = '${url}subscription';
 const withdraw = '${url}withdraw';
+const requestPayoutOTP = '${url}request-payout-otp';
 const getUpdates = '${url}get-infos';
 const getReferals = '${url}get-referals';
 const getReferedUsers = '${url}get-refered-users';
+const getTransactions = '${url}get-transactions';
+const getPartnerTransactions = '${url}get-partner-transactions';
 
 const getProducts = '${url}get-products';
 const getProduct = '${url}get-product';
@@ -45,6 +49,7 @@ const validatefOTP = '${url}validate-fpw-otp';
 const validateEOTP = '${url}validate-email-otp';
 
 const convertToXAF = '${paymentUrl}convertxfa';
+const convertCurrency = '${paymentUrl}convertcurrency';
 
 const blue = Color(0xff1862f0);
 const limeGreen = Color(0xff92b127);

@@ -38,6 +38,7 @@ class Accueil extends StatefulWidget {
 class _AccueilState extends State<Accueil> {
   int _selectedIndex = 2;
   late List<Widget> _pages;
+  int _homeVersion = 0;
 
   String avatar = '';
   String token = '';
@@ -61,7 +62,7 @@ class _AccueilState extends State<Accueil> {
   void initState() {
     super.initState();
 
-    _selectedIndex = (prdtId != null && sellerId != null)?3:2;
+    _selectedIndex = (prdtId != null && sellerId != null) ? 3 : 2;
 
     _pages = <Widget>[
       const Publicite(),
@@ -99,7 +100,10 @@ class _AccueilState extends State<Accueil> {
       _pages = <Widget>[
         const Publicite(),
         const Divertissement(),
-        Home(changePage: onItemTapped),
+        Home(
+          changePage: onItemTapped,
+          key: ValueKey<int>(_homeVersion),
+        ),
         Market(),
         const Investissement(),
       ];
@@ -111,7 +115,6 @@ class _AccueilState extends State<Accueil> {
   }
 
   Future<void> initSharedPref() async {
-
     prefs = await SharedPreferences.getInstance();
 
     id = prefs.getString('id') ?? '';
@@ -120,7 +123,6 @@ class _AccueilState extends State<Accueil> {
     name = prefs.getString('name') ?? '';
     avatar = prefs.getString('avatar') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
-    
   }
 
   void onItemTapped(int index) {
@@ -156,8 +158,8 @@ class _AccueilState extends State<Accueil> {
         final region = user['region'];
         final phone = user['phoneNumber'].toString();
         final userCode = user['code'];
-        final balance = user['balance'].toDouble();
-        final gottenTransactions = user['transactions'] ?? [];
+        final balance = user['balance'].floorToDouble();
+        final benefit = user['benefits'].floorToDouble();
 
         final partner = user['partner'];
 
@@ -169,13 +171,11 @@ class _AccueilState extends State<Accueil> {
 
         final momo = user['momoNumber'];
         final momoCorrespondent = user['momoCorrespondent'];
-        print(user);
-        print(momo);
 
         if (momo != null) {
           prefs.setString('momo', momo.toString());
 
-          if(momoCorrespondent != null) {
+          if (momoCorrespondent != null) {
             prefs.setString('momoCorrespondent', momoCorrespondent);
           }
         }
@@ -187,21 +187,17 @@ class _AccueilState extends State<Accueil> {
         prefs.setString('phone', phone);
         prefs.setString('code', userCode);
         prefs.setDouble('balance', balance);
-        await saveTransactionList(gottenTransactions);
+        prefs.setDouble('benefit', benefit);
 
         if (!isSubscribed) {
-          print('stay here');
-          print(isSubscribed);
           context.goNamed(Subscrition.id);
         }
 
         if (partner != null) {
           final partnerAmount = partner['amount'].toDouble();
           final partnerPack = partner['pack'];
-          final partnerTrans = partner['transactions'];
           prefs.setDouble('partnerAmount', partnerAmount);
           prefs.setString('partnerPack', partnerPack);
-          await savePartnerTransList(partnerTrans);
           isPartner = true;
         }
 
@@ -212,8 +208,11 @@ class _AccueilState extends State<Accueil> {
           print('add Notification');
         }
         if (momo == null) {
-          _showPhoneNumberDialog();
+          // _showPhoneNumberDialog();
         }
+
+        _homeVersion++;
+        refreshPage();
       } else {
         if (error == 'Accès refusé') {
           String title = context.translate('error_access_denied');
@@ -232,8 +231,6 @@ class _AccueilState extends State<Accueil> {
 
         String title = context.translate('error');
         showPopupMessage(context, title, msg);
-
-        print('something went wrong');
       }
     } catch (e) {
       print(e);
@@ -253,10 +250,11 @@ class _AccueilState extends State<Accueil> {
         'Content-Type': 'application/x-www-form-urlencoded',
       };
 
-      final url = Uri.parse('$getProduct?seller=$sellerId&id=$prdtId&email=$email');
+      final url =
+          Uri.parse('$getProduct?seller=$sellerId&id=$prdtId&email=$email');
 
       print(url);
-      
+
       final response = await http.get(url, headers: headers);
 
       final jsonResponse = jsonDecode(response.body);
@@ -267,7 +265,6 @@ class _AccueilState extends State<Accueil> {
       print(jsonResponse);
 
       if (response.statusCode == 200) {
-
         final userAndPrdt = jsonResponse['userPrdt'];
 
         if (mounted) setState(() {});

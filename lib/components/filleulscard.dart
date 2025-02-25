@@ -50,6 +50,10 @@ class _FilleulsCardState extends State<FilleulsCard> {
   bool isSubscribed = false;
   bool isPartner = false;
 
+  String getWaLink() {
+    return "";
+  }
+
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
     email = prefs.getString('email') ?? '';
@@ -107,15 +111,21 @@ class _FilleulsCardState extends State<FilleulsCard> {
             color: Color(0xff25313c),
           ),
         ),
-        subtitle: Text(
-          widget.email,
-          style: SafeGoogleFont(
-            'Montserrat',
-            fontSize: 12 * ffem,
-            fontWeight: FontWeight.w500,
-            height: 1.4166666667 * ffem / fem,
-            letterSpacing: -0.5 * fem,
-            color: Color(0xff6d7d8b),
+        subtitle: InkWell(
+          onTap: () {
+            sendWhatsAppMessage(context, widget.name, widget.email);
+            // https://wa.link/bht6g7
+          },
+          child: Text(
+            widget.email,
+            style: SafeGoogleFont(
+              'Montserrat',
+              fontSize: 12 * ffem,
+              fontWeight: FontWeight.w500,
+              height: 1.4166666667 * ffem / fem,
+              letterSpacing: -0.5 * fem,
+              color: Color(0xff6d7d8b),
+            ),
           ),
         ),
         trailing: widget.isSub

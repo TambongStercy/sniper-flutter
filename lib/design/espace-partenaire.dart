@@ -35,7 +35,6 @@ class _EspacePartenaireState extends State<EspacePartenaire> {
 
     pack = prefs.getString('partnerPack') ?? '';
     amount = prefs.getDouble('partnerAmount') ?? 0;
-    transactions = await getPartnerTrans();
   }
 
   @override
@@ -75,7 +74,7 @@ class _EspacePartenaireState extends State<EspacePartenaire> {
                   context: context,
                   builder: (context) {
                     return BottomHitory(
-                      transactions: transactions,
+                      type: 'partner',
                     );
                   },
                 );

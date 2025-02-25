@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:snipper_frontend/localization/app_localizations.dart';
@@ -13,13 +14,11 @@ void main() async {
   // Call the platform-specific setPathUrlStrategy function
   setPathUrlStrategy();
 
-  final router = await AppRouter.router();
-  runApp(MyApp(router: router));
+  runApp(MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  final GoRouter router;
-  const MyApp({Key? key, required this.router}) : super(key: key);
+  const MyApp({Key? key}) : super(key: key);
 
   static void setLocale(BuildContext context, Locale newLocale) {
     _MyAppState? state = context.findAncestorStateOfType<_MyAppState>();
@@ -31,7 +30,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-
   // For languages
   Locale? _locale;
   void setLocale(Locale locale) {
@@ -40,14 +38,20 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  // For router
-  get router => widget.router;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      routerConfig: router,
+      routerConfig: AppRouter.router,
       locale: _locale,
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.touch,
+          PointerDeviceKind.stylus,
+          PointerDeviceKind.trackpad,
+        },
+      ),
       supportedLocales: const [
         Locale('en', ''),
         Locale('fr', ''),
@@ -70,6 +74,11 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primaryColor: const Color(0xFF92B127),
+        scrollbarTheme: ScrollbarThemeData(
+          thumbVisibility: MaterialStateProperty.all(true),
+          thickness: MaterialStateProperty.all(6.0),
+          radius: const Radius.circular(4.0),
+        ),
       ),
     );
   }

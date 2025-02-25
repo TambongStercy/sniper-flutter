@@ -26,8 +26,14 @@ class AppLocalizations {
   }
 
   // Updated to ensure non-null return value
-  String translate(String key) {
-    return _localizedStrings[key] ?? 'Key not found: $key';
+  String translate(String key, [Map<String, String>? params]) {
+    String translation = _localizedStrings[key] ?? key;
+    if (params != null) {
+      params.forEach((key, value) {
+        translation = translation.replaceAll('{$key}', value);
+      });
+    }
+    return translation;
   }
 
   static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();

@@ -71,7 +71,7 @@ class _NewPasswordState extends State<NewPassword> {
       final msg = jsonResponse['message'] ?? '';
 
       final userCode = user['code'];
-      final balance = user['balance'];
+      final balance = user['balance'].floorToDouble();
       final id = user['id'];
       avatar = !kIsWeb ? user['avatar'] : user['url'];
       isSubscribed = user['isSubscribed'] ?? false;
@@ -93,7 +93,7 @@ class _NewPasswordState extends State<NewPassword> {
         prefs.setString('phone', phone);
         prefs.setString('code', userCode);
         prefs.setString('avatar', avatar ?? '');
-        prefs.setInt('balance', balance);
+        prefs.setDouble('balance', balance);
         prefs.setBool('isSubscribed', isSubscribed);
 
         return true;

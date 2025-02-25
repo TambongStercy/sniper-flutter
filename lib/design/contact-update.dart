@@ -249,6 +249,17 @@ class _ContactUpdateState extends State<ContactUpdate> {
     return DateFormat('yyyy-MM-dd').format(date);
   }
 
+  Future<String> createOTP(BuildContext context) async {
+    final url = Uri.parse('$createOTPLink?email=$email');
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    final response = await http.post(url, headers: headers);
+    final jsonResponse = jsonDecode(response.body);
+    return jsonResponse['otp'].toString();
+  }
+
   void updateContacts() async {
     if (startDate == null || endDate == null) {
       showPopupMessage(
@@ -258,6 +269,12 @@ class _ContactUpdateState extends State<ContactUpdate> {
       );
       return;
     }
+
+    setState(() {
+      showSpinner = true;
+    });
+
+    final otp = await createOTP(context);
 
     if (endDate!.isBefore(startDate!)) {
       showPopupMessage(
@@ -272,16 +289,15 @@ class _ContactUpdateState extends State<ContactUpdate> {
     final formattedEndDate = DateFormat('yyyy-MM-dd').format(endDate!);
 
     downloadUpdateUrl =
-        '$downloadContactsUpdates?email=$email&startDate=$formattedStartDate&endDate=$formattedEndDate';
+        '$downloadContactsUpdates?email=$email&startDate=$formattedStartDate&endDate=$formattedEndDate&otp=$otp';
 
     if (kIsWeb) {
       launchURL(downloadUpdateUrl);
+      setState(() {
+        showSpinner = false;
+      });
       return;
     }
-
-    setState(() {
-      showSpinner = true;
-    });
 
     try {
       final path = await downloadVCF(context);

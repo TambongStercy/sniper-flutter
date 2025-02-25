@@ -60,6 +60,20 @@ class _ProfileState extends State<Profile> {
     downloadUpdateUrl = '${downloadContactsUpdates}?email=$email';
   }
 
+  Future<String> createOTP(BuildContext context) async {
+    print(email);
+    final url = Uri.parse('$createOTPLink?email=$email');
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    final response = await http.post(url, headers: headers);
+    final jsonResponse = jsonDecode(response.body);
+
+    print(jsonResponse);
+    return jsonResponse['otp'].toString();
+  }
+
   Future<void> logoutUser() async {
     final email = prefs.getString('email');
     final token = prefs.getString('token');
@@ -90,7 +104,10 @@ class _ProfileState extends State<Profile> {
     prefs.setString('code', '');
     prefs.setString('avatar', '');
     prefs.setInt('balance', 0);
+    prefs.setDouble('benefit', 0.0);
     prefs.setBool('isSubscribed', false);
+
+    prefs.clear();
     await deleteNotifications();
     await deleteAllKindTransactions();
 
@@ -371,7 +388,8 @@ class _ProfileState extends State<Profile> {
                               if (isSubscribed) {
                                 refreshPageWait();
                                 if (kIsWeb) {
-                                  launchURL(downloadUrl);
+                                  final otp = await createOTP(context);
+                                  launchURL('$downloadUrl&otp=$otp');
                                   refreshPageRemove();
                                 } else {
                                   final path = await downloadVCF(context);

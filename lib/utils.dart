@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/config.dart';
+import 'package:snipper_frontend/localization/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 
@@ -306,8 +307,7 @@ ImageProvider<Object> profileImage(String avatarPath) {
   // }
   const nothingPP =
       'https://www.shutterstock.com/image-vector/default-avatar-profile-icon-social-600nw-1677509740.jpg';
-  return NetworkImage(
-      ((avatarPath == '') ? nothingPP : avatarPath));
+  return NetworkImage(((avatarPath == '') ? nothingPP : avatarPath));
 
   // if (ppExist(avatarPath)) {
   //   print('avatarPath please call setState: $avatarPath');
@@ -348,6 +348,33 @@ void launchURL(String url) {
   // } else {
   //   throw 'Could not launch $url';
   // }
+}
+
+void sendWhatsAppMessage(
+    BuildContext context, String name, String phoneNumber) async {
+  final translator = AppLocalizations.of(context);
+
+  String message = [
+    translator.translate('greeting', {'name': name}),
+    translator.translate('assistance'),
+    translator.translate('good_news'),
+    translator.translate('price_msg'),
+    translator.translate('benefits'),
+    translator.translate('contacts_msg'),
+    translator.translate('courses'),
+    translator.translate('affiliation_msg'),
+    translator.translate('join_us'),
+    translator.translate('link'),
+  ].join("\n\n");
+
+  String encodedMessage = Uri.encodeComponent(message);
+  String whatsappUrl = "https://wa.me/$phoneNumber?text=$encodedMessage";
+
+  if (await canLaunch(whatsappUrl)) {
+    await launch(whatsappUrl);
+  } else {
+    throw 'Could not launch $whatsappUrl';
+  }
 }
 
 Country? getCountryFromPhoneNumber(String phoneNumber) {
@@ -417,25 +444,25 @@ Future<List<Map<String, String>>> getNotifications() async {
   }
 }
 
-Future<void> saveTransactionList(List<dynamic> transactions) async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+// Future<void> saveTransactionList(List<dynamic> transactions) async {
+//   SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  // Convert the list to a JSON string
-  String jsonList = jsonEncode(transactions);
+//   // Convert the list to a JSON string
+//   String jsonList = jsonEncode(transactions);
 
-  // Save the JSON string to shared preferences
-  prefs.setString('transaction', jsonList);
-}
+//   // Save the JSON string to shared preferences
+//   prefs.setString('transaction', jsonList);
+// }
 
-Future<void> savePartnerTransList(List<dynamic> transactions) async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+// Future<void> savePartnerTransList(List<dynamic> transactions) async {
+//   SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  // Convert the list to a JSON string
-  String jsonList = jsonEncode(transactions);
+//   // Convert the list to a JSON string
+//   String jsonList = jsonEncode(transactions);
 
-  // Save the JSON string to shared preferences
-  prefs.setString('partnerTrans', jsonList);
-}
+//   // Save the JSON string to shared preferences
+//   prefs.setString('partnerTrans', jsonList);
+// }
 
 Future<void> deleteAllKindTransactions() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -445,85 +472,35 @@ Future<void> deleteAllKindTransactions() async {
   prefs.setString('partnerTrans', '');
 }
 
-Future<List<Map<String, dynamic>>> getTransactions() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+// Future<List<Map<String, dynamic>>> getPartnerTrans() async {
+//   SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  // Retrieve the JSON string from shared preferences
-  String? jsonList = prefs.getString('transaction');
+//   // Retrieve the JSON string from shared preferences
+//   String? jsonList = prefs.getString('partnerTrans');
 
-  // If the JSON string is not null, decode it back to a list
-  if (jsonList != null && jsonList.isNotEmpty) {
-    List<Map<String, dynamic>> userTransactions = jsonDecode(jsonList)
-        .map((item) {
-          // Assuming 'date' is the key for the date field
-          if (item['date'] != null) {
-            DateTime date = DateTime.parse(item['date']);
-            // Add the DateTime object to the map
-            item['date'] = date;
-          }
-          return item;
-        })
-        .cast<Map<String, dynamic>>()
-        .toList();
+//   print(jsonList);
 
-    return userTransactions.reversed.take(20).toList();
-  } else {
-    // If the JSON string is null, return an empty list
-    return [];
-  }
-}
+//   // If the JSON string is not null, decode it back to a list
+//   if (jsonList != null && jsonList.isNotEmpty) {
+//     List<Map<String, dynamic>> userTransactions = jsonDecode(jsonList)
+//         .map((item) {
+//           // Assuming 'date' is the key for the date field
+//           if (item['date'] != null) {
+//             DateTime date = DateTime.parse(item['date']);
+//             // Add the DateTime object to the map
+//             item['date'] = date;
+//           }
+//           return item;
+//         })
+//         .cast<Map<String, dynamic>>()
+//         .toList();
 
-Future<List<Map<String, dynamic>>> getPartnerTrans() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-
-  // Retrieve the JSON string from shared preferences
-  String? jsonList = prefs.getString('partnerTrans');
-
-  print(jsonList);
-
-  // If the JSON string is not null, decode it back to a list
-  if (jsonList != null && jsonList.isNotEmpty) {
-    List<Map<String, dynamic>> userTransactions = jsonDecode(jsonList)
-        .map((item) {
-          // Assuming 'date' is the key for the date field
-          if (item['date'] != null) {
-            DateTime date = DateTime.parse(item['date']);
-            // Add the DateTime object to the map
-            item['date'] = date;
-          }
-          return item;
-        })
-        .cast<Map<String, dynamic>>()
-        .toList();
-
-    return userTransactions.reversed.take(20).toList();
-  } else {
-    // If the JSON string is null, return an empty list
-    return [];
-  }
-}
-
-double getTransactionsBenefit(SharedPreferences prefs) {
-
-  // Retrieve the JSON string from shared preferences
-  String? jsonList = prefs.getString('transaction');
-
-  double value = 0;
-
-  // If the JSON string is not null, decode it back to a list
-  if (jsonList != null && jsonList.isNotEmpty) {
-    jsonDecode(jsonList).forEach((item) {
-      if (item['transType'] == 'withdrawal') {
-        value += double.parse(item['amount']);
-      }
-    });
-
-    return value * 0.99;
-  } else {
-    // If the JSON string is null, return an empty list
-    return 0;
-  }
-}
+//     return userTransactions.reversed.take(20).toList();
+//   } else {
+//     // If the JSON string is null, return an empty list
+//     return [];
+//   }
+// }
 
 /// Format the time as HH:MM AM/PM
 String formatTime(DateTime dateTime) {

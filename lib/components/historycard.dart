@@ -3,16 +3,18 @@ import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 
 class HistoryCard extends StatelessWidget {
-  const HistoryCard({
+  HistoryCard({
     super.key,
     required this.amount,
     required this.time,
     required this.deposit,
+    this.pending,
   });
 
   final int amount;
   final String time;
   final bool deposit;
+  bool? pending;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +31,11 @@ class HistoryCard extends StatelessWidget {
     } else {
       color = Color(0xffed445d);
       action = context.translate('withdraw_action');
+    } 
+
+    if(pending != null && pending == true){
+      color = Color(0xfff59e0b);
+      action = context.translate('pending');
     }
 
     return Container(

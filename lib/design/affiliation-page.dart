@@ -37,10 +37,10 @@ class _AffiliationState extends State<Affiliation> {
   int proRequirements = 5000;
   int goldRequirements = 10000;
 
-  List directSubEmails = [];
-  List directNonSubEmails = [];
-  List indirectSubEmails = [];
-  List indirectNonSubEmails = [];
+  int directSubCount = 0;
+  int directNonSubCount = 0;
+  int indirectSubCount = 0;
+  int indirectNonSubCount = 0;
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
@@ -48,9 +48,8 @@ class _AffiliationState extends State<Affiliation> {
     email = prefs.getString('email') ?? '';
 
     // Construct the URI
-    Uri uri = Uri.parse('$frontEnd/inscription')
+    Uri uri = Uri.parse('${frontEnd}inscription')
         .replace(queryParameters: {'affiliationCode': code});
-    
 
     link = uri.toString();
   }
@@ -108,12 +107,11 @@ class _AffiliationState extends State<Affiliation> {
         directCount = jsonResponse['directCount'] ?? 0;
         indirectCount = jsonResponse['indirectCount'] ?? 0;
 
-        directSubEmails = jsonResponse['directSep']['subEmails'] ?? [];
-        directNonSubEmails = jsonResponse['directSep']['nonSubEmails'] ?? [];
+        directSubCount = jsonResponse['directSubCount'] ?? 0;
+        directNonSubCount = jsonResponse['directNonsubCount'] ?? 0;
 
-        indirectSubEmails = jsonResponse['indirectSep']['subEmails'] ?? [];
-        indirectNonSubEmails =
-            jsonResponse['indirectSep']['nonSubEmails'] ?? [];
+        indirectSubCount = jsonResponse['indirectSubCount'] ?? 0;
+        indirectNonSubCount = jsonResponse['indirectNonsubCount'] ?? 0;
 
         // await saveTransactionList(gottenTransactions);
         // transactions = await getTransactions();
@@ -187,11 +185,11 @@ class _AffiliationState extends State<Affiliation> {
     final directL = directCount;
     final indirectL = indirectCount;
 
-    final directSubL = directSubEmails.length;
-    final indirectSubL = indirectSubEmails.length;
+    final directSubL = directSubCount;
+    final indirectSubL = indirectSubCount;
 
-    // final directNonSubL = directNonSubEmails.length;
-    // final indirectNonSubL = indirectNonSubEmails.length;
+    // final directNonSubL = directNonSubCount;
+    // final indirectNonSubL = indirectNonSubCount;
 
     final basic = max((directSubL / basicRequirements),
             (indirectSubL / basicRequirements)) *

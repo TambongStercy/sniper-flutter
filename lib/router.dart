@@ -26,37 +26,36 @@ import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/design/your-products.dart';
 
 class AppRouter {
-  static Future<GoRouter> router() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+  static late SharedPreferences prefs;
 
-    String? token = prefs.getString('token');
-    bool isSubscribed = prefs.getBool('isSubscribed') ?? false;
+  static String? token = '';
+  static bool isSubscribed = false;
 
-    Future<void> refreshPref() async {
-      prefs = await SharedPreferences.getInstance();
+  static Future<void> refreshPref() async {
+    prefs = await SharedPreferences.getInstance();
 
-      token = prefs.getString('token');
-      isSubscribed = prefs.getBool('isSubscribed') ?? false;
-    }
+    token = prefs.getString('token');
+    isSubscribed = prefs.getBool('isSubscribed') ?? false;
+  }
 
-    bool canAccessRoute(String route) {
-      // Only allow access to these routes without subscription
-      return [
-        '/${Connexion.id}',
-        '/${Inscription.id}',
-        '/${PpUpload.id}',
-        '/${Subscrition.id}',
-        '/${NewPassword.id}',
-        '/${EmailOublie.id}',
-        '/${NewEmail.id}',
-        '/',
-      ].contains(route);
-    }
+  static bool canAccessRoute(String route) {
+    // Only allow access to these routes without subscription
+    return [
+      '/${Connexion.id}',
+      '/${Inscription.id}',
+      '/${PpUpload.id}',
+      '/${Subscrition.id}',
+      '/${NewPassword.id}',
+      '/${EmailOublie.id}',
+      '/${NewEmail.id}',
+      '/',
+    ].contains(route);
+  }
 
-    return GoRouter(
-      initialLocation: '/',
-      redirect: (context, state) async {
-        print('Navigating to: ${state.topRoute!.path}');
+  static GoRouter _router = GoRouter(
+    initialLocation: '/',
+    redirect: (context, state) async {
+      print('Navigating to: ${state.topRoute!.path}');
 
         await refreshPref();
 
@@ -68,10 +67,12 @@ class AppRouter {
         }
 
         // If the user is logged in but not subscribed, restrict access to subscription page
-        if (isLoggedIn &&
-            !isSubscribed &&
-            !canAccessRoute(state.topRoute!.path)) {
+        if (isLoggedIn && !isSubscribed) {
           return '/${Subscrition.id}';
+        }
+
+        if (isLoggedIn && isSubscribed && state.topRoute!.path == '/${Subscrition.id}') {
+          return '/';
         }
 
         return null; // No redirect
@@ -102,7 +103,6 @@ class AppRouter {
           builder: (context, state) {
             final String? affiliationCode =
                 state.uri.queryParameters['affiliationCode'];
-
             return Inscription(affiliationCode: affiliationCode);
           },
         ),
@@ -236,5 +236,6 @@ class AppRouter {
         ),
       ],
     );
-  }
+  
+  static GoRouter get router => _router;
 }

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/components/textfield.dart';
@@ -29,12 +31,18 @@ class _RetraitState extends State<Retrait> {
   String countryCode = '237';
   String password = '';
   String countryCode2 = 'CM'; // Default to Cameroon (2-letter country code)
+  double amountInXAF = 0;
   double balance = 0;
   bool isSubscribed = false;
+  bool otpRequested = false;
+  String otp = '';
 
   bool showSpinner = false;
 
   late SharedPreferences prefs;
+
+  // Declare the timer globally in your class
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -64,7 +72,7 @@ class _RetraitState extends State<Retrait> {
     phone = phone.substring(country.dialCode.length);
   }
 
-  void updateOperatorsAndCurrencies(String countryCode) {
+  void updateOperatorsAndCurrencies(String countryCode) async {
     final correspondents = {
       'BJ': {
         'operators': ['MTN_MOMO_BEN', 'MOOV_BEN'], // Benin
@@ -108,21 +116,20 @@ class _RetraitState extends State<Retrait> {
       },
     };
 
-    setState(() {
-      operators = correspondents[countryCode]?['operators'] ??
-          ['MTN_MOMO_CMR', 'ORANGE_CMR'];
-      availableCurrencies =
-          correspondents[countryCode]?['currencies'] ?? ['XAF'];
-      dropdownValue = operators.first;
-      selectedCurrency = availableCurrencies.first;
-    });
+    operators = correspondents[countryCode]?['operators'] ??
+        ['MTN_MOMO_CMR', 'ORANGE_CMR'];
+    availableCurrencies = correspondents[countryCode]?['currencies'] ?? ['XAF'];
+    dropdownValue = operators.first;
+    selectedCurrency = availableCurrencies.first;
+    amountInXAF = await convertCurrencyToXAF('1', selectedCurrency);
+    setState(() {});
   }
 
   Future<double> convertCurrencyToXAF(String amount, String currency) async {
     try {
       // Construct the API URL
       final url =
-          Uri.parse('${convertToXAF}?amount=$amount&currency=$currency');
+          Uri.parse('${convertCurrency}?amount=$amount&from=$currency&to=XAF');
 
       // Send the GET request
       final response = await http.get(url);
@@ -141,9 +148,9 @@ class _RetraitState extends State<Retrait> {
     }
   }
 
-  Future<void> withdrawal() async {
+  Future<void> requestWithdrawalOTP() async {
     try {
-      if (phone.isNotEmpty && amount.isNotEmpty) {
+      if (phone.isNotEmpty && amount.isNotEmpty && password.isNotEmpty) {
         final intAmt = int.parse(amount);
         final fee = intAmt * 0.05;
 
@@ -156,7 +163,7 @@ class _RetraitState extends State<Retrait> {
         }
 
         // Convert the amount to XAF
-        final amountInXAF =
+        double amountInXAF =
             await convertCurrencyToXAF(amount, selectedCurrency);
 
         // Check if the balance is sufficient
@@ -187,7 +194,7 @@ class _RetraitState extends State<Retrait> {
         };
 
         final response = await http.post(
-          Uri.parse(withdraw), // Ensure the correct endpoint
+          Uri.parse(requestPayoutOTP),
           headers: headers,
           body: jsonEncode(regBody),
         );
@@ -195,6 +202,89 @@ class _RetraitState extends State<Retrait> {
         final msg = jsonResponse['message'] ?? '';
 
         if (response.statusCode == 200) {
+          setState(() {
+            otpRequested = true;
+          });
+          const title = 'Success';
+          showPopupMessage(context, title, msg);
+        } else {
+          final title = context.translate('error');
+          showPopupMessage(context, title, msg);
+        }
+      } else {
+        String msg = context.translate('fill_all_fields');
+        String title = context.translate('incomplete_info');
+        showPopupMessage(context, title, msg);
+      }
+    } catch (e) {
+      String msg = e.toString();
+      String title = context.translate('error');
+      showPopupMessage(context, title, msg);
+    }
+  }
+
+  Future<void> withdrawal() async {
+    try {
+      if (phone.isNotEmpty &&
+          amount.isNotEmpty &&
+          password.isNotEmpty &&
+          otp.isNotEmpty) {
+        final intAmt = int.parse(amount);
+        final fee = intAmt * 0.05;
+
+        final sendPhone = countryCode + phone;
+
+        if (!isSubscribed) {
+          String msg = context.translate('not_subscribed');
+          String title = context.translate('error');
+          return showPopupMessage(context, title, msg);
+        }
+
+        // Convert the amount to XAF
+        double amountInXAF =
+            await convertCurrencyToXAF(amount, selectedCurrency);
+
+        // Check if the balance is sufficient
+        if (amountInXAF > balance || balance < (amountInXAF + fee)) {
+          String msg = context.translate('insufficient_balance');
+          String title = context.translate('insufficient_funds');
+          return showPopupMessage(context, title, msg);
+        }
+
+        if (intAmt < 250) {
+          String msg = context.translate('low_amount');
+          String title = context.translate('low_amount_title');
+          return showPopupMessage(context, title, msg);
+        }
+
+        final regBody = {
+          'email': email,
+          'phone': sendPhone,
+          'amount': amount,
+          'operator': dropdownValue,
+          'password': password,
+          'currency': selectedCurrency,
+          'otp': otp,
+        };
+
+        final headers = {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        };
+
+        final response = await http.post(
+          Uri.parse(withdraw),
+          headers: headers,
+          body: jsonEncode(regBody),
+        );
+        final jsonResponse = jsonDecode(response.body);
+        final msg = jsonResponse['message'] ?? '';
+
+        if (response.statusCode == 200) {
+          setState(() {
+            otpRequested = false;
+            otp = '';
+          });
           const title = 'Success';
           showPopupMessage(context, title, msg);
         } else {
@@ -227,9 +317,9 @@ class _RetraitState extends State<Retrait> {
       child: Container(
         margin: EdgeInsets.fromLTRB(25 * fem, 20 * fem, 25 * fem, 14 * fem),
         width: double.infinity,
-        decoration: const BoxDecoration(
-          color: Color(0xffffffff),
-        ),
+        // decoration: const BoxDecoration(
+        //   color: Color(0xffffffff),
+        // ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -334,7 +424,7 @@ class _RetraitState extends State<Retrait> {
                         margin: EdgeInsets.fromLTRB(
                             0 * fem, 0 * fem, 0 * fem, 10 * fem),
                         child: Text(
-                          '${context.translate('amount')} in ${selectedCurrency}',
+                          '${context.translate('amount')} in ${selectedCurrency} ${selectedCurrency != 'XAF' ? '(${amountInXAF.toStringAsFixed(2)} XAF = 1 ${selectedCurrency})' : ''}',
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 14 * ffem,
@@ -383,6 +473,77 @@ class _RetraitState extends State<Retrait> {
                       ),
                     ],
                   ),
+                  if (otpRequested) ...[
+                    SizedBox(height: 15 * fem),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: EdgeInsets.fromLTRB(
+                              0 * fem, 0 * fem, 0 * fem, 10 * fem),
+                          child: Text(
+                            context.translate('enter_otp_for_withdrawal'),
+                            style: SafeGoogleFont(
+                              'Montserrat',
+                              fontSize: 14 * ffem,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4285714286 * ffem / fem,
+                              color: Color(0xff25313c),
+                            ),
+                          ),
+                        ),
+                        OtpTextField(
+                          numberOfFields: 4,
+                          borderColor: Color(0xFF512DA8),
+                          fieldWidth: 50.0,
+                          margin: EdgeInsets.only(right: 8.0),
+                          showFieldAsBox: true,
+                          onCodeChanged: (String code) {
+                            otp = code;
+                          },
+                          onSubmit: (String verificationCode) {
+                            otp = verificationCode;
+                          },
+                        ),
+                        SizedBox(height: 10 * fem),
+                        Center(
+                          child: TextButton(
+                            onPressed: () async {
+                              try {
+                                setState(() {
+                                  showSpinner = true;
+                                });
+                                await requestWithdrawalOTP();
+                                setState(() {
+                                  showSpinner = false;
+                                });
+                              } catch (e) {
+                                setState(() {
+                                  showSpinner = false;
+                                });
+                                String msg =
+                                    context.translate('error_occurred');
+                                String title = context.translate('error');
+                                showPopupMessage(context, title, msg);
+                              }
+                            },
+                            style:
+                                TextButton.styleFrom(padding: EdgeInsets.zero),
+                            child: Text(
+                              context.translate('resend_otp'),
+                              style: SafeGoogleFont(
+                                'Montserrat',
+                                fontSize: 16 * ffem,
+                                fontWeight: FontWeight.w700,
+                                height: 1.5 * ffem / fem,
+                                color: limeGreen,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   SizedBox(height: 15 * fem),
                   ReusableButton(
                     title: context.translate('confirm'),
@@ -391,7 +552,11 @@ class _RetraitState extends State<Retrait> {
                         showSpinner = true;
                       });
 
-                      await withdrawal();
+                      if (!otpRequested) {
+                        await requestWithdrawalOTP();
+                      } else {
+                        await withdrawal();
+                      }
 
                       setState(() {
                         showSpinner = false;

@@ -62,12 +62,18 @@ class _MarketState extends State<Market> {
 
     getProductsOnline();
 
-    scrollController.addListener(() {
-      if (scrollController.position.maxScrollExtent ==
-          scrollController.offset) {
-        getProductsOnline();
-      }
-    });
+    scrollController.addListener(_onScroll);
+  }
+
+  
+  void _onScroll() {
+    if (!scrollController.hasClients) return;
+
+    final maxScroll = scrollController.position.maxScrollExtent;
+    final currentScroll = scrollController.offset;
+    if (currentScroll >= (maxScroll * 0.8) && hasMore) {
+      getProductsOnline();
+    }
   }
 
   Future<void> getProductsOnline() async {
@@ -85,8 +91,6 @@ class _MarketState extends State<Market> {
 
       final url = Uri.parse(
           '$getProducts?email=$email&page=$page&search=$queue&category=$category&subcategory=$subcategory&randNum=$randNum');
-
-      print(randNum);
 
       final response = await http.get(url, headers: headers);
 

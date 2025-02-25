@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/filleulscard.dart';
-import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
@@ -27,7 +26,7 @@ class Filleuls extends StatefulWidget {
 
 class _FilleulsState extends State<Filleuls> {
   String email = '';
-  String mainType = 'Direct';
+  String mainType = 'direct';
   bool isloading = false;
   bool hasMore = true;
 
@@ -46,13 +45,18 @@ class _FilleulsState extends State<Filleuls> {
   void initState() {
     getReferedUersFunc();
 
-    scrollController.addListener(() {
-      if (scrollController.position.maxScrollExtent ==
-          scrollController.offset) {
-        getReferedUersFunc();
-      }
-    });
+    scrollController.addListener(_onScroll);
     super.initState();
+  }
+
+  void _onScroll() {
+    if (!scrollController.hasClients) return;
+
+    final maxScroll = scrollController.position.maxScrollExtent;
+    final currentScroll = scrollController.offset;
+    if (currentScroll >= (maxScroll * 0.8) && hasMore) {
+      getReferedUersFunc();
+    }
   }
 
   Future<void> initSharedPref() async {
@@ -75,7 +79,8 @@ class _FilleulsState extends State<Filleuls> {
         'Content-Type': 'application/x-www-form-urlencoded',
       };
 
-      final url = Uri.parse('$getReferedUsers?email=${email}&page=${page}');
+      final url = Uri.parse(
+          '$getReferedUsers?email=${email}&page=${page}&type=${mainType.toLowerCase()}');
 
       final response = await http.get(url, headers: headers);
 
@@ -85,21 +90,24 @@ class _FilleulsState extends State<Filleuls> {
       error = jsonResponse['error'] ?? '';
 
       if (response.statusCode == 200) {
-        totalPagesDirect = jsonResponse['totalPagesDirect'] ?? 1;
-        totalPagesIndirect = jsonResponse['totalPagesIndirect'] ?? 1;
+        if (mainType == 'indirect') {
+          totalPagesIndirect = jsonResponse['totalPages'] ?? 1;
+          final fIndirectUsers = jsonResponse['users'] ?? [];
 
-        final fDirectUsers = jsonResponse['directUsers'] ?? [];
-        final fIndirectUsers = jsonResponse['indirectUsers'] ?? [];
+          if (fIndirectUsers.length < 10) hasMore = false;
+
+          indirectUsers.addAll(fIndirectUsers);
+        } else {
+          totalPagesDirect = jsonResponse['totalPages'] ?? 1;
+          final fDirectUsers = jsonResponse['users'] ?? [];
+
+          if (fDirectUsers.length < 10) hasMore = false;
+
+          directUsers.addAll(fDirectUsers);
+        }
 
         page++;
         isloading = false;
-
-        if (fDirectUsers.length < 10 && mainType == 'Direct') hasMore = false;
-        if (fIndirectUsers.length < 10 && mainType == 'Indirect')
-          hasMore = false;
-
-        if (mainType == 'Direct') directUsers.addAll(fDirectUsers);
-        if (mainType == 'Indirect') indirectUsers.addAll(fIndirectUsers);
 
         if (mounted) setState(() {});
       } else {
@@ -113,22 +121,11 @@ class _FilleulsState extends State<Filleuls> {
             await deleteFile(avatar);
           }
 
-          prefs.setString('token', '');
-          prefs.setString('id', '');
-          prefs.setString('email', '');
-          prefs.setString('name', '');
-          prefs.setString('token', '');
-          prefs.setString('region', '');
-          prefs.setString('phone', '');
-          prefs.setString('code', '');
-          prefs.setString('avatar', '');
-          prefs.setDouble('balance', 0);
-          prefs.setBool('isSubscribed', false);
+          await prefs.clear();
           await deleteNotifications();
           await deleteAllKindTransactions();
 
           context.go('/');
-
         }
 
         String title = 'Erreur';
@@ -167,92 +164,82 @@ class _FilleulsState extends State<Filleuls> {
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
 
-    return SimpleScaffold(
-      title: context.translate('your_godchildren'),
-      child: Container(
-        width: double.infinity,
-        child: Container(
-          padding: EdgeInsets.fromLTRB(0 * fem, 20 * fem, 0 * fem, 26 * fem),
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Color(0xffffffff),
+    return Scaffold(
+      appBar: AppBar(
+        iconTheme: const IconThemeData(
+          color: Colors.black, // Set your desired back button color
+        ),
+        backgroundColor: Colors.white,
+        title: Text(
+          context.translate('your_godchildren'),
+          style: SafeGoogleFont(
+            'Montserrat',
+            fontSize: 16 * ffem,
+            fontWeight: FontWeight.w500,
+            height: 1.6666666667 * ffem / fem,
+            color: Colors.black,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                margin:
-                    EdgeInsets.fromLTRB(25 * fem, 0 * fem, 25 * fem, 0 * fem),
-                width: double.infinity,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      child: Row(
-                        children: [
-                          _topButton(fem, context.translate('direct')),
-                          _topButton(fem, context.translate('indirect')),
-                        ],
-                      ),
-                    ),
-                    RefreshIndicator(
-                      onRefresh: refresh,
-                      child: Container(
-                        margin: EdgeInsets.fromLTRB(
-                            0 * fem, 0 * fem, 0 * fem, 16 * fem),
-                        width: double.infinity,
-                        child: ListView.builder(
-                          controller: scrollController,
-                          shrinkWrap: true,
-                          itemCount: (mainType == context.translate('direct')
-                                  ? directUsers.length
-                                  : indirectUsers.length) +
-                              (hasMore ? 1 : 0),
-                          padding: EdgeInsets.all(8.0),
-                          itemBuilder: ((context, index) {
-                            final usersUsed =
-                                mainType == context.translate('direct')
-                                    ? directUsers
-                                    : indirectUsers;
+        ),
+      ),
+      body: Container(
+        width: double.infinity,
+        color: Color(0xffffffff),
+        child: Column(
+          children: [
+            Container(
+              margin:
+                  EdgeInsets.fromLTRB(25 * fem, 20 * fem, 25 * fem, 0 * fem),
+              child: Row(
+                children: [
+                  _topButton(fem, context.translate('direct'), 'direct'),
+                  _topButton(fem, context.translate('indirect'), 'indirect'),
+                ],
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: refresh,
+                child: ListView.builder(
+                  controller: scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding:
+                      EdgeInsets.fromLTRB(25 * fem, 8 * fem, 25 * fem, 8 * fem),
+                  itemCount: (mainType == 'direct'
+                          ? directUsers.length
+                          : indirectUsers.length) +
+                      (hasMore ? 1 : 0),
+                  itemBuilder: ((context, index) {
+                    final usersUsed =
+                        mainType == 'direct' ? directUsers : indirectUsers;
+                    final itemCount = usersUsed.length;
 
-                            final itemCount = usersUsed.length;
-
-                            if (index < itemCount) {
-                              final user = usersUsed[index];
-
-                              return FilleulsCard(
-                                isSub: user['isSubscribed'],
-                                url: user['url'],
-                                buffer: user['avatar'],
-                                name: user['name'],
-                                email: user['email'].toString(),
-                              );
-                            } else if (hasMore) {
-                              // Only show CircularProgressIndicator if more data is loading
-                              return Padding(
-                                padding: EdgeInsets.all(0),
-                                child:
-                                    Center(child: CircularProgressIndicator()),
-                              );
-                            } else {
-                              // Avoid showing anything if there's no more data to load
-                              return SizedBox.shrink();
-                            }
-                          }),
-                        ),
-                      ),
-                    ),
-                  ],
+                    if (index < itemCount) {
+                      final user = usersUsed[index];
+                      return FilleulsCard(
+                        isSub: user['isSubscribed'],
+                        url: user['url'],
+                        name: user['name'],
+                        email: user['email'].toString(),
+                      );
+                    } else if (hasMore) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16 * fem),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    } else {
+                      return SizedBox.shrink();
+                    }
+                  }),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Expanded _topButton(double fem, String type) {
+  Expanded _topButton(double fem, String type, String val) {
     final capsType = type.length > 2
         ? type.substring(0, 1).toUpperCase() + type.substring(1)
         : type;
@@ -261,7 +248,7 @@ class _FilleulsState extends State<Filleuls> {
       child: InkWell(
         onTap: () async {
           setState(() {
-            mainType = type;
+            mainType = val;
           });
           await refresh();
         },
@@ -272,7 +259,7 @@ class _FilleulsState extends State<Filleuls> {
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.vertical(top: Radius.circular(10 * fem)),
-            color: mainType == type ? blue : Colors.grey[200],
+            color: mainType == val ? blue : Colors.grey[200],
           ),
           child: Text(
             capsType,
@@ -280,7 +267,7 @@ class _FilleulsState extends State<Filleuls> {
             style: SafeGoogleFont(
               'Mulish',
               height: 1.255,
-              color: mainType == type ? Color(0xffffffff) : Color(0xff000000),
+              color: mainType == val ? Color(0xffffffff) : Color(0xff000000),
             ),
           ),
         ),
