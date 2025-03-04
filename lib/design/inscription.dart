@@ -8,6 +8,7 @@ import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/connexion.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
+import 'package:snipper_frontend/design/verify_registration.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:http/http.dart' as http;
@@ -43,6 +44,7 @@ class _InscriptionState extends State<Inscription> {
 
   late SharedPreferences prefs;
 
+
   Future<void> registerUser() async {
     String msg = '';
 
@@ -57,7 +59,13 @@ class _InscriptionState extends State<Inscription> {
           countryCode.isNotEmpty &&
           city.isNotEmpty &&
           code.isNotEmpty) {
-        print(code);
+        // Add email domain validation
+        if (!isValidEmailDomain(email.trim())) {
+          String title = context.translate('invalid_email_domain');
+          String message = context.translate('use_valid_email_provider');
+          showPopupMessage(context, title, message);
+          return;
+        }
 
         final regBody = {
           'name': name,
@@ -79,6 +87,22 @@ class _InscriptionState extends State<Inscription> {
         msg = jsonResponse['message'] ?? '';
 
         if (response.statusCode == 200) {
+          // Check if email verification is required
+          if (jsonResponse['requireVerification'] == true) {
+            final userId = jsonResponse['userId'];
+
+            // Navigate to verification page
+            context.pushNamed(
+              VerifyRegistration.id,
+              extra: {
+                'email': email.trim(),
+                'userId': userId,
+              },
+            );
+            return;
+          }
+
+          // If no verification required, proceed as before
           final myToken = jsonResponse['token'];
           final user = jsonResponse['user'];
 
@@ -99,12 +123,12 @@ class _InscriptionState extends State<Inscription> {
           prefs.setBool('isSubscribed', isSubscribed);
 
           print('1');
-          String title = context.translate('error');
+          String title = context.translate('success');
           print('2');
           showPopupMessage(context, title, msg);
           print('3');
 
-          context.goNamed(PpUpload.id);
+          // context.goNamed(PpUpload.id);
         } else {
           String title = context.translate('error');
           showPopupMessage(context, title, msg);
@@ -185,8 +209,6 @@ class _InscriptionState extends State<Inscription> {
 
   @override
   Widget build(BuildContext context) {
-    print('affiliationCode: is');
-    print(affiliationCode);
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
@@ -357,7 +379,8 @@ class _InscriptionState extends State<Inscription> {
                                     code = val;
                                     isChanged = true;
                                   });
-                                  fetchAffiliationName(val); // Fetch affiliation on code change
+                                  fetchAffiliationName(
+                                      val); // Fetch affiliation on code change
                                 },
                               ),
                             ],
@@ -392,7 +415,7 @@ class _InscriptionState extends State<Inscription> {
                                         ),
                                         Text(
                                           context.translate(
-                                              'terms_conditions'), // 'Conditions generales d’utilisations'
+                                              'terms_conditions'), // 'Conditions generales d'utilisations'
                                           style: SafeGoogleFont(
                                             'Montserrat',
                                             fontSize: 16 * ffem,
@@ -435,7 +458,7 @@ class _InscriptionState extends State<Inscription> {
                                         ),
                                         Text(
                                           context.translate(
-                                              'accept_terms_conditions'), // 'J’accepte les termes et conditions'
+                                              'accept_terms_conditions'), // 'J'accepte les termes et conditions'
                                           style: SafeGoogleFont(
                                             'Montserrat',
                                             fontSize: 16 * ffem,

@@ -23,6 +23,7 @@ import 'package:snipper_frontend/design/retrait.dart';
 import 'package:snipper_frontend/design/splash1.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
+import 'package:snipper_frontend/design/verify_registration.dart';
 import 'package:snipper_frontend/design/your-products.dart';
 
 class AppRouter {
@@ -48,6 +49,7 @@ class AppRouter {
       '/${NewPassword.id}',
       '/${EmailOublie.id}',
       '/${NewEmail.id}',
+      '/${VerifyRegistration.id}',
       '/',
     ].contains(route);
   }
@@ -57,185 +59,194 @@ class AppRouter {
     redirect: (context, state) async {
       print('Navigating to: ${state.topRoute!.path}');
 
-        await refreshPref();
+      await refreshPref();
 
-        final isLoggedIn = token != null && token!.isNotEmpty;
+      final isLoggedIn = token != null && token!.isNotEmpty;
 
-        // If the user is not logged in and tries to access a restricted page, redirect to login
-        if (!isLoggedIn && !canAccessRoute(state.topRoute!.path)) {
-          return '/';
-        }
+      // If the user is not logged in and tries to access a restricted page, redirect to login
+      if (!isLoggedIn && !canAccessRoute(state.topRoute!.path)) {
+        return '/';
+      }
 
-        // If the user is logged in but not subscribed, restrict access to subscription page
-        if (isLoggedIn && !isSubscribed) {
-          return '/${Subscrition.id}';
-        }
+      // If the user is logged in but not subscribed, restrict access to subscription page
+      if (isLoggedIn && !isSubscribed) {
+        return '/${Subscrition.id}';
+      }
 
-        if (isLoggedIn && isSubscribed && state.topRoute!.path == '/${Subscrition.id}') {
-          return '/';
-        }
+      if (isLoggedIn &&
+          isSubscribed &&
+          state.topRoute!.path == '/${Subscrition.id}') {
+        return '/';
+      }
 
-        return null; // No redirect
-      },
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) {
-            final String? affiliationCode =
-                state.uri.queryParametersAll['affiliationCode']?[0];
-            final String? sellerId =
-                state.uri.queryParametersAll['sellerId']?[0];
-            final String? prdtId = state.uri.queryParametersAll['prdtId']?[0];
+      return null; // No redirect
+    },
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) {
+          final String? affiliationCode =
+              state.uri.queryParametersAll['affiliationCode']?[0];
+          final String? sellerId = state.uri.queryParametersAll['sellerId']?[0];
+          final String? prdtId = state.uri.queryParametersAll['prdtId']?[0];
 
-            final isSub = prefs.getBool('isSubscribed');
+          final isSub = prefs.getBool('isSubscribed');
 
-            return (token != null &&
-                    token!.isNotEmpty &&
-                    isSub != null &&
-                    isSub)
-                ? Accueil(sellerId: sellerId, prdtId: prdtId)
-                : Scene(affiliationCode: affiliationCode);
-          },
-        ),
-        GoRoute(
-          path: '/${Inscription.id}',
-          name: Inscription.id,
-          builder: (context, state) {
-            final String? affiliationCode =
-                state.uri.queryParameters['affiliationCode'];
-            return Inscription(affiliationCode: affiliationCode);
-          },
-        ),
-        GoRoute(
-          path: '/${ProduitPage.id}',
-          name: ProduitPage.id,
-          builder: (context, state) {
-            // Decode the JSON string back to a Map
-            final prdtAndUser = state.extra;
+          return (token != null && token!.isNotEmpty && isSub != null && isSub)
+              ? Accueil(sellerId: sellerId, prdtId: prdtId)
+              : Scene(affiliationCode: affiliationCode);
+        },
+      ),
+      GoRoute(
+        path: '/${Inscription.id}',
+        name: Inscription.id,
+        builder: (context, state) {
+          final String? affiliationCode =
+              state.uri.queryParameters['affiliationCode'];
+          return Inscription(affiliationCode: affiliationCode);
+        },
+      ),
+      GoRoute(
+        path: '/${ProduitPage.id}',
+        name: ProduitPage.id,
+        builder: (context, state) {
+          // Decode the JSON string back to a Map
+          final prdtAndUser = state.extra;
 
-            return ProduitPage(prdtAndUser: prdtAndUser ?? {});
-          },
-        ),
-        GoRoute(
-            path: '/${Connexion.id}',
-            name: Connexion.id,
-            builder: (context, state) => Connexion()),
-        GoRoute(
-          path: '/${Affiliation.id}',
-          name: Affiliation.id,
-          builder: (context, state) => Affiliation(),
-        ),
-        GoRoute(
-          path: '/${AjouterProduit.id}',
-          name: AjouterProduit.id,
-          builder: (context, state) => AjouterProduit(),
-        ),
-        GoRoute(
-          path: '/${Notifications.id}',
-          name: Notifications.id,
-          builder: (context, state) => Notifications(),
-        ),
-        GoRoute(
-          path: '/${EspacePartenaire.id}',
-          name: EspacePartenaire.id,
-          builder: (context, state) => EspacePartenaire(),
-        ),
-        GoRoute(
-          path: '/${Profile.id}',
-          name: Profile.id,
-          builder: (context, state) => Profile(),
-        ),
-        GoRoute(
-          path: '/${ProfileMod.id}',
-          name: ProfileMod.id,
-          builder: (context, state) => ProfileMod(),
-        ),
-        GoRoute(
-          path: '/${Retrait.id}',
-          name: Retrait.id,
-          builder: (context, state) => Retrait(),
-        ),
-        GoRoute(
-          path: '/${Wallet.id}',
-          name: Wallet.id,
-          builder: (context, state) => Wallet(),
-        ),
-        GoRoute(
-          path: '/${FicheContact.id}',
-          name: FicheContact.id,
-          builder: (context, state) => FicheContact(),
-        ),
-        GoRoute(
-          path: '/${ModifyEmail.id}',
-          name: ModifyEmail.id,
-          builder: (context, state) => ModifyEmail(),
-        ),
-        GoRoute(
-          path: '/${EmailOublie.id}',
-          name: EmailOublie.id,
-          builder: (context, state) => EmailOublie(),
-        ),
-        GoRoute(
-          path: '/${YourProducts.id}',
-          name: YourProducts.id,
-          builder: (context, state) => YourProducts(),
-        ),
-        GoRoute(
-          path: '/${PpUpload.id}',
-          name: PpUpload.id,
-          builder: (context, state) => PpUpload(),
-        ),
-        GoRoute(
-          path: '/${Filleuls.id}',
-          name: Filleuls.id, // Route name defined in Filleuls as a static const
-          builder: (context, state) {
-            // Retrieve the email from the extra parameter
-            final String email = state.extra as String;
-            return Filleuls(email: email);
-          },
-        ),
-        GoRoute(
-          path: '/${NewEmail.id}',
-          name: NewEmail.id, // Route name defined in NewEmail as a static const
-          builder: (context, state) {
-            // Retrieve the email from the extra parameter
-            final String email = state.extra as String;
-            return NewEmail(email: email);
-          },
-        ),
-        GoRoute(
-          path: '/${ModifyProduct.id}',
-          name: ModifyProduct
-              .id, // Route name defined in ModifyProduct as a static const
-          builder: (context, state) {
-            // Retrieve the email from the extra parameter
-            final Map<String, dynamic> prdt =
-                state.extra as Map<String, dynamic>;
-            return ModifyProduct(product: prdt);
-          },
-        ),
-        GoRoute(
-          path: '/${NewPassword.id}',
-          name: NewPassword
-              .id, // Route name defined in NewPassword as a static const
-          builder: (context, state) {
-            // Retrieve the email from the extra parameter
-            final String email = state.extra as String;
-            return NewPassword(email: email);
-          },
-        ),
-        GoRoute(
-          path: '/${Subscrition.id}',
-          name: Subscrition.id,
-          builder: (context, state) => Subscrition(),
-        ),
-        GoRoute(
-          path: '/${ContactUpdate.id}',
-          name: ContactUpdate.id,
-          builder: (context, state) => ContactUpdate(),
-        ),
-      ],
-    );
-  
+          return ProduitPage(prdtAndUser: prdtAndUser ?? {});
+        },
+      ),
+      GoRoute(
+        path: '/${VerifyRegistration.id}',
+        name: VerifyRegistration.id,
+        builder: (context, state) {
+          final Map<String, dynamic> extra =
+              state.extra as Map<String, dynamic>;
+          return VerifyRegistration(
+            email: extra['email'] as String,
+            userId: extra['userId'] as String,
+          );
+        },
+      ),
+      GoRoute(
+          path: '/${Connexion.id}',
+          name: Connexion.id,
+          builder: (context, state) => Connexion()),
+      GoRoute(
+        path: '/${Affiliation.id}',
+        name: Affiliation.id,
+        builder: (context, state) => Affiliation(),
+      ),
+      GoRoute(
+        path: '/${AjouterProduit.id}',
+        name: AjouterProduit.id,
+        builder: (context, state) => AjouterProduit(),
+      ),
+      GoRoute(
+        path: '/${Notifications.id}',
+        name: Notifications.id,
+        builder: (context, state) => Notifications(),
+      ),
+      GoRoute(
+        path: '/${EspacePartenaire.id}',
+        name: EspacePartenaire.id,
+        builder: (context, state) => EspacePartenaire(),
+      ),
+      GoRoute(
+        path: '/${Profile.id}',
+        name: Profile.id,
+        builder: (context, state) => Profile(),
+      ),
+      GoRoute(
+        path: '/${ProfileMod.id}',
+        name: ProfileMod.id,
+        builder: (context, state) => ProfileMod(),
+      ),
+      GoRoute(
+        path: '/${Retrait.id}',
+        name: Retrait.id,
+        builder: (context, state) => Retrait(),
+      ),
+      GoRoute(
+        path: '/${Wallet.id}',
+        name: Wallet.id,
+        builder: (context, state) => Wallet(),
+      ),
+      GoRoute(
+        path: '/${FicheContact.id}',
+        name: FicheContact.id,
+        builder: (context, state) => FicheContact(),
+      ),
+      GoRoute(
+        path: '/${ModifyEmail.id}',
+        name: ModifyEmail.id,
+        builder: (context, state) => ModifyEmail(),
+      ),
+      GoRoute(
+        path: '/${EmailOublie.id}',
+        name: EmailOublie.id,
+        builder: (context, state) => EmailOublie(),
+      ),
+      GoRoute(
+        path: '/${YourProducts.id}',
+        name: YourProducts.id,
+        builder: (context, state) => YourProducts(),
+      ),
+      GoRoute(
+        path: '/${PpUpload.id}',
+        name: PpUpload.id,
+        builder: (context, state) => PpUpload(),
+      ),
+      GoRoute(
+        path: '/${Filleuls.id}',
+        name: Filleuls.id, // Route name defined in Filleuls as a static const
+        builder: (context, state) {
+          // Retrieve the email from the extra parameter
+          final String email = state.extra as String;
+          return Filleuls(email: email);
+        },
+      ),
+      GoRoute(
+        path: '/${NewEmail.id}',
+        name: NewEmail.id, // Route name defined in NewEmail as a static const
+        builder: (context, state) {
+          // Retrieve the email from the extra parameter
+          final String email = state.extra as String;
+          return NewEmail(email: email);
+        },
+      ),
+      GoRoute(
+        path: '/${ModifyProduct.id}',
+        name: ModifyProduct
+            .id, // Route name defined in ModifyProduct as a static const
+        builder: (context, state) {
+          // Retrieve the email from the extra parameter
+          final Map<String, dynamic> prdt = state.extra as Map<String, dynamic>;
+          return ModifyProduct(product: prdt);
+        },
+      ),
+      GoRoute(
+        path: '/${NewPassword.id}',
+        name: NewPassword
+            .id, // Route name defined in NewPassword as a static const
+        builder: (context, state) {
+          // Retrieve the email from the extra parameter
+          final String email = state.extra as String;
+          return NewPassword(email: email);
+        },
+      ),
+      GoRoute(
+        path: '/${Subscrition.id}',
+        name: Subscrition.id,
+        builder: (context, state) => Subscrition(),
+      ),
+      GoRoute(
+        path: '/${ContactUpdate.id}',
+        name: ContactUpdate.id,
+        builder: (context, state) => ContactUpdate(),
+      ),
+    ],
+  );
+
   static GoRouter get router => _router;
 }

@@ -28,6 +28,8 @@ class _RetraitState extends State<Retrait> {
   String amount = '';
   String token = '';
   String email = '';
+  String momoNumber = '';
+  String momoCor = '';
   String countryCode = '237';
   String password = '';
   String countryCode2 = 'CM'; // Default to Cameroon (2-letter country code)
@@ -50,7 +52,13 @@ class _RetraitState extends State<Retrait> {
     () async {
       await initSharedPref();
       setState(() {
-        updateOperatorsAndCurrencies(countryCode2); // Default to Cameroon
+        final country = getCountryFromPhoneNumber(momoNumber);
+
+        if (country != null) {
+          countryCode = country.dialCode;
+          countryCode2 = country.code;
+          updateOperatorsAndCurrencies(countryCode2); // Default to Cameroon
+        }
       });
     }();
   }
@@ -60,6 +68,8 @@ class _RetraitState extends State<Retrait> {
 
     token = prefs.getString('token') ?? '';
     email = prefs.getString('email') ?? '';
+    momoNumber = prefs.getString('momo') ?? '';
+    momoCor = prefs.getString('momoCorrespondent') ?? '';
     balance = prefs.getDouble('balance') ?? 0;
     phone = prefs.getString('momo') ?? prefs.getString('phone') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
@@ -150,11 +160,11 @@ class _RetraitState extends State<Retrait> {
 
   Future<void> requestWithdrawalOTP() async {
     try {
-      if (phone.isNotEmpty && amount.isNotEmpty && password.isNotEmpty) {
+      if (amount.isNotEmpty && password.isNotEmpty && momoNumber.isNotEmpty) {
         final intAmt = int.parse(amount);
         final fee = intAmt * 0.05;
 
-        final sendPhone = countryCode + phone;
+        // final sendPhone = countryCode + phone;
 
         if (!isSubscribed) {
           String msg = context.translate('not_subscribed');
@@ -181,7 +191,7 @@ class _RetraitState extends State<Retrait> {
 
         final regBody = {
           'email': email,
-          'phone': sendPhone,
+          // 'phone': sendPhone,
           'amount': amount,
           'operator': dropdownValue,
           'password': password,
@@ -225,14 +235,11 @@ class _RetraitState extends State<Retrait> {
 
   Future<void> withdrawal() async {
     try {
-      if (phone.isNotEmpty &&
-          amount.isNotEmpty &&
-          password.isNotEmpty &&
-          otp.isNotEmpty) {
+      if (amount.isNotEmpty && password.isNotEmpty && otp.isNotEmpty) {
         final intAmt = int.parse(amount);
         final fee = intAmt * 0.05;
 
-        final sendPhone = countryCode + phone;
+        // final sendPhone = countryCode + phone;
 
         if (!isSubscribed) {
           String msg = context.translate('not_subscribed');
@@ -259,7 +266,7 @@ class _RetraitState extends State<Retrait> {
 
         final regBody = {
           'email': email,
-          'phone': sendPhone,
+          // 'phone': sendPhone,
           'amount': amount,
           'operator': dropdownValue,
           'password': password,
@@ -341,81 +348,83 @@ class _RetraitState extends State<Retrait> {
                       ),
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: EdgeInsets.fromLTRB(
-                            0 * fem, 0 * fem, 0 * fem, 10 * fem),
-                        child: Text(
-                          context.translate('operator'),
-                          style: SafeGoogleFont(
-                            'Montserrat',
-                            fontSize: 14 * ffem,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4285714286 * ffem / fem,
-                            color: Color(0xff25313c),
-                          ),
-                        ),
-                      ),
-                      DropdownButtonFormField<String>(
-                        value: dropdownValue,
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            dropdownValue = newValue!;
-                          });
-                        },
-                        items: operators
-                            .map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 15 * fem),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: EdgeInsets.fromLTRB(
-                            0 * fem, 0 * fem, 0 * fem, 10 * fem),
-                        child: Text(
-                          context.translate('phone_number'),
-                          style: SafeGoogleFont(
-                            'Montserrat',
-                            fontSize: 14 * ffem,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4285714286 * ffem / fem,
-                            color: Color(0xff25313c),
-                          ),
-                        ),
-                      ),
-                      CustomTextField(
-                        hintText: context.translate('example_phone'),
-                        value: phone,
-                        onChange: (val) {
-                          phone = val;
-                        },
-                        getCountryDialCode: (code) {
-                          setState(() {
-                            countryCode = code;
-                          });
-                        },
-                        getCountryCode: (code) {
-                          setState(() {
-                            countryCode2 = code;
-                            updateOperatorsAndCurrencies(code);
-                          });
-                        },
-                        initialCountryCode: countryCode2,
-                        margin: 0,
-                        type: 5,
-                      ),
-                    ],
-                  ),
+                  // Column(
+                  //   crossAxisAlignment: CrossAxisAlignment.start,
+                  //   children: [
+                  //     Container(
+                  //       margin: EdgeInsets.fromLTRB(
+                  //           0 * fem, 0 * fem, 0 * fem, 10 * fem),
+                  //       child: Text(
+                  //         context.translate('operator'),
+                  //         style: SafeGoogleFont(
+                  //           'Montserrat',
+                  //           fontSize: 14 * ffem,
+                  //           fontWeight: FontWeight.w500,
+                  //           height: 1.4285714286 * ffem / fem,
+                  //           color: Color(0xff25313c),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     DropdownButtonFormField<String>(
+                  //       value: dropdownValue,
+                  //       onChanged: (String? newValue) {
+                  //         setState(() {
+                  //           dropdownValue = newValue!;
+                  //         });
+                  //       },
+                  //       items: operators
+                  //           .map<DropdownMenuItem<String>>((String value) {
+                  //         return DropdownMenuItem<String>(
+                  //           value: value,
+                  //           child: Text(value),
+                  //         );
+                  //       }).toList(),
+                  //     ),
+                  //   ],
+                  // ),
+
+                  // SizedBox(height: 15 * fem),
+                  // Column(
+                  //   crossAxisAlignment: CrossAxisAlignment.start,
+                  //   children: [
+                  //     Container(
+                  //       margin: EdgeInsets.fromLTRB(
+                  //           0 * fem, 0 * fem, 0 * fem, 10 * fem),
+                  //       child: Text(
+                  //         context.translate('phone_number'),
+                  //         style: SafeGoogleFont(
+                  //           'Montserrat',
+                  //           fontSize: 14 * ffem,
+                  //           fontWeight: FontWeight.w500,
+                  //           height: 1.4285714286 * ffem / fem,
+                  //           color: Color(0xff25313c),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     CustomTextField(
+                  //       hintText: context.translate('example_phone'),
+                  //       value: phone,
+                  //       onChange: (val) {
+                  //         phone = val;
+                  //       },
+                  //       getCountryDialCode: (code) {
+                  //         setState(() {
+                  //           countryCode = code;
+                  //         });
+                  //       },
+                  //       getCountryCode: (code) {
+                  //         setState(() {
+                  //           countryCode2 = code;
+                  //           updateOperatorsAndCurrencies(code);
+                  //         });
+                  //       },
+                  //       initialCountryCode: countryCode2,
+                  //       margin: 0,
+                  //       type: 5,
+                  //     ),
+                  //   ],
+                  // ),
+
                   SizedBox(height: 15 * fem),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

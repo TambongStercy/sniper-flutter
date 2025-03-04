@@ -15,6 +15,7 @@ const registration = "${url}register";
 const login = '${url}login';
 const logout = '${url}logout';
 const update = '${url}update';
+const verifyRegistration = '${url}verify-registration';
 const uploadPP = '${url}upload-avatar';
 const downloadPP = '${url}download-avatar';
 const downloadVcf = '${url}download-vcf';
@@ -22,6 +23,7 @@ const downloadVcf = '${url}download-vcf';
 const downloadPoliss = '${url}download-policies';
 const downloadPres = '${url}download-presentation';
 const createOTPLink = '${url}create-otp';
+const createContactsOTPLink = '${url}create-contacts-otp';
 const downloadContacts = '${url}download-contacts';
 const downloadContactsUpdates = '${url}download-contacts-updates';
 

@@ -40,8 +40,19 @@ class _NewEmailState extends State<NewEmail> {
 
   late SharedPreferences prefs;
 
+
   Future<void> changeAndValidate() async {
-    if (id.isNotEmpty && email.isNotEmpty && otp.isNotEmpty && otp.length == 4) {
+    if (id.isNotEmpty &&
+        email.isNotEmpty &&
+        otp.isNotEmpty &&
+        otp.length == 4) {
+      // Add email domain validation
+      if (!isValidEmailDomain(email.trim())) {
+        String title = context.translate('invalid_email_domain');
+        String message = context.translate('use_valid_email_provider');
+        showPopupMessage(context, title, message);
+        return;
+      }
       final regBody = {
         'email': email,
         'id': id,
@@ -86,12 +97,12 @@ class _NewEmailState extends State<NewEmail> {
         prefs.setBool('isSubscribed', isSubscribed);
 
         context.go('/');
-
       } else {
         showPopupMessage(context, context.translate('error'), msg);
       }
     } else {
-      showPopupMessage(context, context.translate('incomplete_info'), context.translate('fill_all_fields'));
+      showPopupMessage(context, context.translate('incomplete_info'),
+          context.translate('fill_all_fields'));
     }
   }
 
@@ -119,7 +130,8 @@ class _NewEmailState extends State<NewEmail> {
         return;
       }
     } else {
-      showPopupMessage(context, context.translate('incomplete_info'), context.translate('fill_all_fields'));
+      showPopupMessage(context, context.translate('incomplete_info'),
+          context.translate('fill_all_fields'));
       return;
     }
   }
@@ -164,7 +176,8 @@ class _NewEmailState extends State<NewEmail> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      margin: EdgeInsets.fromLTRB(25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
+                      margin: EdgeInsets.fromLTRB(
+                          25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
                       width: 771.27 * fem,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +200,8 @@ class _NewEmailState extends State<NewEmail> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              context.translate('validate_email'), // 'Valider l\'adresse e-mail'
+                              context.translate(
+                                  'validate_email'), // 'Valider l\'adresse e-mail'
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -201,7 +215,9 @@ class _NewEmailState extends State<NewEmail> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              context.translate('enter_otp_for_email', args: {'email': email}), // 'Entrez le code OTP envoyé à $email'
+                              context.translate('enter_otp_for_email', args: {
+                                'email': email
+                              }), // 'Entrez le code OTP envoyé à $email'
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -220,7 +236,8 @@ class _NewEmailState extends State<NewEmail> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          _fieldTitle(fem, ffem, context.translate('otp_code')), // 'Code OTP'
+                          _fieldTitle(fem, ffem,
+                              context.translate('otp_code')), // 'Code OTP'
                           OtpTextField(
                             numberOfFields: 4,
                             borderColor: Color(0xFF512DA8),
@@ -251,7 +268,8 @@ class _NewEmailState extends State<NewEmail> {
                                   showSpinner = false;
                                 });
                               } catch (e) {
-                                showPopupMessage(context, context.translate('error'), e.toString());
+                                showPopupMessage(context,
+                                    context.translate('error'), e.toString());
                                 setState(() {
                                   showSpinner = false;
                                 });
@@ -273,15 +291,18 @@ class _NewEmailState extends State<NewEmail> {
                                     showSpinner = false;
                                   });
                                 } catch (e) {
-                                  showPopupMessage(context, context.translate('error'), e.toString());
+                                  showPopupMessage(context,
+                                      context.translate('error'), e.toString());
                                   setState(() {
                                     showSpinner = false;
                                   });
                                 }
                               },
-                              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                              style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero),
                               child: Text(
-                                context.translate('resend_otp'), // 'Renvoyer le code OTP'
+                                context.translate(
+                                    'resend_otp'), // 'Renvoyer le code OTP'
                                 style: SafeGoogleFont(
                                   'Montserrat',
                                   fontSize: 16 * ffem,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:snipper_frontend/localization/app_localizations.dart';
 import 'package:snipper_frontend/router.dart';
@@ -37,7 +36,6 @@ class _MyAppState extends State<MyApp> {
       _locale = locale;
     });
   }
-
 
   @override
   Widget build(BuildContext context) {

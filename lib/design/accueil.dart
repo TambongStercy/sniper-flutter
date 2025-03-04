@@ -51,6 +51,8 @@ class _AccueilState extends State<Accueil> {
 
   String countryCode = '237';
   String momo = '';
+  String momoCor = 'MTN_MOMO_CMR';
+  List<String> correspondents = ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'];
 
   late SharedPreferences prefs;
   TextEditingController phoneNumberController = TextEditingController();
@@ -207,8 +209,8 @@ class _AccueilState extends State<Accueil> {
         if (!isSubscribed) {
           print('add Notification');
         }
-        if (momo == null) {
-          // _showPhoneNumberDialog();
+        if (momo == null || momoCorrespondent == null) {
+          _showPhoneNumberDialog();
         }
 
         _homeVersion++;
@@ -291,36 +293,294 @@ class _AccueilState extends State<Accueil> {
   int notifCount = 0;
   int selected = 0;
 
+  void updateCorrespondents(String countryCode) {
+    final correspondentMap = {
+      'BJ': ['MTN_MOMO_BEN', 'MOOV_MOMO_BEN'], // Benin
+      'CM': ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'], // Cameroon
+      'BF': ['ORANGE_MOMO_BFA', 'MOOV_MOMO_BFA'], // Burkina Faso
+      'CD': [
+        'AIRTEL_MOMO_COD',
+        'VODACOM_MOMO_COD',
+        'ORANGE_MOMO_COD'
+      ], // Congo (DRC)
+      'KE': ['SAFARICOM_MOMO_KEN'], // Kenya
+      'NG': ['MTN_MOMO_NGA', 'AIRTEL_MOMO_NGA'], // Nigeria
+      'SN': [
+        'ORANGE_MOMO_SEN',
+        'FREE_MOMO_SEN',
+        'EXPRESSO_MOMO_SEN'
+      ], // Senegal
+      'CG': ['MTN_MOMO_COG', 'AIRTEL_MOMO_COG'], // Congo-Brazzaville
+      'GA': ['AIRTEL_MOMO_GAB', 'MOOV_MOMO_GAB'], // Gabon
+      'CI': [
+        'MTN_MOMO_CIV',
+        'MOOV_MOMO_CIV',
+        'ORANGE_MOMO_CIV'
+      ], // Côte d'Ivoire
+    };
+
+    setState(() {
+      correspondents =
+          correspondentMap[countryCode] ?? ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'];
+      momoCor = correspondents.first;
+    });
+  }
+
   void _showPhoneNumberDialog() {
+    // Create a StatefulBuilder to manage dialog state internally
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevent dismiss by tapping outside
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            context.translate('enter_mobile_money'),
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: CustomTextField(
-            margin: 5,
-            hintText: context.translate('mobile_number_example'),
-            value: momo,
-            onChange: (val) {
-              momo = val;
-            },
-            getCountryDialCode: (code) {
-              countryCode = code;
-            },
-            type: 5,
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(context.translate('ok')),
-              onPressed: () async {
-                await addMOMO();
-              },
+        // Use StatefulBuilder to rebuild dialog when internal state changes
+        return StatefulBuilder(builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              context.translate('enter_mobile_money'),
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-          ],
-        );
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Warning message
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border:
+                          Border.all(color: Colors.red.shade300, width: 1.5),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded,
+                                color: Colors.red.shade700),
+                            SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                "⚠️ CRITICAL WARNING ⚠️",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red.shade700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 10),
+
+                        // English warning
+                        Text(
+                          "PLEASE READ CAREFULLY:",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          "• All withdrawals will be sent ONLY to this mobile money number\n"
+                          "• Once set, this number CANNOT be changed in the app\n"
+                          "• To modify this number, you must contact admin directly via WhatsApp\n"
+                          "• Incorrect number may result in permanent loss of funds",
+                          style: TextStyle(fontSize: 13),
+                        ),
+
+                        SizedBox(height: 12),
+                        Divider(color: Colors.red.shade200),
+                        SizedBox(height: 8),
+
+                        // French warning
+                        Text(
+                          "VEUILLEZ LIRE ATTENTIVEMENT:",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          "• Tous les retraits seront envoyés UNIQUEMENT à ce numéro mobile money\n"
+                          "• Une fois défini, ce numéro NE PEUT PAS être modifié dans l'application\n"
+                          "• Pour modifier ce numéro, vous devez contacter l'administrateur directement via WhatsApp\n"
+                          "• Un numéro incorrect peut entraîner une perte permanente de fonds",
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 20),
+
+                  // Phone number field
+                  Text(
+                    context.translate('phone_number'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xff6d7d8b),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  CustomTextField(
+                    margin: 5,
+                    hintText: context.translate('mobile_number_example'),
+                    value: momo,
+                    onChange: (val) {
+                      setDialogState(() {
+                        momo = val;
+                      });
+                    },
+                    getCountryDialCode: (code) {
+                      setDialogState(() {
+                        countryCode = code;
+                      });
+                    },
+                    getCountryCode: (code) {
+                      // Update both the dialog state and the parent widget state
+                      final correspondentMap = {
+                        'BJ': ['MTN_MOMO_BEN', 'MOOV_MOMO_BEN'], // Benin
+                        'CM': ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'], // Cameroon
+                        'BF': [
+                          'ORANGE_MOMO_BFA',
+                          'MOOV_MOMO_BFA'
+                        ], // Burkina Faso
+                        'CD': [
+                          'AIRTEL_MOMO_COD',
+                          'VODACOM_MOMO_COD',
+                          'ORANGE_MOMO_COD'
+                        ], // Congo (DRC)
+                        'KE': ['SAFARICOM_MOMO_KEN'], // Kenya
+                        'NG': ['MTN_MOMO_NGA', 'AIRTEL_MOMO_NGA'], // Nigeria
+                        'SN': [
+                          'ORANGE_MOMO_SEN',
+                          'FREE_MOMO_SEN',
+                          'EXPRESSO_MOMO_SEN'
+                        ], // Senegal
+                        'CG': [
+                          'MTN_MOMO_COG',
+                          'AIRTEL_MOMO_COG'
+                        ], // Congo-Brazzaville
+                        'GA': ['AIRTEL_MOMO_GAB', 'MOOV_MOMO_GAB'], // Gabon
+                        'CI': [
+                          'MTN_MOMO_CIV',
+                          'MOOV_MOMO_CIV',
+                          'ORANGE_MOMO_CIV'
+                        ], // Côte d'Ivoire
+                      };
+
+                      // Update the dialog state directly
+                      setDialogState(() {
+                        correspondents = correspondentMap[code] ??
+                            ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'];
+                        momoCor = correspondents.first;
+                      });
+
+                      // Also update the parent widget state
+                      setState(() {
+                        updateCorrespondents(code);
+                      });
+                    },
+                    type: 5,
+                  ),
+                  SizedBox(height: 16),
+
+                  // MOMO operator dropdown
+                  Text(
+                    context.translate('momo_correspondent'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xff6d7d8b),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: momoCor,
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setDialogState(() {
+                          momoCor = newValue;
+                        });
+                      }
+                    },
+                    items: correspondents
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: Text(context.translate('cancel')),
+                onPressed: () {
+                  // Show confirmation dialog before cancellation since this is important
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text(context.translate('warning')),
+                        content: Text(
+                          "Without a mobile money number, you won't be able to receive withdrawals. Are you sure you want to cancel?\n\nSans numéro mobile money, vous ne pourrez pas recevoir de retraits. Êtes-vous sûr de vouloir annuler?",
+                        ),
+                        actions: [
+                          TextButton(
+                            child: Text(context.translate('no')),
+                            onPressed: () {
+                              context.pop(); // Close confirmation dialog
+                            },
+                          ),
+                          TextButton(
+                            child: Text(context.translate('yes')),
+                            onPressed: () {
+                              context.pop(); // Close confirmation dialog
+                              context.pop(); // Close main dialog
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.green.shade600,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(context.translate('confirm')),
+                onPressed: () async {
+                  if (momo.isEmpty) {
+                    showPopupMessage(context, context.translate('error'),
+                        context.translate('fill_all_fields'));
+                    return;
+                  }
+                  context.pop();
+                  await addMOMO();
+                },
+              ),
+            ],
+          );
+        });
       },
     );
   }
@@ -338,6 +598,7 @@ class _AccueilState extends State<Accueil> {
         'id': id,
         'email': email,
         'momo': sendPone,
+        'momoCorrespondent': momoCor,
       };
 
       final headers = {
@@ -361,9 +622,9 @@ class _AccueilState extends State<Accueil> {
           : context.translate('error');
 
       prefs.setString('momo', sendPone);
+      prefs.setString('momoCorrespondent', momoCor);
       if (email != '') prefs.setString('email', email);
 
-      context.pop();
       showPopupMessage(context, title, msg);
       print(msg);
     } catch (e) {

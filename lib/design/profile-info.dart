@@ -60,9 +60,9 @@ class _ProfileState extends State<Profile> {
     downloadUpdateUrl = '${downloadContactsUpdates}?email=$email';
   }
 
-  Future<String> createOTP(BuildContext context) async {
+  Future<String> createContactsOTP(BuildContext context) async {
     print(email);
-    final url = Uri.parse('$createOTPLink?email=$email');
+    final url = Uri.parse('$createContactsOTPLink?email=$email');
     final headers = {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -388,7 +388,7 @@ class _ProfileState extends State<Profile> {
                               if (isSubscribed) {
                                 refreshPageWait();
                                 if (kIsWeb) {
-                                  final otp = await createOTP(context);
+                                  final otp = await createContactsOTP(context);
                                   launchURL('$downloadUrl&otp=$otp');
                                   refreshPageRemove();
                                 } else {

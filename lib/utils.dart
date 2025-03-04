@@ -70,7 +70,7 @@ final gold = Color(0xffFFD700);
 final silver = Color(0xff8B9094);
 final orange = Color(0xffED8B00);
 
-void showPopupMessage(BuildContext context, String title, String msg) {
+void showPopupMessage(BuildContext context, String title, String msg, {Function? callback}) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -81,6 +81,9 @@ void showPopupMessage(BuildContext context, String title, String msg) {
           TextButton(
             onPressed: () {
               context.pop();
+              if (callback != null) {
+                callback();
+              }
             },
             child: Text('Ok'),
           ),
@@ -609,4 +612,15 @@ class ScreenArguments {
   final String sellerEmail;
 
   ScreenArguments(this.prdtId, this.sellerEmail);
+}
+
+// Add this function for email validation
+bool isValidEmailDomain(String email) {
+  // Regular expression to match common email domains
+  final RegExp emailRegex = RegExp(
+    r'@(gmail|outlook|hotmail|yahoo|icloud|aol|protonmail|zoho|mail|gmx|yandex|fastmail|tutanota|me|mac|live|msn)\.(com|net|org|ru|de|uk|fr|ca|au|in|it|es|br)$',
+    caseSensitive: false,
+  );
+
+  return emailRegex.hasMatch(email);
 }

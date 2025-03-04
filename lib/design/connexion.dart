@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,6 +38,11 @@ class _ConnexionState extends State<Connexion> {
   String? avatar = '';
   bool isSubscribed = false;
 
+  // Add new state variables for OTP verification
+  bool showOtpScreen = false;
+  String userId = '';
+  String otp = '';
+
   String password = '';
 
   bool showSpinner = false;
@@ -44,7 +50,8 @@ class _ConnexionState extends State<Connexion> {
 
   late SharedPreferences prefs;
 
-  Future<bool> loginUser() async {
+  // First step of login process
+  Future<bool> initiateLogin() async {
     String msg = '';
 
     try {
@@ -62,50 +69,33 @@ class _ConnexionState extends State<Connexion> {
 
         final jsonResponse = jsonDecode(response.body);
         msg = jsonResponse['message'] ?? '';
-
+        print(msg);
+        print(response.statusCode);
+        print(jsonResponse);
         if (response.statusCode == 200) {
+          // Check if OTP verification is required
+          if (jsonResponse['requireOTP'] == true) {
+            final receivedUserId = jsonResponse['userId'];
+
+            setState(() {
+              userId = receivedUserId;
+              showOtpScreen = true;
+            });
+
+            String title = context.translate('verification_required');
+            showPopupMessage(context, title, msg);
+            return false; // Return false to indicate login process is not complete yet
+          }
+
+          // If no OTP required (which should not happen with the new flow), proceed as before
           final myToken = jsonResponse['token'];
           final user = jsonResponse['user'];
 
-          final name = user['name'];
-          final region = user['region'];
-          final phone = user['phoneNumber'].toString();
-
-          final momo = user['momoNumber'];
-
-          final userCode = user['code'];
-          final balance = user['balance'].toDouble();
-          final benefit = user['benefits'].floorToDouble();
-
-          final id = user['id'];
-          avatar = user['avatar'] ?? user['url'];
-          isSubscribed = user['isSubscribed'] ?? false;
-          if (avatar != null && avatar != '') {
-            hasPP = true;
-          } else {
-            avatar = d_PP;
-            hasPP = false;
-          }
-
-          token = myToken;
-          prefs.setString('id', id);
-          prefs.setString('token', myToken);
-          prefs.setString('email', email);
-          prefs.setString('name', name);
-          prefs.setString('region', region);
-          prefs.setString('phone', phone);
-          if (momo != null) {
-            prefs.setString('momo', momo.toString());
-          }
-          prefs.setString('code', userCode);
-          prefs.setString('avatar', avatar ?? '');
-          prefs.setDouble('balance', balance);
-          prefs.setDouble('benefit', benefit);
-          prefs.setBool('isSubscribed', isSubscribed);
-
+          completeLoginProcess(myToken, user);
           return true;
         } else {
-          String title = 'Erreur';
+          String title = context.translate('error');
+          print(msg);
           showPopupMessage(context, title, msg);
           return false;
         }
@@ -117,18 +107,104 @@ class _ConnexionState extends State<Connexion> {
       }
     } on http.ClientException catch (e) {
       print('ClientException occurred: $e');
-      print('An error occurred. Please be careful when trying to login.');
       String title = context.translate("network_error");
       String errorMsg = context.translate("network_error_message");
       showPopupMessage(context, title, errorMsg);
       return false;
     } catch (e) {
       print('An unexpected error occurred: $e');
-      print('An error occurred. Please be careful when trying to login.');
       String title = context.translate("error");
       showPopupMessage(context, title, msg);
       return false;
     }
+  }
+
+  // Second step of login with OTP verification
+  Future<bool> verifyLoginWithOTP() async {
+    String msg = '';
+
+    try {
+      if (otp.isNotEmpty &&
+          otp.length == 4 &&
+          password.isNotEmpty &&
+          email.isNotEmpty) {
+        final regBody = {
+          'email': email,
+          'password': password,
+          'otp': otp,
+        };
+
+        final response = await http.post(
+          Uri.parse(login),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(regBody),
+        );
+
+        final jsonResponse = jsonDecode(response.body);
+        msg = jsonResponse['message'] ?? '';
+
+        if (response.statusCode == 200) {
+          final myToken = jsonResponse['token'];
+          final user = jsonResponse['user'];
+
+          completeLoginProcess(myToken, user);
+          return true;
+        } else {
+          String title = context.translate('error');
+          showPopupMessage(context, title, msg);
+          return false;
+        }
+      } else {
+        String msg = context.translate("enter_valid_otp");
+        String title = context.translate("incomplete_info");
+        showPopupMessage(context, title, msg);
+        return false;
+      }
+    } catch (e) {
+      print('An unexpected error occurred: $e');
+      String title = context.translate("error");
+      showPopupMessage(context, title, msg);
+      return false;
+    }
+  }
+
+  // Helper method to complete the login process after successful authentication
+  void completeLoginProcess(String myToken, dynamic user) {
+    final name = user['name'];
+    final region = user['region'];
+    final phone = user['phoneNumber'].toString();
+
+    final momo = user['momoNumber'];
+
+    final userCode = user['code'];
+    final balance = user['balance'].toDouble();
+    final benefit = user['benefits'].floorToDouble();
+
+    final id = user['id'];
+    avatar = user['avatar'] ?? user['url'];
+    isSubscribed = user['isSubscribed'] ?? false;
+    if (avatar != null && avatar != '') {
+      hasPP = true;
+    } else {
+      avatar = d_PP;
+      hasPP = false;
+    }
+
+    token = myToken;
+    prefs.setString('id', id);
+    prefs.setString('token', myToken);
+    prefs.setString('email', email);
+    prefs.setString('name', name);
+    prefs.setString('region', region);
+    prefs.setString('phone', phone);
+    if (momo != null) {
+      prefs.setString('momo', momo.toString());
+    }
+    prefs.setString('code', userCode);
+    prefs.setString('avatar', avatar ?? '');
+    prefs.setDouble('balance', balance);
+    prefs.setDouble('benefit', benefit);
+    prefs.setBool('isSubscribed', isSubscribed);
   }
 
   Future<void> downloadAvatar() async {
@@ -231,9 +307,7 @@ class _ConnexionState extends State<Connexion> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(
-                            height: 40.0,
-                          ),
+                          const SizedBox(height: 40.0),
                           Container(
                             margin: EdgeInsets.only(top: 46 * fem),
                             child: Text(
@@ -251,7 +325,9 @@ class _ConnexionState extends State<Connexion> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              context.translate("login"),
+                              showOtpScreen
+                                  ? context.translate("verify_login")
+                                  : context.translate("login"),
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -265,7 +341,10 @@ class _ConnexionState extends State<Connexion> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              context.translate("create_account_msg"),
+                              showOtpScreen
+                                  ? context.translate("enter_otp_for_email",
+                                      args: {'email': email})
+                                  : context.translate("create_account_msg"),
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -281,127 +360,265 @@ class _ConnexionState extends State<Connexion> {
                     Container(
                       width: double.infinity,
                       height: 500 * fem,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          CustomTextField(
-                            hintText: context.translate('email'),
-                            type: 4,
-                            value: email,
-                            focusNode: emailFocusNode,
-                            onChange: (val) {
-                              email = val;
-                            },
-                          ),
-                          CustomTextField(
-                            hintText: context.translate('password'),
-                            type: 3,
-                            value: password,
-                            focusNode: passwordFocusNode,
-                            onChange: (val) {
-                              password = val;
-                            },
-                          ),
-                          SizedBox(
-                            height: 20 * fem,
-                          ),
-                          ReusableButton(
-                            title: context.translate("login"),
-                            lite: false,
-                            onPress: () async {
-                              try {
-                                setState(() {
-                                  showSpinner = true;
-                                });
-
-                                final hasLogged = await loginUser();
-
-                                if (hasLogged) {
-                                  await downloadAvatar();
-                                  setState(() {
-                                    showSpinner = false;
-                                  });
-
-                                  if (isSubscribed) {
-                                    if (hasPP) {
-                                      context.go('/');
-                                    } else {
-                                      context.goNamed(PpUpload.id);
-                                    }
-                                  } else {
-                                    context.goNamed(Subscrition.id);
-                                  }
-                                }
-
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                              } catch (e) {
-                                String msg = context.translate("login_failed");
-                                String title = context.translate("error");
-                                showPopupMessage(context, title, msg);
-                                print(e);
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                              }
-                            },
-                          ),
-                          SizedBox(
-                            height: 20 * fem,
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              context.goNamed(
-                                Inscription.id,
-                                queryParameters: {
-                                  'affiliationCode': affiliationCode
-                                },
-                              );
-                            },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                            ),
-                            child: Text(
-                              context.translate("no_account_signup"),
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 16 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5 * ffem / fem,
-                                color: Color(0xff25313c),
-                              ),
-                            ),
-                          ),
-                          SizedBox(
-                            height: 10 * fem,
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              context.pushNamed(EmailOublie.id);
-                            },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                            ),
-                            child: Text(
-                              context.translate("forgot_password"),
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 16 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5 * ffem / fem,
-                                color: Color(0xff25313c),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      child: showOtpScreen
+                          ? _buildOtpScreen(fem, ffem)
+                          : _buildLoginScreen(fem, ffem),
                     ),
                   ],
                 ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // Widget for the initial login screen
+  Widget _buildLoginScreen(double fem, double ffem) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        CustomTextField(
+          hintText: context.translate('email'),
+          type: 4,
+          value: email,
+          focusNode: emailFocusNode,
+          onChange: (val) {
+            email = val;
+          },
+        ),
+        CustomTextField(
+          hintText: context.translate('password'),
+          type: 3,
+          value: password,
+          focusNode: passwordFocusNode,
+          onChange: (val) {
+            password = val;
+          },
+        ),
+        SizedBox(height: 20 * fem),
+        ReusableButton(
+          title: context.translate("login"),
+          lite: false,
+          onPress: () async {
+            try {
+              setState(() {
+                showSpinner = true;
+              });
+
+              final loginComplete = await initiateLogin();
+
+              if (loginComplete) {
+                await downloadAvatar();
+
+                if (isSubscribed) {
+                  if (hasPP) {
+                    context.go('/');
+                  } else {
+                    context.goNamed(PpUpload.id);
+                  }
+                } else {
+                  context.goNamed(Subscrition.id);
+                }
+              }
+
+              setState(() {
+                showSpinner = false;
+              });
+            } catch (e) {
+              String msg = context.translate("login_failed");
+              String title = context.translate("error");
+              showPopupMessage(context, title, msg);
+              print(e);
+              setState(() {
+                showSpinner = false;
+              });
+            }
+          },
+        ),
+        SizedBox(height: 20 * fem),
+        TextButton(
+          onPressed: () {
+            context.goNamed(
+              Inscription.id,
+              queryParameters: {'affiliationCode': affiliationCode},
+            );
+          },
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+          ),
+          child: Text(
+            context.translate("no_account_signup"),
+            style: SafeGoogleFont(
+              'Montserrat',
+              fontSize: 16 * ffem,
+              fontWeight: FontWeight.w700,
+              height: 1.5 * ffem / fem,
+              color: Color(0xff25313c),
+            ),
+          ),
+        ),
+        SizedBox(height: 10 * fem),
+        TextButton(
+          onPressed: () {
+            context.pushNamed(EmailOublie.id);
+          },
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+          ),
+          child: Text(
+            context.translate("forgot_password"),
+            style: SafeGoogleFont(
+              'Montserrat',
+              fontSize: 16 * ffem,
+              fontWeight: FontWeight.w700,
+              height: 1.5 * ffem / fem,
+              color: Color(0xff25313c),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Widget for the OTP verification screen
+  Widget _buildOtpScreen(double fem, double ffem) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _fieldTitle(fem, ffem, context.translate('otp_code')),
+        OtpTextField(
+          numberOfFields: 4,
+          borderColor: Color(0xFF512DA8),
+          fieldWidth: 50.0,
+          margin: EdgeInsets.only(right: 8.0),
+          showFieldAsBox: true,
+          onCodeChanged: (String code) {
+            // Handle code change
+          },
+          onSubmit: (String verificationCode) {
+            otp = verificationCode;
+          },
+        ),
+        SizedBox(height: 20 * fem),
+        ReusableButton(
+          title: context.translate('verify'),
+          lite: false,
+          onPress: () async {
+            try {
+              setState(() {
+                showSpinner = true;
+              });
+
+              final loginComplete = await verifyLoginWithOTP();
+
+              if (loginComplete) {
+                await downloadAvatar();
+
+                if (isSubscribed) {
+                  if (hasPP) {
+                    context.go('/');
+                  } else {
+                    context.goNamed(PpUpload.id);
+                  }
+                } else {
+                  context.goNamed(Subscrition.id);
+                }
+              }
+
+              setState(() {
+                showSpinner = false;
+              });
+            } catch (e) {
+              String msg = context.translate("verification_failed");
+              String title = context.translate("error");
+              showPopupMessage(context, title, msg);
+              print(e);
+              setState(() {
+                showSpinner = false;
+              });
+            }
+          },
+        ),
+        SizedBox(height: 20 * fem),
+        TextButton(
+          onPressed: () {
+            // Go back to login screen
+            setState(() {
+              showOtpScreen = false;
+              otp = '';
+              userId = '';
+            });
+          },
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+          ),
+          child: Text(
+            context.translate("back_to_login"),
+            style: SafeGoogleFont(
+              'Montserrat',
+              fontSize: 16 * ffem,
+              fontWeight: FontWeight.w700,
+              height: 1.5 * ffem / fem,
+              color: Color(0xff25313c),
+            ),
+          ),
+        ),
+        SizedBox(height: 10 * fem),
+        TextButton(
+          onPressed: () async {
+            try {
+              setState(() {
+                showSpinner = true;
+              });
+
+              // Send the login request again to resend OTP
+              await initiateLogin();
+
+              setState(() {
+                showSpinner = false;
+              });
+            } catch (e) {
+              String msg = context.translate("otp_resend_failed");
+              String title = context.translate("error");
+              showPopupMessage(context, title, msg);
+              print(e);
+              setState(() {
+                showSpinner = false;
+              });
+            }
+          },
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+          ),
+          child: Text(
+            context.translate("resend_otp"),
+            style: SafeGoogleFont(
+              'Montserrat',
+              fontSize: 16 * ffem,
+              fontWeight: FontWeight.w700,
+              height: 1.5 * ffem / fem,
+              color: limeGreen,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Container _fieldTitle(double fem, double ffem, String title) {
+    return Container(
+      margin: EdgeInsets.fromLTRB(49 * fem, 0 * fem, 49 * fem, 5 * fem),
+      child: Text(
+        title,
+        style: SafeGoogleFont(
+          'Montserrat',
+          fontSize: 14 * ffem,
+          fontWeight: FontWeight.w700,
+          height: 1.3333333333 * ffem / fem,
+          letterSpacing: 0.400000006 * fem,
+          color: Color(0xff6d7d8b),
         ),
       ),
     );

@@ -25,7 +25,6 @@ class _ProfileModState extends State<ProfileMod> {
   late SharedPreferences prefs;
   bool showSpinner = false;
 
-
   String dropdownValue = 'MTN_MOMO_CMR';
   List<String> correspondents = ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'];
 
@@ -77,7 +76,6 @@ class _ProfileModState extends State<ProfileMod> {
   String countryCode = '237';
   String countryCode2 = 'CM';
 
-
   void updateCorrespondents(String countryCode) {
     final correspondentMap = {
       'BJ': ['MTN_MOMO_BEN', 'MOOV_MOMO_BEN'], // Benin
@@ -105,7 +103,8 @@ class _ProfileModState extends State<ProfileMod> {
     };
 
     setState(() {
-      correspondents = correspondentMap[countryCode] ?? ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'];
+      correspondents =
+          correspondentMap[countryCode] ?? ['MTN_MOMO_CMR', 'ORANGE_MOMO_CMR'];
       dropdownValue = correspondents.first;
     });
   }
@@ -120,7 +119,7 @@ class _ProfileModState extends State<ProfileMod> {
           phone.isNotEmpty &&
           code!.isNotEmpty) {
         final sendPone = countryCode + phone;
-        final sendMomo = momo == '' || momo == null ? null : cCode + momo!;
+        // final sendMomo = momo == '' || momo == null ? null : cCode + momo!;
 
         final regBody = {
           'id': id,
@@ -128,7 +127,7 @@ class _ProfileModState extends State<ProfileMod> {
           'name': name,
           'region': region,
           'phone': sendPone,
-          'momo': sendMomo,
+          // 'momo': sendMomo,
           'code': code,
           'token': token,
           'momoCorrespondent': dropdownValue,
@@ -153,7 +152,7 @@ class _ProfileModState extends State<ProfileMod> {
         final title = (response.statusCode == 200) ? 'Success' : 'Error';
 
         prefs.setString('phone', sendPone);
-        if (sendMomo != null) prefs.setString('momo', sendMomo);
+        // if (sendMomo != null) prefs.setString('momo', sendMomo);
         if (code != null) prefs.setString('code', code!);
         if (name != null) prefs.setString('name', name!);
         if (email != '') prefs.setString('email', email);
@@ -223,7 +222,8 @@ class _ProfileModState extends State<ProfileMod> {
         showPopupMessage(
           context,
           context.translate('error'), // 'Erreur'
-          context.translate('error_occurred'), // 'An error occured please try again later'
+          context.translate(
+              'error_occurred'), // 'An error occured please try again later'
         );
       }
 
@@ -259,7 +259,6 @@ class _ProfileModState extends State<ProfileMod> {
       child: Container(
         padding: EdgeInsets.fromLTRB(25 * fem, 32 * fem, 25 * fem, 32 * fem),
         width: double.infinity,
-        height: 1200,
         decoration: const BoxDecoration(
           color: Color(0xffffffff),
         ),
@@ -313,7 +312,8 @@ class _ProfileModState extends State<ProfileMod> {
                                 height: 20.0 * fem,
                               ),
                               ReusableButton(
-                                title: context.translate('modify_photo'), // 'Modifier Photo'
+                                title: context.translate(
+                                    'modify_photo'), // 'Modifier Photo'
                                 onPress: () async {
                                   try {
                                     final result =
@@ -358,9 +358,11 @@ class _ProfileModState extends State<ProfileMod> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _label(fem, ffem, context.translate('name')), // 'Nom et Prénom'
+                            _label(fem, ffem,
+                                context.translate('name')), // 'Nom et Prénom'
                             CustomTextField(
-                              hintText: context.translate('name_example'), // 'EX: Jean Michelle'
+                              hintText: context.translate(
+                                  'name_example'), // 'EX: Jean Michelle'
                               onChange: (val) {
                                 name = val;
                               },
@@ -375,7 +377,11 @@ class _ProfileModState extends State<ProfileMod> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _label(fem, ffem, context.translate('whatsapp_number')), // 'Numero WhatsApp'
+                            _label(
+                                fem,
+                                ffem,
+                                context.translate(
+                                    'whatsapp_number')), // 'Numero WhatsApp'
                             CustomTextField(
                               hintText: '',
                               onChange: (val) {
@@ -397,7 +403,11 @@ class _ProfileModState extends State<ProfileMod> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _label(fem, ffem, context.translate('sponsor_code')), // 'Code parrain'
+                            _label(
+                                fem,
+                                ffem,
+                                context.translate(
+                                    'sponsor_code')), // 'Code parrain'
                             CustomTextField(
                               hintText: '',
                               onChange: (val) {
@@ -414,7 +424,8 @@ class _ProfileModState extends State<ProfileMod> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _label(fem, ffem, context.translate('city')), // 'Ville'
+                            _label(fem, ffem,
+                                context.translate('city')), // 'Ville'
                             CustomTextField(
                               hintText: '',
                               onChange: (val) {
@@ -428,55 +439,65 @@ class _ProfileModState extends State<ProfileMod> {
                         SizedBox(
                           height: 15 * fem,
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label(fem, ffem, context.translate('momo_number')), // 'Numero MOMO/OM'
-                            CustomTextField(
-                              hintText: '',
-                              onChange: (val) {
-                                momo = val;
-                              },
-                              getCountryDialCode: (code) {
-                                cCode = code;
-                              },
-                              getCountryCode: (code) {
-                                updateCorrespondents(code);
-                              },
-                              initialCountryCode: cCode2,
-                              margin: 0,
-                              value: momo,
-                              type: 5,
-                            ),
-                          ],
-                        ),
-                        SizedBox(
-                          height: 15 * fem,
-                        ),
-                         Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label(fem, ffem, context.translate('momo_correspondent')), // 'Correspondent'
-                            DropdownButtonFormField<String>(
-                              value: dropdownValue,
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  dropdownValue = newValue!;
-                                });
-                              },
-                              items: correspondents
-                                  .map<DropdownMenuItem<String>>((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                        SizedBox(
-                          height: 15 * fem,
-                        ),
+                        // Column(
+                        //   crossAxisAlignment: CrossAxisAlignment.start,
+                        //   children: [
+                        //     _label(
+                        //         fem,
+                        //         ffem,
+                        //         context.translate(
+                        //             'momo_number')), // 'Numero MOMO/OM'
+                        //     CustomTextField(
+                        //       hintText: '',
+                        //       onChange: (val) {
+                        //         momo = val;
+                        //       },
+                        //       getCountryDialCode: (code) {
+                        //         cCode = code;
+                        //       },
+                        //       getCountryCode: (code) {
+                        //         updateCorrespondents(code);
+                        //       },
+                        //       initialCountryCode: cCode2,
+                        //       margin: 0,
+                        //       value: momo,
+                        //       type: 5,
+                        //     ),
+                        //   ],
+                        // ),
+                        // SizedBox(
+                        //   height: 15 * fem,
+                        // ),
+                        // Column(
+                        //   crossAxisAlignment: CrossAxisAlignment.start,
+                        //   children: [
+                        //     _label(
+                        //         fem,
+                        //         ffem,
+                        //         context.translate(
+                        //             'momo_correspondent')), // 'Correspondent'
+                        //     DropdownButtonFormField<String>(
+                        //       value: dropdownValue,
+                        //       onChanged: (String? newValue) {
+                        //         setState(() {
+                        //           dropdownValue = newValue!;
+                        //         });
+                        //       },
+                        //       items: correspondents
+                        //           .map<DropdownMenuItem<String>>(
+                        //               (String value) {
+                        //         return DropdownMenuItem<String>(
+                        //           value: value,
+                        //           child: Text(value),
+                        //         );
+                        //       }).toList(),
+                        //     ),
+                        //   ],
+                        // ),
+                        // SizedBox(
+                        //   height: 15 * fem,
+                        // ),
+
                         ReusableButton(
                           title: context.translate('modify'), // 'Modifier'
                           lite: false,
@@ -493,7 +514,8 @@ class _ProfileModState extends State<ProfileMod> {
                               });
                             } catch (e) {
                               String msg = e.toString();
-                              String title = context.translate('error'); // 'Error'
+                              String title =
+                                  context.translate('error'); // 'Error'
                               showPopupMessage(context, title, msg);
                               setState(() {
                                 showSpinner = false;
@@ -505,10 +527,20 @@ class _ProfileModState extends State<ProfileMod> {
                           height: 15 * fem,
                         ),
                         ReusableButton(
-                          title: context.translate('modify_email'), // 'Modifier l\'adresse e-mail'
+                          title: context.translate(
+                              'modify_email'), // 'Modifier l\'adresse e-mail'
                           lite: false,
                           onPress: () async {
-                            context.pushNamed(ModifyEmail.id);
+                            showPopupMessage(
+                              context,
+                              context.translate('modify_email'),
+                              context.translate('email_modify_otp',
+                                  args: {'email': email}),
+                              callback: () async {
+                                await sendOTP();
+                                context.pushNamed(ModifyEmail.id);
+                              },
+                            );
                           },
                         ),
                       ],
@@ -519,6 +551,38 @@ class _ProfileModState extends State<ProfileMod> {
         ),
       ),
     );
+  }
+
+  Future<void> sendOTP() async {
+    if (id != null && id!.isNotEmpty) {
+      setState(() {
+        showSpinner = true;
+      });
+      final regBody = {
+        'userId': id,
+      };
+
+      final response = await http.post(
+        Uri.parse(createOTPLink),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(regBody),
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+      final msg = jsonResponse['message'] ?? '';
+
+      if (response.statusCode == 200) {
+        showPopupMessage(context, context.translate('otp_sent'), msg);
+      } else {
+        showPopupMessage(context, context.translate('error'), msg);
+      }
+    } else {
+      showPopupMessage(context, context.translate('error'),
+          context.translate('user_id_missing'));
+    }
+    setState(() {
+      showSpinner = false;
+    });
   }
 
   Container _label(double fem, double ffem, String title) {

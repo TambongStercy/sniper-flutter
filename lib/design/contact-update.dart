@@ -249,8 +249,8 @@ class _ContactUpdateState extends State<ContactUpdate> {
     return DateFormat('yyyy-MM-dd').format(date);
   }
 
-  Future<String> createOTP(BuildContext context) async {
-    final url = Uri.parse('$createOTPLink?email=$email');
+  Future<String> createContactsOTP(BuildContext context) async {
+    final url = Uri.parse('$createContactsOTPLink?email=$email');
     final headers = {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -274,7 +274,7 @@ class _ContactUpdateState extends State<ContactUpdate> {
       showSpinner = true;
     });
 
-    final otp = await createOTP(context);
+    final otp = await createContactsOTP(context);
 
     if (endDate!.isBefore(startDate!)) {
       showPopupMessage(

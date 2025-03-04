@@ -1,95 +1,119 @@
 import 'dart:convert';
-// import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
-import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/new-email.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:http/http.dart' as http;
-import 'package:snipper_frontend/localization_extension.dart'; // For localization
+import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+import 'package:snipper_frontend/design/upload-pp.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 
-class ModifyEmail extends StatefulWidget {
-  static const id = 'modifyEmail';
+class VerifyRegistration extends StatefulWidget {
+  static const id = 'verify_registration';
 
-  const ModifyEmail({super.key});
+  const VerifyRegistration({
+    super.key,
+    required this.email,
+    required this.userId,
+  });
+
+  final String email;
+  final String userId;
 
   @override
-  State<ModifyEmail> createState() => _ModifyEmailState();
+  State<VerifyRegistration> createState() => _VerifyRegistrationState();
 }
 
-class _ModifyEmailState extends State<ModifyEmail> {
-  String email = '';
-  String id = '';
-  String token = '';
+class _VerifyRegistrationState extends State<VerifyRegistration> {
+  String get email => widget.email;
+  String get userId => widget.userId;
   String otp = '';
-
   bool showSpinner = false;
 
   late SharedPreferences prefs;
 
-  Future<void> ModifyEmail() async {
-    if (email.isNotEmpty) {
+  Future<void> verifyRegistrationOTP() async {
+    if (userId.isNotEmpty && otp.isNotEmpty && otp.length == 4) {
       final regBody = {
-        'email': email,
-        'id': id,
+        'userId': userId,
         'otp': otp,
       };
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
       final response = await http.post(
-        Uri.parse(modEmail),
-        headers: headers,
-        body: (regBody),
+        Uri.parse(verifyRegistration),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(regBody),
       );
 
       final jsonResponse = jsonDecode(response.body);
-
       final msg = jsonResponse['message'] ?? '';
 
       if (response.statusCode == 200) {
-        String title = context.translate('code_sent');
+        final myToken = jsonResponse['token'];
+        final user = jsonResponse['user'];
 
-        context.pushNamed(
-          NewEmail.id,
-          extra: email,
-        );
+        final name = user['name'] ?? '';
+        final region = user['region'] ?? '';
+        final phone = user['phoneNumber'] ?? '';
+        final userCode = user['code'] ?? '';
+        final balance = user['balance'] ?? 0;
+        final id = user['id'] ?? '';
+        final isSubscribed = user['isSubscribed'] ?? false;
 
+        prefs = await SharedPreferences.getInstance();
+        prefs.setString('id', id);
+        prefs.setString('email', email);
+        prefs.setString('name', name);
+        prefs.setString('token', myToken);
+        prefs.setString('region', region);
+        prefs.setString('phone', phone.toString());
+        prefs.setString('code', userCode);
+        prefs.setInt('balance', balance);
+        prefs.setString('avatar', '');
+        prefs.setBool('isSubscribed', isSubscribed);
+
+        String title = context.translate('success');
         showPopupMessage(context, title, msg);
-        return;
+
+        context.goNamed(PpUpload.id);
       } else {
-        String title = context.translate('something_went_wrong');
-
+        String title = context.translate('error');
         showPopupMessage(context, title, msg);
-        return;
       }
     } else {
-      String msg = context.translate('fill_all_information');
-      String title = context.translate('information_incomplete');
-      showPopupMessage(context, title, msg);
-      return;
+      showPopupMessage(context, context.translate('incomplete_info'),
+          context.translate('enter_valid_otp'));
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    initSharedPref();
-  }
+  Future<void> resendOTP() async {
+    if (userId.isNotEmpty) {
+      final regBody = {
+        'userId': userId,
+      };
 
-  void initSharedPref() async {
-    prefs = await SharedPreferences.getInstance();
-    id = prefs.getString('id') ?? '';
-    token = prefs.getString('token') ?? '';
+      final response = await http.post(
+        Uri.parse(createOTPLink),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(regBody),
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+      final msg = jsonResponse['message'] ?? '';
+
+      if (response.statusCode == 200) {
+        showPopupMessage(context, context.translate('otp_sent'), msg);
+      } else {
+        showPopupMessage(context, context.translate('error'), msg);
+      }
+    } else {
+      showPopupMessage(context, context.translate('error'),
+          context.translate('user_id_missing'));
+    }
   }
 
   @override
@@ -97,6 +121,7 @@ class _ModifyEmailState extends State<ModifyEmail> {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
+
     return Scaffold(
       body: SafeArea(
         child: ModalProgressHUD(
@@ -114,19 +139,12 @@ class _ModifyEmailState extends State<ModifyEmail> {
                   children: [
                     Container(
                       margin: EdgeInsets.fromLTRB(
-                        25 * fem,
-                        0 * fem,
-                        0 * fem,
-                        21.17 * fem,
-                      ),
+                          25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
                       width: 771.27 * fem,
-                      height: 275.83 * fem,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(
-                            height: 40.0,
-                          ),
+                          const SizedBox(height: 40.0),
                           Container(
                             margin: EdgeInsets.only(top: 46 * fem),
                             child: Text(
@@ -144,8 +162,7 @@ class _ModifyEmailState extends State<ModifyEmail> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              context.translate(
-                                  'modify_email'), // 'Modifiez votre e-mail'
+                              context.translate('verify_your_email'),
                               textAlign: TextAlign.left,
                               style: SafeGoogleFont(
                                 'Montserrat',
@@ -159,8 +176,8 @@ class _ModifyEmailState extends State<ModifyEmail> {
                           Container(
                             margin: EdgeInsets.only(top: 34 * fem),
                             child: Text(
-                              context.translate(
-                                  'enter_new_email'), // 'Entrez la nouvelle adresse e-mail'
+                              context.translate('enter_otp_for_email',
+                                  args: {'email': email}),
                               style: SafeGoogleFont(
                                 'Montserrat',
                                 fontSize: 15 * ffem,
@@ -177,21 +194,9 @@ class _ModifyEmailState extends State<ModifyEmail> {
                       width: double.infinity,
                       height: 500 * fem,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          _fieldTitle(
-                              fem, ffem, context.translate('email')), // 'Email'
-                          CustomTextField(
-                            hintText: 'Ex: Jeanpierre@gmail.com',
-                            type: 4,
-                            value: email,
-                            onChange: (val) {
-                              email = val;
-                            },
-                          ),
-                          SizedBox(height: 20 * fem),
-                          _fieldTitle(fem, ffem,
-                              context.translate('otp_code')), // 'Code OTP'
+                          _fieldTitle(fem, ffem, context.translate('otp_code')),
                           OtpTextField(
                             numberOfFields: 4,
                             borderColor: Color(0xFF512DA8),
@@ -199,17 +204,15 @@ class _ModifyEmailState extends State<ModifyEmail> {
                             margin: EdgeInsets.only(right: 8.0),
                             showFieldAsBox: true,
                             onCodeChanged: (String code) {
-                              print(code);
+                              // Handle code change
                             },
                             onSubmit: (String verificationCode) {
                               otp = verificationCode;
-                              print('submit');
                             },
                           ),
                           SizedBox(height: 20 * fem),
                           ReusableButton(
-                            title: context.translate(
-                                'send_otp_code'), // 'Envoyer le code OTP'
+                            title: context.translate('verify'),
                             lite: false,
                             onPress: () async {
                               try {
@@ -217,16 +220,14 @@ class _ModifyEmailState extends State<ModifyEmail> {
                                   showSpinner = true;
                                 });
 
-                                await ModifyEmail();
+                                await verifyRegistrationOTP();
 
                                 setState(() {
                                   showSpinner = false;
                                 });
                               } catch (e) {
-                                String msg = e.toString();
-                                String title = context.translate('error');
-                                showPopupMessage(context, title, msg);
-                                print(e);
+                                showPopupMessage(context,
+                                    context.translate('error'), e.toString());
                                 setState(() {
                                   showSpinner = false;
                                 });
@@ -269,7 +270,6 @@ class _ModifyEmailState extends State<ModifyEmail> {
                               ),
                             ),
                           ),
-                          SizedBox(height: 20 * fem),
                         ],
                       ),
                     ),
@@ -290,50 +290,13 @@ class _ModifyEmailState extends State<ModifyEmail> {
         title,
         style: SafeGoogleFont(
           'Montserrat',
-          fontSize: 12 * ffem,
-          fontWeight: FontWeight.w500,
+          fontSize: 14 * ffem,
+          fontWeight: FontWeight.w700,
           height: 1.3333333333 * ffem / fem,
           letterSpacing: 0.400000006 * fem,
           color: Color(0xff6d7d8b),
         ),
       ),
     );
-  }
-
-  Future<void> resendOTP() async {
-    if (id.isNotEmpty) {
-      setState(() {
-        showSpinner = true;
-      });
-      final regBody = {
-        'userId': id,
-      };
-
-      final response = await http.post(
-        Uri.parse(createOTPLink),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
-
-      final jsonResponse = jsonDecode(response.body);
-      final msg = jsonResponse['message'] ?? '';
-
-      if (response.statusCode == 200) {
-        showPopupMessage(
-            context, context.translate('otp_sent') + ': ' + email, msg);
-      } else {
-        showPopupMessage(context, context.translate('error'), msg);
-      }
-    } else {
-      showPopupMessage(context, context.translate('error'),
-          context.translate('user_id_missing'));
-    }
-    setState(() {
-      showSpinner = false;
-    });
-  }
-
-  void popUntilAndPush(BuildContext context) {
-    context.go('/');
   }
 }
