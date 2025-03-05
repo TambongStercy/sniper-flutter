@@ -69,7 +69,7 @@
   "operator": "Opérateur",
   "phone_number": "Numéro de téléphone",
   "example_phone": "EX: 674090411",
-  "amount": "Montant",
+  "amount": "Montant en {currency} {conversion} : {momo}",
   "password": "Mot de passe",
   "confirm": "Valider",
   "not_subscribed": "Vous n'êtes pas abonné 😔",
@@ -298,5 +298,10 @@
   "otp_resend_failed": "Échec de Renvoi du Code OTP",
   "verify": "Vérifier",
   "invalid_email_domain": "Domaine Email Invalide",
-  "use_valid_email_provider": "Veuillez utiliser un email valide de fournisseurs comme Gmail, Outlook, Hotmail, Yahoo, etc."
+  "use_valid_email_provider": "Veuillez utiliser un email valide de fournisseurs comme Gmail, Outlook, Hotmail, Yahoo, etc.",
+  "withdrawal_warning": "VEUILLEZ LIRE ATTENTIVEMENT:",
+  "withdrawal_warning_message": "• Tous les retraits seront envoyés uniquement à ce numéro de mobile money\n• Une fois défini, ce numéro NE PEUT PAS être modifié dans l'application\n• Pour modifier ce numéro, vous devez contacter l'admin directement via WhatsApp\n• Un numéro incorrect peut entraîner une perte permanente de fonds",
+  "critical_warning": "⚠️ AVERTISSEMENT CRITIQUE ⚠️",
+  "without_momo_warning": "Sans numéro mobile money, vous ne pourrez pas recevoir de retraits. Êtes-vous sûr de vouloir annuler?",
+  "momo_not_set": "Numéro mobile money non défini"
 }

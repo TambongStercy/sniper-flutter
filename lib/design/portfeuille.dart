@@ -24,6 +24,8 @@ class _WalletState extends State<Wallet> {
   double balance = 0;
   double benefice = 0;
   String email = '';
+  String momoNumber = '';
+  String momoCor = '';
   bool showSpinner = true;
   late SharedPreferences prefs;
 
@@ -32,6 +34,8 @@ class _WalletState extends State<Wallet> {
     balance = (prefs.getDouble('balance') ?? 0).floorToDouble();
     email = prefs.getString('email') ?? '';
     benefice = (prefs.getDouble('benefit') ?? 0).floorToDouble();
+    momoNumber = prefs.getString('momo') ?? '';
+    momoCor = prefs.getString('momoCorrespondent') ?? '';
   }
 
   @override
@@ -82,8 +86,8 @@ class _WalletState extends State<Wallet> {
 
       final jsonResponse = jsonDecode(response.body);
 
-      msg = jsonResponse['message'];
-      error = jsonResponse['error'];
+      msg = jsonResponse['message'] ?? '';
+      error = jsonResponse['error'] ?? context.translate('error');
 
       if (response.statusCode == 200) {
         final user = jsonResponse['user'];
@@ -95,6 +99,13 @@ class _WalletState extends State<Wallet> {
         balance = user['balance'].floorToDouble();
         final name = user['name'] ?? '';
         final isSubscribed = user['isSubscribed'] ?? false;
+
+        momoNumber = user['momoNumber']?.toString() ?? '';
+        momoCor = user['momoCorrespondent']?.toString() ?? '';
+
+        prefs.setString('momo', momoNumber);
+        prefs.setString('momoCorrespondent', momoCor);
+
         prefs.setString('name', name);
         prefs.setString('email', email);
         prefs.setString('region', region);
@@ -213,6 +224,13 @@ class _WalletState extends State<Wallet> {
             ReusableButton(
               title: context.translate('withdraw'), // 'Retrait'
               onPress: () {
+                print(momoNumber);
+                print(momoCor);
+                if (momoNumber == '' || momoCor == '') {
+                  showPopupMessage(context, context.translate('error'),
+                      context.translate('momo_not_set'));
+                  return;
+                }
                 context.pushNamed(Retrait.id);
               },
             ),

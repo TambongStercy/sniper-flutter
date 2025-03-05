@@ -24,7 +24,7 @@ class _RetraitState extends State<Retrait> {
   String selectedCurrency = 'XAF';
   List<String> availableCurrencies = ['XAF'];
 
-  String phone = '';
+  // String phone = '';
   String amount = '';
   String token = '';
   String email = '';
@@ -71,15 +71,14 @@ class _RetraitState extends State<Retrait> {
     momoNumber = prefs.getString('momo') ?? '';
     momoCor = prefs.getString('momoCorrespondent') ?? '';
     balance = prefs.getDouble('balance') ?? 0;
-    phone = prefs.getString('momo') ?? prefs.getString('phone') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
 
-    final country = getCountryFromPhoneNumber(phone);
+    final country = getCountryFromPhoneNumber(momoNumber);
 
     countryCode = country!.dialCode;
     countryCode2 = country.code;
 
-    phone = phone.substring(country.dialCode.length);
+    // phone = phone.substring(country.dialCode.length);
   }
 
   void updateOperatorsAndCurrencies(String countryCode) async {
@@ -433,7 +432,13 @@ class _RetraitState extends State<Retrait> {
                         margin: EdgeInsets.fromLTRB(
                             0 * fem, 0 * fem, 0 * fem, 10 * fem),
                         child: Text(
-                          '${context.translate('amount')} in ${selectedCurrency} ${selectedCurrency != 'XAF' ? '(${amountInXAF.toStringAsFixed(2)} XAF = 1 ${selectedCurrency})' : ''}',
+                          // '${context.translate('amount')} in ${selectedCurrency} ${selectedCurrency != 'XAF' ? '(${amountInXAF.toStringAsFixed(2)} XAF = 1 ${selectedCurrency})' : ''} : ${momoNumber != '' ? '${momoNumber} ${momoCor}' : ''}',
+                          context.translate('amount', args: {
+                            // 'amount': amountInXAF.toStringAsFixed(2),
+                            'currency': selectedCurrency,
+                            'momo': '${momoNumber} ${momoCor}',
+                            'conversion': '${selectedCurrency != 'XAF' ? '(${amountInXAF.toStringAsFixed(2)} XAF = 1 ${selectedCurrency})' : ''}',
+                          }),
                           style: SafeGoogleFont(
                             'Montserrat',
                             fontSize: 14 * ffem,

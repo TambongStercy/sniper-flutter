@@ -171,16 +171,11 @@ class _AccueilState extends State<Accueil> {
         name = user['name'] ?? name;
         isSubscribed = user['isSubscribed'] ?? false;
 
-        final momo = user['momoNumber'];
-        final momoCorrespondent = user['momoCorrespondent'];
+        final momo = user['momoNumber']?.toString() ?? '';
+        final momoCorrespondent = user['momoCorrespondent']?.toString() ?? '';
 
-        if (momo != null) {
-          prefs.setString('momo', momo.toString());
-
-          if (momoCorrespondent != null) {
-            prefs.setString('momoCorrespondent', momoCorrespondent);
-          }
-        }
+        prefs.setString('momoCorrespondent', momoCorrespondent);
+        prefs.setString('momo', momo);
 
         prefs.setString('name', name);
         prefs.setString('whatsapp', whatsappLink);
@@ -209,7 +204,7 @@ class _AccueilState extends State<Accueil> {
         if (!isSubscribed) {
           print('add Notification');
         }
-        if (momo == null || momoCorrespondent == null) {
+        if (momo == '' || momoCorrespondent == '') {
           _showPhoneNumberDialog();
         }
 
@@ -363,7 +358,7 @@ class _AccueilState extends State<Accueil> {
                             SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                "⚠️ CRITICAL WARNING ⚠️",
+                                context.translate('critical_warning'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.red.shade700,
@@ -374,32 +369,9 @@ class _AccueilState extends State<Accueil> {
                           ],
                         ),
                         SizedBox(height: 10),
-
-                        // English warning
-                        Text(
-                          "PLEASE READ CAREFULLY:",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          "• All withdrawals will be sent ONLY to this mobile money number\n"
-                          "• Once set, this number CANNOT be changed in the app\n"
-                          "• To modify this number, you must contact admin directly via WhatsApp\n"
-                          "• Incorrect number may result in permanent loss of funds",
-                          style: TextStyle(fontSize: 13),
-                        ),
-
-                        SizedBox(height: 12),
-                        Divider(color: Colors.red.shade200),
-                        SizedBox(height: 8),
-
                         // French warning
                         Text(
-                          "VEUILLEZ LIRE ATTENTIVEMENT:",
+                          context.translate('withdrawal_warning'),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
@@ -408,10 +380,7 @@ class _AccueilState extends State<Accueil> {
                         ),
                         SizedBox(height: 5),
                         Text(
-                          "• Tous les retraits seront envoyés UNIQUEMENT à ce numéro mobile money\n"
-                          "• Une fois défini, ce numéro NE PEUT PAS être modifié dans l'application\n"
-                          "• Pour modifier ce numéro, vous devez contacter l'administrateur directement via WhatsApp\n"
-                          "• Un numéro incorrect peut entraîner une perte permanente de fonds",
+                          context.translate('withdrawal_warning_message'),
                           style: TextStyle(fontSize: 13),
                         ),
                       ],
@@ -540,7 +509,7 @@ class _AccueilState extends State<Accueil> {
                       return AlertDialog(
                         title: Text(context.translate('warning')),
                         content: Text(
-                          "Without a mobile money number, you won't be able to receive withdrawals. Are you sure you want to cancel?\n\nSans numéro mobile money, vous ne pourrez pas recevoir de retraits. Êtes-vous sûr de vouloir annuler?",
+                          context.translate('without_momo_warning'),
                         ),
                         actions: [
                           TextButton(
