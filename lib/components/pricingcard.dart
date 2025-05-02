@@ -8,6 +8,7 @@ class PricingCard extends StatelessWidget {
     super.key,
 
     /// 1 for basic, 2 for pro & 3 for gold
+    /// 10 for classic subscription, 11 for targeted subscription
     required this.type,
 
     /// Called when user presses on "commander maintenant"
@@ -34,10 +35,45 @@ class PricingCard extends StatelessWidget {
       categ = context.translate('subscription');
       pointImage = 'assets/design/images/group-45809-oeR.png';
       price = '2000';
-      color = Color(0xff1862f0);
+      color = Theme.of(context).colorScheme.primary;
       description.addAll(
         [
           context.translate('access_contacts_sheet'),
+          context.translate('withdraw_money'),
+          context.translate('whatsapp_group_access'),
+          context.translate('trading_training'),
+          context.translate('marketing_training'),
+          context.translate('china_purchase_training'),
+          context.translate('public_speaking_training'),
+          context.translate('marketplace_access'),
+        ],
+      );
+    } else if (type == 10) {
+      categ = context.translate('classic_subscription');
+      pointImage = 'assets/design/images/group-45809-oeR.png';
+      price = '2000';
+      color = Theme.of(context).colorScheme.primary;
+      description.addAll(
+        [
+          context.translate('access_contacts_sheet'),
+          context.translate('withdraw_money'),
+          context.translate('whatsapp_group_access'),
+          context.translate('trading_training'),
+          context.translate('marketing_training'),
+          context.translate('china_purchase_training'),
+          context.translate('public_speaking_training'),
+          context.translate('marketplace_access'),
+        ],
+      );
+    } else if (type == 11) {
+      categ = context.translate('targeted_subscription');
+      pointImage = 'assets/design/images/group-45809-Dah.png';
+      price = '5000';
+      color = Theme.of(context).colorScheme.tertiary;
+      description.addAll(
+        [
+          context.translate('access_contacts_sheet'),
+          context.translate('targeted_contacts_access'),
           context.translate('withdraw_money'),
           context.translate('whatsapp_group_access'),
           context.translate('trading_training'),
@@ -51,7 +87,7 @@ class PricingCard extends StatelessWidget {
       categ = context.translate('basic');
       pointImage = 'assets/design/images/group-45809-oeR.png';
       price = '2000';
-      color = Color(0xff1862f0);
+      color = Theme.of(context).colorScheme.primary;
       description.addAll(
         [
           context.translate('whatsapp_promo_once'),
@@ -62,7 +98,7 @@ class PricingCard extends StatelessWidget {
       categ = context.translate('pro');
       pointImage = 'assets/design/images/group-45809.png';
       price = '5000';
-      color = Color(0xff92b127);
+      color = Theme.of(context).colorScheme.secondary;
       description.addAll(
         [
           context.translate('whatsapp_promo_thrice'),
@@ -73,7 +109,7 @@ class PricingCard extends StatelessWidget {
       categ = context.translate('gold');
       pointImage = 'assets/design/images/group-45809-Dah.png';
       price = '10000';
-      color = Color(0xfff49101);
+      color = Theme.of(context).colorScheme.tertiary;
       description.addAll(
         [
           context.translate('whatsapp_promo_five'),
@@ -83,6 +119,10 @@ class PricingCard extends StatelessWidget {
         ],
       );
     }
+
+    final String priceQualifier = (type == 10 || type == 11)
+        ? context.translate('for_life')
+        : (type > 0 ? '/mo' : context.translate('for_life'));
 
     return Container(
       margin: EdgeInsets.fromLTRB(
@@ -160,7 +200,7 @@ class PricingCard extends StatelessWidget {
                     0 * fem,
                   ),
                   child: Text(
-                    type > 0 ? '/mo' : context.translate('for_life'),
+                    priceQualifier,
                     textAlign: TextAlign.center,
                     style: SafeGoogleFont(
                       'Montserrat',

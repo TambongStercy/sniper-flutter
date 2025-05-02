@@ -9,7 +9,7 @@ class Scene extends StatelessWidget {
     double baseWidth = 374;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
-    
+
     return Container(
       width: double.infinity,
       child: Container(
@@ -33,14 +33,17 @@ class Scene extends StatelessWidget {
               ),
             ),
             Container(
-              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 8.54 * fem, 40 * fem),
-              padding: EdgeInsets.fromLTRB(129 * fem, 85 * fem, 124.46 * fem, 86 * fem),
+              margin:
+                  EdgeInsets.fromLTRB(0 * fem, 0 * fem, 8.54 * fem, 40 * fem),
+              padding: EdgeInsets.fromLTRB(
+                  129 * fem, 85 * fem, 124.46 * fem, 86 * fem),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24 * fem),
                 color: Color(0x26000000),
                 image: DecorationImage(
                   fit: BoxFit.cover,
-                  image: AssetImage('assets/design/images/rectangle-2772-bg.png'),
+                  image:
+                      AssetImage('assets/design/images/rectangle-2772-bg.png'),
                 ),
               ),
               child: Center(
@@ -56,16 +59,18 @@ class Scene extends StatelessWidget {
               ),
             ),
             Container(
-              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 15.27 * fem, 0 * fem),
+              margin:
+                  EdgeInsets.fromLTRB(0 * fem, 0 * fem, 15.27 * fem, 0 * fem),
               width: 292 * fem,
               height: 30 * fem,
               decoration: BoxDecoration(
-                color: Color(0xff1862f0),
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(66 * fem),
               ),
               child: Center(
                 child: Text(
-                  context.translate('download_document'), // Localization key used here
+                  context.translate(
+                      'download_document'), // Localization key used here
                   textAlign: TextAlign.center,
                   style: SafeGoogleFont(
                     'Montserrat',

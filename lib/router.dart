@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/design/accueil.dart';
@@ -8,7 +9,6 @@ import 'package:snipper_frontend/design/connexion.dart';
 import 'package:snipper_frontend/design/contact-update.dart';
 import 'package:snipper_frontend/design/email-oublier.dart';
 import 'package:snipper_frontend/design/espace-partenaire.dart';
-import 'package:snipper_frontend/design/fiche-contact.dart';
 import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/modify-email.dart';
 import 'package:snipper_frontend/design/modify-product.dart';
@@ -21,6 +21,7 @@ import 'package:snipper_frontend/design/profile-info.dart';
 import 'package:snipper_frontend/design/profile-modify.dart';
 import 'package:snipper_frontend/design/retrait.dart';
 import 'package:snipper_frontend/design/splash1.dart';
+import 'package:snipper_frontend/design/sponsor_info_page.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/design/verify_registration.dart';
@@ -111,20 +112,46 @@ class AppRouter {
         name: ProduitPage.id,
         builder: (context, state) {
           // Decode the JSON string back to a Map
-          final prdtAndUser = state.extra;
+          final prdtAndUser = state.extra as Map<String, dynamic>;
 
-          return ProduitPage(prdtAndUser: prdtAndUser ?? {});
+          return ProduitPage(
+            productId: prdtAndUser['productId'] as String,
+            sellerId: prdtAndUser['sellerId'] as String,
+          );
         },
+      ),
+      GoRoute(
+        path: '/${SponsorInfoPage.id}',
+        name: SponsorInfoPage.id,
+        builder: (context, state) => SponsorInfoPage(),
       ),
       GoRoute(
         path: '/${VerifyRegistration.id}',
         name: VerifyRegistration.id,
         builder: (context, state) {
-          final Map<String, dynamic> extra =
-              state.extra as Map<String, dynamic>;
-          return VerifyRegistration(
-            email: extra['email'] as String,
-            userId: extra['userId'] as String,
+          final extraData = state.extra;
+
+          if (extraData is Map<String, dynamic> &&
+              extraData.containsKey('email') &&
+              extraData.containsKey('userId')) {
+            final email = extraData['email'] as String?;
+            final userId = extraData['userId'] as String?;
+
+            if (email != null &&
+                email.isNotEmpty &&
+                userId != null &&
+                userId.isNotEmpty) {
+              return VerifyRegistration(email: email, userId: userId);
+            }
+          }
+
+          print("Error: Invalid or missing data for VerifyRegistration route.");
+          return Scaffold(
+            body: Center(
+              child: Text(
+                'Error: Could not verify registration. Missing required information.',
+              ),
+            ),
           );
         },
       ),
@@ -171,11 +198,6 @@ class AppRouter {
         path: '/${Wallet.id}',
         name: Wallet.id,
         builder: (context, state) => Wallet(),
-      ),
-      GoRoute(
-        path: '/${FicheContact.id}',
-        name: FicheContact.id,
-        builder: (context, state) => FicheContact(),
       ),
       GoRoute(
         path: '/${ModifyEmail.id}',

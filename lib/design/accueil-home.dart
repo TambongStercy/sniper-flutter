@@ -122,6 +122,10 @@ class _HomeState extends State<Home> {
         .replace(queryParameters: {'affiliationCode': code});
 
     link = uri.toString();
+
+    // Load dynamic file IDs from SharedPreferences
+    presentationPdfId = prefs.getString('appSettings_presentationPdfId');
+    presentationVideoId = prefs.getString('appSettings_presentationVideoId');
   }
 
   void Function(int) get changePage => widget.changePage;
@@ -137,6 +141,11 @@ class _HomeState extends State<Home> {
   double benefice = 0;
   String avatar = '';
   bool isSubscribed = false;
+
+  // Add state variables for dynamic file IDs
+  String? presentationPdfId;
+  String? presentationVideoId;
+  // String? videoThumbnailId; // Remove - Thumbnail uses video ID
 
   // Create a List of Strings
   List<String> unsubSlides = [
@@ -209,7 +218,17 @@ class _HomeState extends State<Home> {
   ];
 
   void downloadPresentation() {
-    launchURL('$downloadPres?language=fr');
+    // Load ID from state
+    if (presentationPdfId != null && presentationPdfId!.isNotEmpty) {
+      final url = '$settingsFileBaseUrl$presentationPdfId';
+      print("Launching Presentation URL: $url");
+      launchURL(url);
+    } else {
+      print("Presentation PDF ID not found.");
+      showPopupMessage(context, context.translate('error'),
+          context.translate('file_not_available')); // Add translation
+    }
+    // launchURL('$downloadPres?language=fr'); // Remove old static URL
   }
 
   @override
@@ -218,14 +237,18 @@ class _HomeState extends State<Home> {
 
     unsubSlides.shuffle();
 
-    () async {
-      await initSharedPref();
-      if (mounted) {
-        setState(() {
-          // Update your UI with the desired changes.
-        });
-      }
-    }();
+    // Call initSharedPref here
+    _initializeHomeData();
+  }
+
+  // Helper for async initState
+  Future<void> _initializeHomeData() async {
+    await initSharedPref();
+    if (mounted) {
+      setState(() {
+        // Update your UI with the desired changes.
+      });
+    }
   }
 
   @override
@@ -246,161 +269,254 @@ class _HomeState extends State<Home> {
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Container(
-          padding: EdgeInsets.fromLTRB(0 * fem, 25 * fem, 0 * fem, 14 * fem),
+          padding: EdgeInsets.fromLTRB(10 * fem, 25 * fem, 10 * fem, 14 * fem),
           width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    constraints: BoxConstraints(
-                      maxWidth: 170 * fem,
-                    ),
-                    child: Text(
-                      capitalizeWords(name),
-                      overflow: TextOverflow.ellipsis,
-                      style: SafeGoogleFont(
-                        'Montserrat',
-                        letterSpacing: 0.0 * fem,
-                        fontSize: 25 * ffem,
-                        fontWeight: FontWeight.w600,
-                        height: 1.4 * ffem / fem,
-                        color: Colors.black,
+              Card(
+                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                child: Padding(
+                  padding: EdgeInsets.all(16 * fem),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            constraints: BoxConstraints(
+                              maxWidth: 170 * fem,
+                            ),
+                            child: Text(
+                              capitalizeWords(name),
+                              overflow: TextOverflow.ellipsis,
+                              style: SafeGoogleFont(
+                                'Montserrat',
+                                letterSpacing: 0.0 * fem,
+                                fontSize: 25 * ffem,
+                                fontWeight: FontWeight.w600,
+                                height: 1.4 * ffem / fem,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            ',',
+                            overflow: TextOverflow.ellipsis,
+                            style: SafeGoogleFont(
+                              'Montserrat',
+                              letterSpacing: 0.0 * fem,
+                              fontSize: 22 * ffem,
+                              fontWeight: FontWeight.w700,
+                              height: 1.4 * ffem / fem,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                  Text(
-                    ',',
-                    overflow: TextOverflow.ellipsis,
-                    style: SafeGoogleFont(
-                      'Montserrat',
-                      letterSpacing: 0.0 * fem,
-                      fontSize: 22 * ffem,
-                      fontWeight: FontWeight.w700,
-                      height: 1.4 * ffem / fem,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                margin:
-                    EdgeInsets.fromLTRB(7 * fem, 0 * fem, 0 * fem, 20 * fem),
-                constraints: BoxConstraints(
-                  maxWidth: 325 * fem,
-                ),
-                child: RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: SafeGoogleFont(
-                      'Montserrat',
-                      fontSize: 17 * ffem,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4 * ffem / fem,
-                      color: Color(0xff25313c),
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: context.translate('welcome_sniper'),
-                      ),
-                      TextSpan(
-                        text: 'SBC',
-                        style: SafeGoogleFont(
-                          'Montserrat',
-                          fontSize: 20 * ffem,
-                          fontWeight: FontWeight.w500,
-                          height: 1.4 * ffem / fem,
-                          color: limeGreen,
+                      SizedBox(height: 10 * fem),
+                      RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          style: SafeGoogleFont(
+                            'Montserrat',
+                            fontSize: 17 * ffem,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4 * ffem / fem,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          children: <TextSpan>[
+                            TextSpan(
+                              text: context.translate('welcome_sniper'),
+                            ),
+                            TextSpan(
+                              text: 'SBC',
+                              style: SafeGoogleFont(
+                                'Montserrat',
+                                fontSize: 20 * ffem,
+                                fontWeight: FontWeight.w500,
+                                height: 1.4 * ffem / fem,
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                            ),
+                            TextSpan(
+                              text: context.translate('welcome_message'),
+                            ),
+                          ],
                         ),
-                      ),
-                      TextSpan(
-                        text: context.translate('welcome_message'),
                       ),
                     ],
                   ),
                 ),
               ),
-              MoneyCard(isSold: true, amount: balance),
-              MoneyCard(isSold: false, amount: benefice),
-              SizedBox(height: 20.0),
-              Image.asset('assets/assets/images/50 perc.png'),
-              SizedBox(height: 20.0),
-              ReusableButton(
-                title: context.translate('share_link'),
-                lite: false,
-                onPress: () {
-                  Share.share(link);
-                },
-              ),
-              Text(
-                context.translate('about_sbc'),
-                style: SafeGoogleFont(
-                  'Montserrat',
-                  letterSpacing: 0.0 * fem,
-                  fontSize: 22 * ffem,
-                  fontWeight: FontWeight.w600,
-                  height: 1.4 * ffem / fem,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 10),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 20 * fem),
-                width: double.infinity,
-                child: Text(
-                  context.translate('sbc_description'),
-                  style: SafeGoogleFont(
-                    'Montserrat',
-                    fontSize: 15 * ffem,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4 * ffem / fem,
-                    color: Color(0xff25313c),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              SizedBox(height: 20),
-              MarketCard(),
-              AdCard(
-                height: 300,
-                buttonTitle: context.translate('learn_more'),
-                buttonAction: () {
-                  changePage(1);
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 5 * fem),
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                  ),
-                  child: AnotherCarousel(
-                    images: slides.map((name) {
-                      return AssetImage('assets/slides/$name.jpg');
-                    }).toList(),
-                    boxFit: BoxFit.contain,
-                    showIndicator: false,
-                    dotSize: 3.0,
-                    borderRadius: true,
+              Card(
+                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8 * fem),
+                  child: Column(
+                    children: [
+                      MoneyCard(isSold: true, amount: balance),
+                      MoneyCard(isSold: false, amount: benefice),
+                    ],
                   ),
                 ),
               ),
-              AdCard(
-                height: 300,
-                buttonTitle: context.translate('download_document'),
-                buttonAction: downloadPresentation,
-                child: Container(
-                  width: double.infinity,
-                  margin: EdgeInsets.symmetric(
-                      horizontal: 15 * fem, vertical: 5 * fem),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12 * fem),
+              Card(
+                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                child: Padding(
+                  padding: EdgeInsets.all(16 * fem),
+                  child: Column(
+                    children: [
+                      Image.asset('assets/assets/images/50 perc.png'),
+                      SizedBox(height: 20.0),
+                      ReusableButton(
+                        title: context.translate('share_link'),
+                        lite: false,
+                        onPress: () {
+                          Share.share(link);
+                        },
+                      ),
+                    ],
                   ),
-                  child: const VideoItem(),
                 ),
               ),
-              !isSubscribed
-                  ? Column(
+              Card(
+                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                child: Padding(
+                  padding: EdgeInsets.all(16 * fem),
+                  child: Column(
+                    children: [
+                      Text(
+                        context.translate('about_sbc'),
+                        style: SafeGoogleFont(
+                          'Montserrat',
+                          letterSpacing: 0.0 * fem,
+                          fontSize: 22 * ffem,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4 * ffem / fem,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        context.translate('sbc_description'),
+                        style: SafeGoogleFont(
+                          'Montserrat',
+                          fontSize: 15 * ffem,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4 * ffem / fem,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Card(
+                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                child: Padding(
+                  padding: EdgeInsets.only(
+                      top: 16 * fem,
+                      left: 16 * fem,
+                      right: 16 * fem,
+                      bottom: 8 * fem),
+                  child: MarketCard(),
+                ),
+              ),
+              Card(
+                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                child: Padding(
+                  padding: EdgeInsets.all(8 * fem),
+                  child: AdCard(
+                    height: 300,
+                    buttonTitle: context.translate('learn_more'),
+                    buttonAction: () {
+                      changePage(1);
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 5 * fem),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceDim,
+                        borderRadius: BorderRadius.circular(12 * fem),
+                      ),
+                      child: AnotherCarousel(
+                        images: slides.map((name) {
+                          return AssetImage('assets/slides/$name.jpg');
+                        }).toList(),
+                        boxFit: BoxFit.contain,
+                        showIndicator: false,
+                        dotSize: 3.0,
+                        borderRadius: true,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Card(
+                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                child: Padding(
+                  padding: EdgeInsets.all(8 * fem),
+                  child: AdCard(
+                    height: 300,
+                    buttonTitle: context.translate('download_document'),
+                    buttonAction: downloadPresentation,
+                    child: Container(
+                      width: double.infinity,
+                      margin: EdgeInsets.symmetric(
+                          horizontal: 15 * fem, vertical: 5 * fem),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12 * fem),
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        height: 200 * fem, // Adjust height as needed
+                        decoration: BoxDecoration(
+                          color: Color(0xffc4c4c4),
+                          borderRadius: BorderRadius.circular(12 * fem),
+                        ),
+                        child: (presentationVideoId != null &&
+                                presentationVideoId!.isNotEmpty)
+                            ? Builder(builder: (context) {
+                                // Use Builder to create URLs conditionally
+                                final videoUrl =
+                                    '$settingsFileBaseUrl$presentationVideoId';
+                                final thumbnailUrl =
+                                    '$settingsThumbnailBaseUrl$presentationVideoId'; // Using video ID for thumbnail too
+
+                                // Log the URLs
+                                print("VideoItem - Video URL: $videoUrl");
+                                print(
+                                    "VideoItem - Thumbnail URL: $thumbnailUrl");
+
+                                return VideoItem(
+                                  videoUrl: videoUrl,
+                                  thumbnailUrl: thumbnailUrl,
+                                );
+                              })
+                            : Container(
+                                // Placeholder if video ID is missing
+                                color: Colors.grey[300],
+                                child: Center(
+                                    child: Text(context
+                                        .translate('video_unavailable'))),
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (!isSubscribed)
+                Card(
+                  margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                  child: Padding(
+                    padding: EdgeInsets.all(16 * fem),
+                    child: Column(
                       children: [
                         Container(
                           margin: EdgeInsets.fromLTRB(
@@ -412,7 +528,7 @@ class _HomeState extends State<Home> {
                               fontSize: 16 * ffem,
                               fontWeight: FontWeight.w600,
                               height: 1.25 * ffem / fem,
-                              color: Color(0xfff49101),
+                              color: Theme.of(context).colorScheme.tertiary,
                             ),
                           ),
                         ),
@@ -420,7 +536,9 @@ class _HomeState extends State<Home> {
                           padding: EdgeInsets.all(7 * fem),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(5 * fem),
-                            color: Color.fromARGB(255, 244, 245, 248),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerLow,
                           ),
                           child: Text(
                             context.translate('subscription_not_active'),
@@ -429,7 +547,9 @@ class _HomeState extends State<Home> {
                               fontSize: 15 * ffem,
                               fontWeight: FontWeight.w500,
                               height: 1.4 * ffem / fem,
-                              color: Color.fromARGB(255, 91, 92, 96),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -445,7 +565,9 @@ class _HomeState extends State<Home> {
                           padding: EdgeInsets.all(7 * fem),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(5 * fem),
-                            color: Color.fromARGB(255, 244, 245, 248),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerLow,
                           ),
                           child: Text(
                             context.translate('invite_friends_message'),
@@ -454,13 +576,18 @@ class _HomeState extends State<Home> {
                               fontSize: 15 * ffem,
                               fontWeight: FontWeight.w500,
                               height: 1.4 * ffem / fem,
-                              color: Color.fromARGB(255, 91, 92, 96),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         ),
                       ],
-                    )
-                  : const SizedBox(),
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(),
             ],
           ),
         ),

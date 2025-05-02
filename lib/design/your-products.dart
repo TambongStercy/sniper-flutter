@@ -8,8 +8,8 @@ import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/modify-product.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
+import 'package:snipper_frontend/api_service.dart'; // Import ApiService
 
 class YourProducts extends StatefulWidget {
   static const id = 'yourProduct';
@@ -24,6 +24,9 @@ class _YourProductsState extends State<YourProducts> {
   bool showSpinner = true;
   final List prdtList = [];
   late SharedPreferences prefs;
+
+  // Instantiate ApiService
+  final ApiService _apiService = ApiService();
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
@@ -66,89 +69,72 @@ class _YourProductsState extends State<YourProducts> {
     String msg = '';
     String error = '';
     try {
-      await initSharedPref();
+      // --- Use ApiService ---
+      // TODO: Implement pagination if needed by passing page/limit
+      final response = await _apiService.getUserProducts();
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
+      msg = response['message'] ?? response['error'] ?? '';
 
-      final url = Uri.parse('$findUrProduct?email=$email');
-
-      final response = await http.get(url, headers: headers);
-
-      final jsonResponse = jsonDecode(response.body);
-
-      msg = jsonResponse['message'] ?? '';
-      error = jsonResponse['error'] ?? '';
-
-      if (response.statusCode == 200) {
-        final newItems = jsonResponse['products'];
+      if (response['success'] == true && response['data'] != null) {
+        // Adjust based on the actual structure returned by getUserProducts
+        // Assuming it returns a list of products directly in 'data' or nested like {'products': [...]}
+        final productsData = response['data'];
+        final newItems = productsData is List
+            ? productsData
+            : (productsData?['products'] as List? ?? []);
 
         prdtList.addAll(newItems);
 
         setState(() {});
       } else {
-        if (error == 'Accès refusé') {
+        final statusCode = response['statusCode'];
+        if (statusCode == 401) {
           String title = context.translate('error_access_denied');
           showPopupMessage(context, title, msg);
+        } else {
+          String title = context.translate('error');
+          showPopupMessage(context, title, msg);
         }
-
-        String title = context.translate('error');
-        showPopupMessage(context, title, msg);
-
-        print('something went wrong');
+        print('API Error getProductsOnline: $statusCode - $msg');
       }
+      // --- End ApiService usage ---
     } catch (e) {
       print(e);
-      String title = error;
-      showPopupMessage(context, title, msg);
+      String title = context.translate('error');
+      showPopupMessage(context, title, context.translate('error_occurred'));
     }
   }
 
   Future<void> deleteThisProduct(String id) async {
     String msg = '';
-    String error = '';
     try {
-      await initSharedPref();
+      // --- Use ApiService ---
+      final response = await _apiService.deleteProduct(id);
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
+      msg = response['message'] ?? response['error'] ?? '';
 
-      final url = Uri.parse('$deleteProduct?email=$email&id=$id');
-
-      final response = await http.get(url, headers: headers);
-
-      final jsonResponse = jsonDecode(response.body);
-
-      msg = jsonResponse['message'] ?? '';
-      error = jsonResponse['error'] ?? '';
-
-      if (response.statusCode == 200) {
-        final newItems = jsonResponse['products'];
-
-        prdtList.addAll(newItems);
+      if (response['success'] == true) {
+        // No need to add items, just show success and refresh handles UI update
 
         showPopupMessage(context, context.translate('success'), msg);
 
-        setState(() {});
+        // Refresh will be called after this in showDeleteDialog
       } else {
-        if (error == 'Accès refusé') {
+        final statusCode = response['statusCode'];
+        if (statusCode == 401) {
           String title = context.translate('error_access_denied');
           showPopupMessage(context, title, msg);
+        } else {
+          String title = context.translate('error');
+          showPopupMessage(context, title, msg);
         }
-
-        String title = context.translate('error');
-        showPopupMessage(context, title, msg);
-
-        print('something went wrong');
+        print('API Error deleteThisProduct: $statusCode - $msg');
       }
+      // --- End ApiService usage ---
     } catch (e) {
       print(e);
-      String title = error;
-      showPopupMessage(context, title, msg);
+      String title = context.translate('error');
+      showPopupMessage(context, title, context.translate('error_occurred'));
     }
   }
 
@@ -244,8 +230,19 @@ class _YourProductsState extends State<YourProducts> {
   Widget prdtTile(prdt, double fem, double ffem) {
     final prdtName = prdt['name'];
     final id = prdt['id'];
+    final prdtIdForModify = prdt['_id'] as String? ?? '';
     final price = prdt['price'] ?? 0;
-    final imageUrl = prdt['urls'][0] ?? '';
+
+    final imagesList = prdt['images'] as List<dynamic>? ?? [];
+    String imageUrl = '';
+    if (imagesList.isNotEmpty) {
+      final firstImageMap = imagesList[0] as Map<String, dynamic>?;
+      final imageId = firstImageMap?['fileId'] as String?;
+      if (imageId != null && imageId.isNotEmpty) {
+        imageUrl = '$settingsFileBaseUrl$imageId';
+      }
+    }
+
     final rating = (prdt['overallRating'] ?? 0.0).toDouble();
     final ratingLength = (prdt['ratings'] ?? []).length;
 
@@ -267,7 +264,7 @@ class _YourProductsState extends State<YourProducts> {
             height: 35 * fem,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(5 * fem),
-              color: Colors.black,
+              color: Theme.of(context).colorScheme.onSurface,
               image: DecorationImage(
                 fit: BoxFit.cover,
                 image: NetworkImage(imageUrl),
@@ -277,7 +274,12 @@ class _YourProductsState extends State<YourProducts> {
           trailing: PopupMenuButton(
             onSelected: (value) {
               if (value == '/edit') {
-                context.pushNamed(ModifyProduct.id, extra: prdt).then((value) => refresh());
+                final productDataForModify = Map<String, dynamic>.from(prdt);
+                productDataForModify['_id'] = prdtIdForModify;
+
+                context
+                    .pushNamed(ModifyProduct.id, extra: productDataForModify)
+                    .then((value) => refresh());
               } else if (value == '/delete') {
                 showDeleteDialog(context, id);
               }
@@ -326,9 +328,9 @@ class _YourProductsState extends State<YourProducts> {
                     'Montserrat',
                     fontSize: 16 * ffem,
                     fontWeight: FontWeight.w500,
-                    height: 1.0625 * ffem / fem,
+                    height: 1.6666666667 * ffem / fem,
                     letterSpacing: -0.5 * fem,
-                    color: Color(0xff25313c),
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),

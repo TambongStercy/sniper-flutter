@@ -11,8 +11,9 @@ import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/new-email.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
+// import 'package:http/http.dart' as http; // Remove http import
 import 'package:snipper_frontend/localization_extension.dart'; // For localization
+import 'package:snipper_frontend/api_service.dart'; // Import ApiService
 
 class ModifyEmail extends StatefulWidget {
   static const id = 'modifyEmail';
@@ -27,57 +28,81 @@ class _ModifyEmailState extends State<ModifyEmail> {
   String email = '';
   String id = '';
   String token = '';
-  String otp = '';
+  String otp = ''; // This seems unused in the OTP request logic
+
+  final ApiService apiService = ApiService(); // Instantiate ApiService
 
   bool showSpinner = false;
 
   late SharedPreferences prefs;
 
-  Future<void> ModifyEmail() async {
-    if (email.isNotEmpty) {
-      final regBody = {
-        'email': email,
-        'id': id,
-        'otp': otp,
-      };
-
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
-      final response = await http.post(
-        Uri.parse(modEmail),
-        headers: headers,
-        body: (regBody),
-      );
-
-      final jsonResponse = jsonDecode(response.body);
-
-      final msg = jsonResponse['message'] ?? '';
-
-      if (response.statusCode == 200) {
-        String title = context.translate('code_sent');
-
-        context.pushNamed(
-          NewEmail.id,
-          extra: email,
-        );
-
-        showPopupMessage(context, title, msg);
-        return;
-      } else {
-        String title = context.translate('something_went_wrong');
-
-        showPopupMessage(context, title, msg);
-        return;
-      }
-    } else {
+  // Renamed function to avoid conflict with class name
+  Future<void> requestEmailModificationOtp() async {
+    // Basic validation
+    if (email.trim().isEmpty) {
       String msg = context.translate('fill_all_information');
       String title = context.translate('information_incomplete');
       showPopupMessage(context, title, msg);
       return;
     }
+    // Add domain validation before sending OTP request
+    if (!isValidEmailDomain(email.trim())) {
+      String title = context.translate('invalid_email_domain');
+      String message = context.translate('use_valid_email_provider');
+      showPopupMessage(context, title, message);
+      return;
+    }
+
+    setState(() {
+      showSpinner = true;
+    });
+
+    try {
+      // Call ApiService to request email change OTP.
+      // Assumes the backend identifies the user via token.
+      // The new email address itself isn't typically sent in the *request* for OTP,
+      // but rather when *verifying* the OTP with the new email.
+      // However, if your `$modEmail` endpoint *does* require the new email when requesting OTP,
+      // we'd need to adjust ApiService.requestEmailChangeOtp to accept it.
+      // For now, assuming it only needs the token:
+      final response = await apiService.requestEmailChangeOtp();
+      final msg = response['message'] ?? '';
+
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300) {
+        String title = context.translate('code_sent');
+        showPopupMessage(context, title,
+            msg.isNotEmpty ? msg : context.translate('otp_sent_instructions'));
+
+        // Navigate to the OTP verification screen (NewEmail)
+        context.pushNamed(
+          NewEmail.id,
+          extra: email.trim(), // Pass the new email to the verification screen
+        );
+      } else {
+        // Handle API error
+        String title = context.translate('something_went_wrong');
+        showPopupMessage(context, title,
+            msg.isNotEmpty ? msg : context.translate('otp_request_failed'));
+        print(
+            'API Error requestEmailModificationOtp: ${response['statusCode']} - $msg');
+      }
+    } catch (e) {
+      print('Exception in requestEmailModificationOtp: $e');
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+    } finally {
+      if (mounted)
+        setState(() {
+          showSpinner = false;
+        });
+    }
+  }
+
+  Future<void> resendOTP() async {
+    // Resending OTP usually involves the same logic as requesting it initially.
+    await requestEmailModificationOtp();
   }
 
   @override
@@ -183,7 +208,7 @@ class _ModifyEmailState extends State<ModifyEmail> {
                               fem, ffem, context.translate('email')), // 'Email'
                           CustomTextField(
                             hintText: 'Ex: Jeanpierre@gmail.com',
-                            type: 4,
+                            fieldType: CustomFieldType.email,
                             value: email,
                             onChange: (val) {
                               email = val;
@@ -193,17 +218,17 @@ class _ModifyEmailState extends State<ModifyEmail> {
                           _fieldTitle(fem, ffem,
                               context.translate('otp_code')), // 'Code OTP'
                           OtpTextField(
-                            numberOfFields: 4,
+                            numberOfFields: 6,
                             borderColor: Color(0xFF512DA8),
-                            fieldWidth: 50.0,
+                            fieldWidth: 40.0,
                             margin: EdgeInsets.only(right: 8.0),
                             showFieldAsBox: true,
+                            keyboardType: TextInputType.text,
                             onCodeChanged: (String code) {
-                              print(code);
+                              // Handle code change
                             },
                             onSubmit: (String verificationCode) {
                               otp = verificationCode;
-                              print('submit');
                             },
                           ),
                           SizedBox(height: 20 * fem),
@@ -213,23 +238,18 @@ class _ModifyEmailState extends State<ModifyEmail> {
                             lite: false,
                             onPress: () async {
                               try {
-                                setState(() {
-                                  showSpinner = true;
-                                });
-
-                                await ModifyEmail();
-
-                                setState(() {
-                                  showSpinner = false;
-                                });
+                                // No need for manual spinner handling here if done in the function
+                                await requestEmailModificationOtp();
                               } catch (e) {
                                 String msg = e.toString();
                                 String title = context.translate('error');
                                 showPopupMessage(context, title, msg);
                                 print(e);
-                                setState(() {
-                                  showSpinner = false;
-                                });
+                                // Ensure spinner stops if error happens before function handles it
+                                if (mounted)
+                                  setState(() {
+                                    showSpinner = false;
+                                  });
                               }
                             },
                           ),
@@ -238,21 +258,18 @@ class _ModifyEmailState extends State<ModifyEmail> {
                             child: TextButton(
                               onPressed: () async {
                                 try {
-                                  setState(() {
-                                    showSpinner = true;
-                                  });
-
+                                  // No need for manual spinner handling here
                                   await resendOTP();
-
-                                  setState(() {
-                                    showSpinner = false;
-                                  });
                                 } catch (e) {
-                                  showPopupMessage(context,
-                                      context.translate('error'), e.toString());
-                                  setState(() {
-                                    showSpinner = false;
-                                  });
+                                  String msg = e.toString();
+                                  String title = context.translate('error');
+                                  showPopupMessage(context, title, msg);
+                                  print(e);
+                                  // Ensure spinner stops
+                                  if (mounted)
+                                    setState(() {
+                                      showSpinner = false;
+                                    });
                                 }
                               },
                               style: TextButton.styleFrom(
@@ -264,7 +281,8 @@ class _ModifyEmailState extends State<ModifyEmail> {
                                   fontSize: 16 * ffem,
                                   fontWeight: FontWeight.w700,
                                   height: 1.5 * ffem / fem,
-                                  color: limeGreen,
+                                  color:
+                                      Theme.of(context).colorScheme.secondary,
                                 ),
                               ),
                             ),
@@ -298,39 +316,6 @@ class _ModifyEmailState extends State<ModifyEmail> {
         ),
       ),
     );
-  }
-
-  Future<void> resendOTP() async {
-    if (id.isNotEmpty) {
-      setState(() {
-        showSpinner = true;
-      });
-      final regBody = {
-        'userId': id,
-      };
-
-      final response = await http.post(
-        Uri.parse(createOTPLink),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
-
-      final jsonResponse = jsonDecode(response.body);
-      final msg = jsonResponse['message'] ?? '';
-
-      if (response.statusCode == 200) {
-        showPopupMessage(
-            context, context.translate('otp_sent') + ': ' + email, msg);
-      } else {
-        showPopupMessage(context, context.translate('error'), msg);
-      }
-    } else {
-      showPopupMessage(context, context.translate('error'),
-          context.translate('user_id_missing'));
-    }
-    setState(() {
-      showSpinner = false;
-    });
   }
 
   void popUntilAndPush(BuildContext context) {

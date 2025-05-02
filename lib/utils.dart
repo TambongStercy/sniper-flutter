@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+// Conditional import for dart:html
+import 'html_utils.dart' if (dart.library.html) 'dart:html' as html;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +19,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/localization/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/api_service.dart';
+import 'package:http/http.dart'
+    as http; // Keep for now, might be used elsewhere
 
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
   @override
@@ -68,9 +73,9 @@ var btnGradient = new LinearGradient(
 
 final gold = Color(0xffFFD700);
 final silver = Color(0xff8B9094);
-final orange = Color(0xffED8B00);
 
-void showPopupMessage(BuildContext context, String title, String msg, {Function? callback}) {
+void showPopupMessage(BuildContext context, String title, String msg,
+    {Function? callback}) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -91,6 +96,42 @@ void showPopupMessage(BuildContext context, String title, String msg, {Function?
       );
     },
   );
+}
+
+/// Shows a popup message only once per device
+/// Returns true if the popup was shown, false if it was already shown before
+Future<bool> showOneTimePopup(
+    BuildContext context, String title, String message, String popupKey) async {
+  final prefs = await SharedPreferences.getInstance();
+  final wasShown = prefs.getBool(popupKey) ?? false;
+
+  if (!wasShown) {
+    // Mark as shown for future app launches
+    await prefs.setBool(popupKey, true);
+
+    // Show the popup
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                context.pop();
+              },
+              child: Text('Ok'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return true;
+  }
+
+  return false;
 }
 
 void showSnackbar(BuildContext context, String message) {
@@ -303,26 +344,23 @@ bool ppExist(String path) {
   return path.isNotEmpty;
 }
 
-ImageProvider<Object> profileImage(String avatarPath) {
-  // if (kIsWeb) {
-  //   print('avatarPath please call setState: $avatarPath');
+ImageProvider<Object> profileImage(String? avatarId) {
+  const String defaultAvatarPlaceholder = // Placeholder or default image URL
+      'https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg'; // Replace with your actual default
 
-  // }
-  const nothingPP =
-      'https://www.shutterstock.com/image-vector/default-avatar-profile-icon-social-600nw-1677509740.jpg';
-  return NetworkImage(((avatarPath == '') ? nothingPP : avatarPath));
-
-  // if (ppExist(avatarPath)) {
-  //   print('avatarPath please call setState: $avatarPath');
-
-  //   // Check if the user's profile picture path is not empty and the file exists.
-
-  //   return FileImage(File(avatarPath));
-  // }
-  // // Return the default profile picture from the asset folder.
-  // return const AssetImage(
-  //   'assets/design/images/your picture.png',
-  // );
+  if (avatarId != null && avatarId.isNotEmpty) {
+    // Construct the full URL using the base URL and the avatarId
+    final String fullAvatarUrl = '$settingsFileBaseUrl$avatarId';
+    // print('Loading avatar: $fullAvatarUrl'); // Optional: for debugging
+    return NetworkImage(fullAvatarUrl);
+  } else {
+    // Return a default image if avatarId is null or empty
+    // print('Loading default avatar'); // Optional: for debugging
+    // You can use a NetworkImage for a remote default or AssetImage for local
+    return NetworkImage(defaultAvatarPlaceholder);
+    // Example using local asset:
+    // return const AssetImage('assets/design/images/default_avatar.png');
+  }
 }
 
 Future<void> deleteFile(String filePath) async {
@@ -353,30 +391,41 @@ void launchURL(String url) {
   // }
 }
 
-void sendWhatsAppMessage(
-    BuildContext context, String name, String phoneNumber) async {
+void sendWhatsAppMessage(BuildContext context, String name, String phoneNumber,
+    {String? messageBody}) async {
   final translator = AppLocalizations.of(context);
+  String messageToSend;
 
-  String message = [
-    translator.translate('greeting', {'name': name}),
-    translator.translate('assistance'),
-    translator.translate('good_news'),
-    translator.translate('price_msg'),
-    translator.translate('benefits'),
-    translator.translate('contacts_msg'),
-    translator.translate('courses'),
-    translator.translate('affiliation_msg'),
-    translator.translate('join_us'),
-    translator.translate('link'),
-  ].join("\n\n");
+  if (messageBody != null && messageBody.isNotEmpty) {
+    // Use the provided message if it exists
+    messageToSend = messageBody;
+  } else {
+    // Construct the default message if no messageBody is provided
+    messageToSend = [
+      translator.translate('greeting', {'name': name}),
+      translator.translate('assistance'),
+      translator.translate('good_news'),
+      translator.translate('price_msg'),
+      translator.translate('benefits'),
+      translator.translate('contacts_msg'),
+      translator.translate('courses'),
+      translator.translate('affiliation_msg'),
+      translator.translate('join_us'),
+      translator.translate('link'),
+    ].join("\n\n");
+  }
 
-  String encodedMessage = Uri.encodeComponent(message);
+  String encodedMessage = Uri.encodeComponent(messageToSend);
   String whatsappUrl = "https://wa.me/$phoneNumber?text=$encodedMessage";
 
-  if (await canLaunch(whatsappUrl)) {
-    await launch(whatsappUrl);
+  final uri = Uri.parse(whatsappUrl);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   } else {
-    throw 'Could not launch $whatsappUrl';
+    // Fallback or error handling
+    print('Could not launch $whatsappUrl');
+    showPopupMessage(context, 'Error',
+        'Could not open WhatsApp.'); // Show user-friendly error
   }
 }
 
@@ -563,47 +612,42 @@ Future<dynamic> getProductOnline(
   String prdtId,
   BuildContext context,
 ) async {
-  String msg = '';
-  String error = '';
-  final prefs = await SharedPreferences.getInstance();
+  // Instantiate ApiService
+  final apiService = ApiService();
+
   try {
-    final token = prefs.getString('token');
-    final email = prefs.getString('email');
+    // Call the ApiService method
+    final response =
+        await apiService.getUserSpecificProduct(sellerEmail, prdtId);
 
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
+    String msg = response['message'] ?? '';
+    int? statusCode = response['statusCode'];
 
-    final url =
-        Uri.parse('$getProduct?email=$email&seller=$sellerEmail&id=$prdtId');
-
-    final response = await http.get(url, headers: headers);
-
-    final jsonResponse = jsonDecode(response.body);
-
-    msg = jsonResponse['message'] ?? '';
-
-    if (response.statusCode == 200) {
-      return jsonResponse['userPrdt'];
+    if (statusCode != null && statusCode >= 200 && statusCode < 300) {
+      // Return the product data, usually found in response['data'] or a specific key
+      return response['userPrdt'] ??
+          response['data']; // Adjust key based on actual API response
     } else {
+      // Handle error response
+      String error = response['error'] ?? 'Unknown error';
       if (error == 'Accès refusé') {
+        // Example specific error handling
         String title = "Erreur. Accès refusé.";
         showPopupMessage(context, title, msg);
+      } else {
+        String title = 'Erreur';
+        showPopupMessage(context, title, msg.isNotEmpty ? msg : error);
       }
-
-      String title = 'Erreur';
-      showPopupMessage(context, title, msg);
-
-      // Handle errors,
-      print('something went wrong');
-      return;
+      print('API Error getProductOnline: $statusCode - $error - $msg');
+      return null; // Indicate failure
     }
   } catch (e) {
-    print(e);
-    String title = error;
+    print('Exception in getProductOnline: $e');
+    String title = 'Erreur';
+    String msg =
+        'Une erreur s\'est produite: ${e.toString()}'; // More generic error message
     showPopupMessage(context, title, msg);
-    return;
+    return null; // Indicate failure
   }
 }
 
@@ -624,3 +668,29 @@ bool isValidEmailDomain(String email) {
 
   return emailRegex.hasMatch(email);
 }
+
+// --- Web Download Helper ---
+void downloadFileWeb(String content, String filename) {
+  if (kIsWeb) {
+    // Create blob from the content
+    final bytes = utf8.encode(content);
+    final blob = html.Blob([bytes]);
+
+    // Create a URL for the blob
+    final url = html.Url.createObjectUrlFromBlob(blob);
+
+    // Create an anchor element
+    final anchor = html.AnchorElement(href: url)
+      ..setAttribute("download", filename)
+      ..click(); // Trigger the download
+
+    // Revoke the object URL to free up resources
+    html.Url.revokeObjectUrl(url);
+  } else {
+    print("downloadFileWeb is only intended for web use.");
+    // Optionally, you could try to save it locally on mobile here too,
+    // but the VCF export in contact-update handles mobile differently for now.
+  }
+}
+
+// --- End Web Download Helper ---

@@ -11,8 +11,8 @@ import 'package:snipper_frontend/components/bonuscard.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/affiliation-page-filleuls-details.dart';
-import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/localization_extension.dart';
+import 'package:snipper_frontend/api_service.dart';
 
 import 'package:snipper_frontend/utils.dart';
 
@@ -41,6 +41,8 @@ class _AffiliationState extends State<Affiliation> {
   int directNonSubCount = 0;
   int indirectSubCount = 0;
   int indirectNonSubCount = 0;
+
+  final ApiService apiService = ApiService();
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
@@ -82,84 +84,67 @@ class _AffiliationState extends State<Affiliation> {
   }
 
   Future<void>? getInfos() async {
+    setState(() {
+      showSpinner = true;
+    });
     String msg = '';
-    String error = '';
+
     try {
       await initSharedPref();
 
-      final token = prefs.getString('token');
+      final response = await apiService.getReferralStats();
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
+      msg = response['message'] ?? '';
+      int? statusCode = response['statusCode'];
 
-      final url = Uri.parse('$getReferals?email=$email');
+      if (statusCode != null && statusCode >= 200 && statusCode < 300) {
+        final responseData = response['data'] ?? {};
+        directCount = responseData['level1Count'] ?? 0;
+        indirectCount = (responseData['level2Count'] ?? 0) +
+            (responseData['level3Count'] ?? 0);
+        directSubCount = responseData['level1ActiveSubscribers'] ?? 0;
+        indirectSubCount = (responseData['level2ActiveSubscribers'] ?? 0) +
+            (responseData['level3ActiveSubscribers'] ?? 0);
 
-      final response = await http.get(url, headers: headers);
+        // Non-subscriber counts can be calculated if needed, but aren't used in current UI
+        // directNonSubCount = directCount - directSubCount;
+        // indirectNonSubCount = indirectCount - indirectSubCount;
 
-      final jsonResponse = jsonDecode(response.body);
-
-      msg = jsonResponse['message'] ?? '';
-      error = jsonResponse['error'] ?? '';
-
-      if (response.statusCode == 200) {
-        directCount = jsonResponse['directCount'] ?? 0;
-        indirectCount = jsonResponse['indirectCount'] ?? 0;
-
-        directSubCount = jsonResponse['directSubCount'] ?? 0;
-        directNonSubCount = jsonResponse['directNonsubCount'] ?? 0;
-
-        indirectSubCount = jsonResponse['indirectSubCount'] ?? 0;
-        indirectNonSubCount = jsonResponse['indirectNonsubCount'] ?? 0;
-
-        // await saveTransactionList(gottenTransactions);
-        // transactions = await getTransactions();
-
-        setState(() {});
-
-        print('all good');
-        // print(transactions);
+        print('Referral stats fetched successfully');
+        if (mounted) setState(() {});
       } else {
+        String error = response['error'] ?? 'Failed to fetch stats';
         if (error == 'Accès refusé') {
-          String title = "Erreur. Accès refusé.";
-          showPopupMessage(context, title, msg);
-
-          if (!kIsWeb) {
-            final avatar = prefs.getString('avatar') ?? '';
-
-            await deleteFile(avatar);
-            // await unInitializeOneSignal();
-          }
-
-          prefs.setString('token', '');
-          prefs.setString('id', '');
-          prefs.setString('email', '');
-          prefs.setString('name', '');
-          prefs.setString('token', '');
-          prefs.setString('region', '');
-          prefs.setString('phone', '');
-          prefs.setString('code', '');
-          prefs.setString('avatar', '');
-          prefs.setDouble('balance', 0);
-          prefs.setBool('isSubscribed', false);
-          await deleteNotifications();
-          await deleteAllKindTransactions();
-
-          context.go('/');
+          showPopupMessage(context, "Erreur. Accès refusé.", msg);
+          await logoutUser();
+        } else {
+          String title = 'Erreur';
+          showPopupMessage(context, title, msg.isNotEmpty ? msg : error);
         }
-
-        String title = 'Erreur';
-        showPopupMessage(context, title, msg);
-
-        // Handle errors,
-        print('something went wrong');
+        print('API Error getInfos (Affiliation): $statusCode - $error - $msg');
       }
     } catch (e) {
-      print(e);
-      String title = error;
-      showPopupMessage(context, title, msg);
+      print('Exception in getInfos (Affiliation): $e');
+      String title = context.translate('error');
+      showPopupMessage(context, title, context.translate('error_occurred'));
+    } finally {
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
     }
+  }
+
+  Future<void> logoutUser() async {
+    if (!kIsWeb) {
+      final avatar = prefs.getString('avatar') ?? '';
+      await deleteFile(avatar);
+    }
+    await prefs.clear();
+    await deleteNotifications();
+    await deleteAllKindTransactions();
+    if (mounted) context.go('/');
   }
 
   Future<void> parseVCF(String filePath) async {

@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+For every text you add in the app(in context.translate("...")), add the corresponding translations in [en.json](mdc:assets/lang/en.json) and [fr.json](mdc:assets/lang/fr.json) in english and french respectively

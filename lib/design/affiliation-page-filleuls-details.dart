@@ -8,7 +8,8 @@ import 'package:snipper_frontend/components/filleulscard.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/api_service.dart';
+import 'package:snipper_frontend/components/textfield.dart';
 
 class Filleuls extends StatefulWidget {
   static const id = 'filleuls';
@@ -39,7 +40,12 @@ class _FilleulsState extends State<Filleuls> {
   final scrollController = ScrollController();
   int page = 1;
 
+  // State for search
+  final TextEditingController searchController = TextEditingController();
+  String currentSearchTerm = '';
+
   late SharedPreferences prefs;
+  final ApiService apiService = ApiService();
 
   @override
   void initState() {
@@ -65,80 +71,87 @@ class _FilleulsState extends State<Filleuls> {
   }
 
   Future<void>? getReferedUersFunc() async {
-    if (isloading) return;
-    isloading = true;
+    if (isloading || !hasMore) return;
+    setState(() {
+      isloading = true;
+    });
     String msg = '';
-    String error = '';
+
     try {
       await initSharedPref();
 
-      final token = prefs.getString('token');
+      // Determine level based on mainType
+      final String level =
+          (mainType == 'direct') ? '1' : '2'; // Assuming indirect = level 2
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
+      final filters = {
+        'page': page.toString(),
+        'level': level, // Use 'level' parameter
+        'limit': '10',
+        // Add name filter if search term exists
+        if (currentSearchTerm.isNotEmpty) 'name': currentSearchTerm,
       };
 
-      final url = Uri.parse(
-          '$getReferedUsers?email=${email}&page=${page}&type=${mainType.toLowerCase()}');
+      final response = await apiService.getReferredUsers(filters);
 
-      final response = await http.get(url, headers: headers);
+      msg = response['message'] ?? '';
+      int? statusCode = response['statusCode'];
 
-      final jsonResponse = jsonDecode(response.body);
+      if (statusCode != null && statusCode >= 200 && statusCode < 300) {
+        // Extract data using new keys
+        final responseData = response['data'] ?? {};
+        final List<dynamic> fetchedUsers = responseData['referredUsers'] ?? [];
+        final int totalPages = responseData['totalPages'] ?? page;
 
-      msg = jsonResponse['message'] ?? '';
-      error = jsonResponse['error'] ?? '';
-
-      if (response.statusCode == 200) {
-        if (mainType == 'indirect') {
-          totalPagesIndirect = jsonResponse['totalPages'] ?? 1;
-          final fIndirectUsers = jsonResponse['users'] ?? [];
-
-          if (fIndirectUsers.length < 10) hasMore = false;
-
-          indirectUsers.addAll(fIndirectUsers);
-        } else {
-          totalPagesDirect = jsonResponse['totalPages'] ?? 1;
-          final fDirectUsers = jsonResponse['users'] ?? [];
-
-          if (fDirectUsers.length < 10) hasMore = false;
-
-          directUsers.addAll(fDirectUsers);
-        }
-
-        page++;
-        isloading = false;
-
-        if (mounted) setState(() {});
-      } else {
-        if (error == 'Accès refusé') {
-          String title = "Erreur. Accès refusé.";
-          showPopupMessage(context, title, msg);
-
-          if (!kIsWeb) {
-            final avatar = prefs.getString('avatar') ?? '';
-
-            await deleteFile(avatar);
+        setState(() {
+          if (mainType == 'indirect') {
+            totalPagesIndirect = totalPages;
+            indirectUsers.addAll(fetchedUsers);
+          } else {
+            totalPagesDirect = totalPages;
+            directUsers.addAll(fetchedUsers);
           }
-
-          await prefs.clear();
-          await deleteNotifications();
-          await deleteAllKindTransactions();
-
-          context.go('/');
+          hasMore = page < totalPages; // Simplified hasMore logic
+          if (hasMore) page++;
+        });
+      } else {
+        String error = response['error'] ?? 'Failed to fetch referred users';
+        if (error == 'Accès refusé') {
+          showPopupMessage(context, "Erreur. Accès refusé.", msg);
+          await logoutUser();
+        } else {
+          showPopupMessage(context, context.translate('error'),
+              msg.isNotEmpty ? msg : error);
+          setState(() {
+            hasMore = false;
+          });
         }
-
-        String title = 'Erreur';
-        showPopupMessage(context, title, msg);
-
-        // Handle errors,
-        print('something went wrong');
+        print('API Error getReferedUersFunc: $statusCode - $error - $msg');
       }
     } catch (e) {
-      print(e);
-      String title = error;
-      showPopupMessage(context, title, msg);
+      print('Exception in getReferedUersFunc: $e');
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+      setState(() {
+        hasMore = false;
+      });
+    } finally {
+      if (mounted)
+        setState(() {
+          isloading = false;
+        });
     }
+  }
+
+  Future<void> logoutUser() async {
+    if (!kIsWeb) {
+      final avatar = prefs.getString('avatar') ?? '';
+      await deleteFile(avatar);
+    }
+    await prefs.clear();
+    await deleteNotifications();
+    await deleteAllKindTransactions();
+    if (mounted) context.go('/');
   }
 
   Future<void> refresh() async {
@@ -147,14 +160,16 @@ class _FilleulsState extends State<Filleuls> {
       indirectUsers.clear();
       page = 1;
       hasMore = true;
+      // Keep currentSearchTerm, fetch will use it
     });
 
-    await getReferedUersFunc();
+    await getReferedUersFunc(); // Fetch using current search term and type
   }
 
   @override
   void dispose() {
     scrollController.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
@@ -166,8 +181,8 @@ class _FilleulsState extends State<Filleuls> {
 
     return Scaffold(
       appBar: AppBar(
-        iconTheme: const IconThemeData(
-          color: Colors.black, // Set your desired back button color
+        iconTheme: IconThemeData(
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         backgroundColor: Colors.white,
         title: Text(
@@ -177,7 +192,7 @@ class _FilleulsState extends State<Filleuls> {
             fontSize: 16 * ffem,
             fontWeight: FontWeight.w500,
             height: 1.6666666667 * ffem / fem,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ),
@@ -186,9 +201,26 @@ class _FilleulsState extends State<Filleuls> {
         color: Color(0xffffffff),
         child: Column(
           children: [
+            Padding(
+              padding:
+                  EdgeInsets.fromLTRB(25 * fem, 15 * fem, 25 * fem, 10 * fem),
+              child: CustomTextField(
+                value: currentSearchTerm,
+                hintText: context.translate('search_by_name'),
+                searchMode: true,
+                onChange: (val) {
+                  searchController.text = val;
+                },
+                onSearch: () {
+                  setState(() {
+                    currentSearchTerm = searchController.text;
+                  });
+                  refresh();
+                },
+              ),
+            ),
             Container(
-              margin:
-                  EdgeInsets.fromLTRB(25 * fem, 20 * fem, 25 * fem, 0 * fem),
+              margin: EdgeInsets.fromLTRB(25 * fem, 0 * fem, 25 * fem, 0 * fem),
               child: Row(
                 children: [
                   _topButton(fem, context.translate('direct'), 'direct'),
@@ -214,12 +246,35 @@ class _FilleulsState extends State<Filleuls> {
                     final itemCount = usersUsed.length;
 
                     if (index < itemCount) {
-                      final user = usersUsed[index];
+                      final user = usersUsed[index]
+                          as Map<String, dynamic>; // Ensure type safety
+                      // Extract available data
+                      final name = user['name'] as String? ?? 'N/A';
+                      final email = user['email'] as String? ?? 'N/A';
+                      final phone = user['phoneNumber'] as String? ?? 'N/A';
+                      // Determine subscription TYPE from the list
+                      final List<dynamic> subscriptions =
+                          user['activeSubscriptions'] as List<dynamic>? ?? [];
+                      String? subscriptionType = null;
+                      if (subscriptions.isNotEmpty) {
+                        // Prioritize 'cible' if present, otherwise take the first one (e.g., 'classique')
+                        // Convert to lowercase for case-insensitive comparison
+                        if (subscriptions.any(
+                            (s) => s.toString().toLowerCase() == 'cible')) {
+                          subscriptionType = 'cible';
+                        } else if (subscriptions.any(
+                            (s) => s.toString().toLowerCase() == 'classique')) {
+                          subscriptionType = 'classique';
+                        } // Add more checks for other types if needed
+                      }
+                      // url (avatar) is still not available from this endpoint
+
                       return FilleulsCard(
-                        isSub: user['isSubscribed'],
-                        url: user['url'],
-                        name: user['name'],
-                        email: user['email'].toString(),
+                        // Pass the determined type string (or null)
+                        subscriptionType: subscriptionType,
+                        // url: user['url'], // Still removed
+                        name: name,
+                        email: phone,
                       );
                     } else if (hasMore) {
                       return Padding(
@@ -249,6 +304,8 @@ class _FilleulsState extends State<Filleuls> {
         onTap: () async {
           setState(() {
             mainType = val;
+            searchController.clear();
+            currentSearchTerm = '';
           });
           await refresh();
         },
@@ -259,7 +316,9 @@ class _FilleulsState extends State<Filleuls> {
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.vertical(top: Radius.circular(10 * fem)),
-            color: mainType == val ? blue : Colors.grey[200],
+            color: mainType == val
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey[200],
           ),
           child: Text(
             capsType,

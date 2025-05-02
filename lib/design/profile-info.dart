@@ -10,16 +10,17 @@ import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/affiliation-page.dart';
 import 'package:snipper_frontend/design/contact-update.dart';
-import 'package:snipper_frontend/design/espace-partenaire.dart';
 import 'package:snipper_frontend/design/profile-modify.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/main.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
+// import 'package:http/http.dart' as http; // Remove http import
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:snipper_frontend/api_service.dart'; // Import ApiService
 
 import 'package:path_provider/path_provider.dart';
 import 'package:contacts_service/contacts_service.dart';
+import 'package:snipper_frontend/design/sponsor_info_page.dart'; // Import the new sponsor page
 
 class Profile extends StatefulWidget {
   static const id = 'profile';
@@ -30,11 +31,19 @@ class Profile extends StatefulWidget {
 
 class _ProfileState extends State<Profile> {
   bool showSpinner = false;
+  final ApiService apiService = ApiService(); // Instantiate ApiService
 
   late SharedPreferences prefs;
 
   String telegramLink = 'https://t.me/+huMT6BLYR9sxOTg0';
   String whatsappLink = 'https://chat.whatsapp.com/IlGvSZtVYEkLRDFStFuQMT';
+
+  // Add state variable for subscription type
+  bool isCibleSubscribed = false;
+
+  // Add state variables for dynamic URLs
+  String? dynamicTelegramUrl;
+  String? dynamicWhatsappUrl;
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
@@ -47,7 +56,16 @@ class _ProfileState extends State<Profile> {
     avatar = prefs.getString('avatar') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
 
-    isPartner = prefs.getString('partnerPack') != null;
+    // Determine subscription type from activeSubscriptions list
+    List<String> activeSubscriptions =
+        prefs.getStringList('activeSubscriptions') ?? [];
+    // Check if the list contains 'cible' (adjust key if necessary)
+    isCibleSubscribed =
+        activeSubscriptions.any((sub) => sub.toLowerCase() == 'cible');
+
+    // Load dynamic URLs from App Settings
+    dynamicTelegramUrl = prefs.getString('appSettings_telegramUrl');
+    dynamicWhatsappUrl = prefs.getString('appSettings_whatsappUrl');
 
     telegramLink =
         prefs.getString('telegram') ?? 'https://t.me/+huMT6BLYR9sxOTg0';
@@ -61,62 +79,93 @@ class _ProfileState extends State<Profile> {
   }
 
   Future<String> createContactsOTP(BuildContext context) async {
-    print(email);
-    final url = Uri.parse('$createContactsOTPLink?email=$email');
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-    final response = await http.post(url, headers: headers);
-    final jsonResponse = jsonDecode(response.body);
+    setState(() {
+      showSpinner = true;
+    });
+    String otp = '';
+    try {
+      final response = await apiService.requestContactsExportOtp();
 
-    print(jsonResponse);
-    return jsonResponse['otp'].toString();
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300) {
+        // Adjust key based on actual API response structure for the OTP
+        otp = response['data']?['otp']?.toString() ??
+            response['otp']?.toString() ??
+            '';
+        if (otp.isEmpty) {
+          print(
+              "OTP request successful but OTP not found in response: $response");
+          showPopupMessage(context, context.translate('error'),
+              context.translate('otp_retrieval_failed'));
+        }
+      } else {
+        String errorMsg = response['message'] ??
+            response['error'] ??
+            context.translate('otp_request_failed');
+        showPopupMessage(context, context.translate('error'), errorMsg);
+        print(
+            'API Error createContactsOTP: ${response['statusCode']} - $errorMsg');
+      }
+    } catch (e) {
+      String title = context.translate('error');
+      String message =
+          context.translate('error_occurred') + ': ${e.toString()}';
+      showPopupMessage(context, title, message);
+      print('Exception in createContactsOTP: $e');
+    } finally {
+      if (mounted)
+        setState(() {
+          showSpinner = false;
+        });
+    }
+    return otp;
   }
 
   Future<void> logoutUser() async {
-    final email = prefs.getString('email');
-    final token = prefs.getString('token');
+    // final email = prefs.getString('email'); // Not needed
+    // final token = prefs.getString('token'); // Handled by ApiService
     final avatar = prefs.getString('avatar');
 
-    var regBody = {
-      'email': email,
-      'token': token,
-    };
+    setState(() {
+      showSpinner = true;
+    });
 
-    await http.post(
-      Uri.parse(logout),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode(regBody),
-    );
+    try {
+      final response = await apiService.logoutUser();
 
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300) {
     await deleteFile(avatar ?? '');
-    // await unInitializeOneSignal();
-    prefs.setString('token', '');
-    prefs.setString('id', '');
-    prefs.setString('email', '');
-    prefs.setString('name', '');
-    prefs.setString('token', '');
-    prefs.setString('region', '');
-    prefs.setString('phone', '');
-    prefs.setString('code', '');
-    prefs.setString('avatar', '');
-    prefs.setInt('balance', 0);
-    prefs.setDouble('benefit', 0.0);
-    prefs.setBool('isSubscribed', false);
-
-    prefs.clear();
+        await prefs.clear(); // Clear all prefs on successful logout
     await deleteNotifications();
     await deleteAllKindTransactions();
 
-    String msg = 'You where successfully logged out';
-    String title = 'Logout';
-
+        String msg =
+            response['message'] ?? context.translate('logged_out_successfully');
+        String title = context.translate('logout');
+        // Show message *before* navigation might be better UX
     showPopupMessage(context, title, msg);
-
-    context.go('/');
+        if (mounted) context.go('/');
+      } else {
+        String errorMsg = response['message'] ??
+            response['error'] ??
+            context.translate('logout_failed');
+        showPopupMessage(context, context.translate('error'), errorMsg);
+        print(
+            'API Error logoutUser (Profile): ${response['statusCode']} - $errorMsg');
+      }
+    } catch (e) {
+      print('Exception in logoutUser (Profile): $e');
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+    } finally {
+      if (mounted)
+        setState(() {
+          showSpinner = false;
+        });
+    }
   }
 
   String? email;
@@ -126,61 +175,74 @@ class _ProfileState extends State<Profile> {
   String? token;
   String avatar = '';
   bool isSubscribed = false;
-  bool isPartner = false;
   String downloadUrl = '';
   String downloadUpdateUrl = '';
 
   Future<String?> downloadVCF(BuildContext context) async {
-    try {
       if (kIsWeb) {
-        String msg =
-            'Cette fonctionnalité n\'est pas encore disponible sur web.';
-        String title = 'Erreur';
-        showPopupMessage(context, title, msg);
+      showPopupMessage(context, context.translate('error'),
+          context.translate('feature_not_available_web'));
         return null;
       }
 
-      // print(token);
-      // print(email);
+    setState(() {
+      showSpinner = true;
+    });
+    String? permanentPath;
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
+    try {
+      // Call ApiService.exportContacts - pass empty filters for now
+      // If filters are needed based on UI, pass them here.
+      final response = await apiService.exportContacts({});
 
-      final url = Uri.parse('$downloadVcf?email=$email');
+      final statusCode = response['statusCode'];
+      final vcfData = response['data']; // Data is expected to be raw VCF string
 
-      final response = await http.get(url, headers: headers);
+      if (statusCode != null &&
+          statusCode >= 200 &&
+          statusCode < 300 &&
+          vcfData is String &&
+          vcfData.isNotEmpty) {
+        try {
+          // Decode VCF data (it might be base64 encoded or plain text)
+          // Assuming plain text based on exportContacts implementation detail
+          // If it's base64, uncomment the decode line
+          // final vcfBytes = base64Decode(vcfData);
+          final vcfBytes = utf8.encode(vcfData); // Encode plain string to bytes
 
-      final jsonResponse = jsonDecode(response.body);
-
-      final imageData = jsonResponse['vcfData'];
-      final msg = jsonResponse['message'] ?? '';
-
-      if (response.statusCode == 200) {
-        final imageBytes = base64Decode(imageData);
-        if (kIsWeb) {
-          return null;
+          String fileName = 'contacts.vcf';
+          String folder = 'VCF Files';
+          permanentPath =
+              await saveFileBytesLocally(folder, fileName, vcfBytes);
+          print("VCF file saved to: $permanentPath");
+        } catch (e) {
+          print("Error processing/saving VCF data: $e");
+          showPopupMessage(context, context.translate('error'),
+              context.translate('vcf_processing_error'));
+          permanentPath = null;
         }
-        print(imageData);
-        // String fileName = generateUniqueFileName('pp', 'vcf');
-        String fileName = 'contacts.vcf';
-        String folder = 'VCF Files';
-
-        final permanentPath =
-            await saveFileBytesLocally(folder, fileName, imageBytes);
-
-        return permanentPath;
       } else {
-        String title = 'Error';
-        showPopupMessage(context, title, msg);
-        // Handle errors, e.g., image not found
-        print('VCF request failed with status code ${response.statusCode}');
+        // Handle API or data error
+        String errorMsg = response['message'] ??
+            response['error'] ??
+            context.translate('vcf_download_failed');
+        if (vcfData == null || (vcfData is String && vcfData.isEmpty)) {
+          errorMsg = context.translate('vcf_data_empty');
+        }
+        showPopupMessage(context, context.translate('error'), errorMsg);
+        print('API Error downloadVCF: ${response['statusCode']} - $errorMsg');
       }
     } catch (e) {
-      print(e);
+      print('Exception in downloadVCF: $e');
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+    } finally {
+      if (mounted)
+        setState(() {
+          showSpinner = false;
+        });
     }
-    return null;
+    return permanentPath;
   }
 
   @override
@@ -225,8 +287,44 @@ class _ProfileState extends State<Profile> {
   Widget build(BuildContext context) {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
-    // double ffem = fem * 0.97;
+    double ffem = fem * 0.97;
 
+    var onTap = () async {
+      try {
+        if (isSubscribed) {
+          refreshPageWait();
+          if (kIsWeb) {
+            final otp = await createContactsOTP(context);
+            launchURL('$downloadUrl&otp=$otp');
+            refreshPageRemove();
+          } else {
+            final path = await downloadVCF(context);
+
+            print(path);
+
+            refreshPageRemove();
+            if (path == null) {
+              return print('Error somewhere');
+            }
+
+            final contacts = await readVcfFile(path);
+            await saveContacts(contacts);
+          }
+        } else {
+          String msg = context
+              .translate('not_subscribed'); // 'Vous n\'êtes pas abonné😔'
+          String title = context.translate('error'); // 'Erreur'
+          showPopupMessage(context, title, msg);
+        }
+      } catch (e) {
+        String msg =
+            context.translate('error_occurred'); // 'An Error occured😥'
+        String title = context.translate('error'); // 'Error'
+        showPopupMessage(context, title, msg);
+        print(e);
+        refreshPageRemove();
+      }
+    };
     return SimpleScaffold(
       actions: [
         IconButton(
@@ -287,7 +385,7 @@ class _ProfileState extends State<Profile> {
                             Align(
                               alignment: Alignment.bottomRight,
                               child: Image.asset(
-                                'assets/assets/images/Certified - ${isPartner ? 'Orange' : 'Blue'}.png',
+                                'assets/assets/images/Certified - ${isCibleSubscribed ? 'Orange' : 'Blue'}.png',
                                 width: 40,
                                 height: 40,
                               ),
@@ -306,11 +404,11 @@ class _ProfileState extends State<Profile> {
                               fontSize: 22,
                               fontWeight: FontWeight.w600,
                               height: 1.4,
-                              color: Colors.black,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           Text(
-                            '${isSubscribed ? (isPartner ? context.translate('partner') : context.translate('subscriber')) : context.translate('user')} SBC',
+                            '${isSubscribed ? (isCibleSubscribed ? context.translate('cible_subscriber') : context.translate('classique_subscriber')) : context.translate('user')} SBC',
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 15,
@@ -370,58 +468,33 @@ class _ProfileState extends State<Profile> {
                             context.pushNamed(Affiliation.id);
                           },
                         ),
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 5.0, horizontal: 40.0),
-                          leading: Icon(Icons.phone_rounded),
-                          title: Text(
-                            context.translate('contacts'), // 'Contacts'
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xff212121),
-                            ),
-                          ),
-                          onTap: () async {
-                            try {
-                              if (isSubscribed) {
-                                refreshPageWait();
-                                if (kIsWeb) {
-                                  final otp = await createContactsOTP(context);
-                                  launchURL('$downloadUrl&otp=$otp');
-                                  refreshPageRemove();
-                                } else {
-                                  final path = await downloadVCF(context);
-
-                                  print(path);
-
-                                  refreshPageRemove();
-                                  if (path == null) {
-                                    return print('Error somewhere');
-                                  }
-
-                                  final contacts = await readVcfFile(path);
-                                  await saveContacts(contacts);
-                                }
-                              } else {
-                                String msg = context.translate(
-                                    'not_subscribed'); // 'Vous n\'êtes pas abonné😔'
-                                String title =
-                                    context.translate('error'); // 'Erreur'
-                                showPopupMessage(context, title, msg);
-                              }
-                            } catch (e) {
-                              String msg = context.translate(
-                                  'error_occurred'); // 'An Error occured😥'
-                              String title =
-                                  context.translate('error'); // 'Error'
-                              showPopupMessage(context, title, msg);
-                              print(e);
-                              refreshPageRemove();
-                            }
+                        // Re-add the Sponsor Info tile without the if condition
+                        _buildListTile(
+                          context,
+                          fem,
+                          ffem,
+                          Icons.person_pin_rounded, // Icon for sponsor
+                          context.translate(
+                              'sponsor_info_title'), // Use existing translation
+                          () {
+                            context.pushNamed(SponsorInfoPage.id);
                           },
                         ),
+                        // ListTile(
+                        //   contentPadding: EdgeInsets.symmetric(
+                        //       vertical: 5.0, horizontal: 40.0),
+                        //   leading: Icon(Icons.phone_rounded),
+                        //   title: Text(
+                        //     context.translate('contacts'), // 'Contacts'
+                        //     style: SafeGoogleFont(
+                        //       'Montserrat',
+                        //       fontSize: 15,
+                        //       fontWeight: FontWeight.w400,
+                        //       color: Color(0xff212121),
+                        //     ),
+                        //   ),
+                        //   onTap: onTap,
+                        // ),
                         ListTile(
                           contentPadding: EdgeInsets.symmetric(
                               vertical: 5.0, horizontal: 40.0),
@@ -451,33 +524,6 @@ class _ProfileState extends State<Profile> {
                         ListTile(
                           contentPadding: EdgeInsets.symmetric(
                               vertical: 5.0, horizontal: 40.0),
-                          leading: Icon(Icons.handshake),
-                          title: Text(
-                            context.translate(
-                                'partner_space'), // 'Espace partenaire'
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xff212121),
-                            ),
-                          ),
-                          onTap: () {
-                            if (isSubscribed && isPartner) {
-                              context.pushNamed(EspacePartenaire.id);
-                            } else {
-                              String msg = context.translate(
-                                  'not_partner'); // 'Vous n\'etes pas partenaire😔'
-                              String title =
-                                  context.translate('error'); // 'Erreur'
-                              showPopupMessage(context, title, msg);
-                            }
-                          },
-                        ),
-                        Divider(),
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 5.0, horizontal: 40.0),
                           leading: Image.asset(
                             'assets/assets/images/Whatsapp.png',
                             width: 23,
@@ -495,10 +541,21 @@ class _ProfileState extends State<Profile> {
                           ),
                           onTap: () {
                             if (isSubscribed) {
-                              launchURL(whatsappLink);
+                              final urlToLaunch = dynamicWhatsappUrl ??
+                                  whatsappLink; // Use dynamic URL first
+                              if (urlToLaunch != null &&
+                                  urlToLaunch.isNotEmpty) {
+                                launchURL(urlToLaunch);
+                              } else {
+                                showPopupMessage(
+                                    context,
+                                    context.translate('error'),
+                                    context.translate(
+                                        'link_not_available')); // Add translation
+                              }
                             } else {
                               String msg = context.translate(
-                                  'not_subscribed'); // 'Vous n\'etes pas abonné😔'
+                                  'not_subscribed'); // 'Vous n'etes pas abonné😔'
                               String title =
                                   context.translate('error'); // 'Erreur'
                               showPopupMessage(context, title, msg);
@@ -525,10 +582,21 @@ class _ProfileState extends State<Profile> {
                           ),
                           onTap: () {
                             if (isSubscribed) {
-                              launchURL(telegramLink);
+                              final urlToLaunch = dynamicTelegramUrl ??
+                                  telegramLink; // Use dynamic URL first
+                              if (urlToLaunch != null &&
+                                  urlToLaunch.isNotEmpty) {
+                                launchURL(urlToLaunch);
+                              } else {
+                                showPopupMessage(
+                                    context,
+                                    context.translate('error'),
+                                    context.translate(
+                                        'link_not_available')); // Add translation
+                              }
                             } else {
                               String msg = context.translate(
-                                  'not_subscribed'); // 'Vous n\'etes pas abonné😔'
+                                  'not_subscribed'); // 'Vous n'etes pas abonné😔'
                               String title =
                                   context.translate('error'); // 'Erreur'
                               showPopupMessage(context, title, msg);
@@ -558,14 +626,15 @@ class _ProfileState extends State<Profile> {
                               launchURL('https://t.me/+BLBOGqPGjSwwNmE0');
                             } else {
                               String msg = context.translate(
-                                  'not_subscribed'); // 'Vous n\'etes pas abonné😔'
+                                  'not_subscribed'); // 'Vous n'etes pas abonné😔'
                               String title =
                                   context.translate('error'); // 'Erreur'
                               showPopupMessage(context, title, msg);
                             }
                           },
                         ),
-                        SizedBox(height: 20),
+
+                        Divider(),
                       ],
                     ),
                   ),
@@ -774,6 +843,24 @@ class _ProfileState extends State<Profile> {
       builder: (BuildContext context) {
         return alert;
       },
+    );
+  }
+
+  Widget _buildListTile(BuildContext context, double fem, double ffem,
+      IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      contentPadding: EdgeInsets.symmetric(vertical: 5.0, horizontal: 40.0),
+      leading: Icon(icon),
+      title: Text(
+        title,
+        style: SafeGoogleFont(
+          'Montserrat',
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+          color: Color(0xff212121),
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }

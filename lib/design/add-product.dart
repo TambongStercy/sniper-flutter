@@ -9,11 +9,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/dropdown.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
-import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/api_service.dart';
 
 class AjouterProduit extends StatefulWidget {
   static const id = 'addProduct';
@@ -24,6 +24,7 @@ class AjouterProduit extends StatefulWidget {
 
 class _AjouterProduitState extends State<AjouterProduit> {
   bool showSpinner = false;
+  final ApiService apiService = ApiService();
 
   late SharedPreferences prefs;
 
@@ -102,116 +103,75 @@ class _AjouterProduitState extends State<AjouterProduit> {
   }
 
   Future<void> addProduct() async {
+    refreshPageWait();
+
     try {
       if (!isSubscribed) {
         String msg = context.translate('not_subscribed_message');
         String title = context.translate('error');
-        return showPopupMessage(context, title, msg);
+        showPopupMessage(context, title, msg);
+        refreshPageRemove();
+        return;
       }
 
       if (images.isEmpty ||
-          prdtName == '' ||
-          price == '' ||
-          description == '' ||
-          subcategory == '' ||
-          category == '') {
-        return showPopupMessage(
+          prdtName.trim().isEmpty ||
+          price.trim().isEmpty ||
+          description.trim().isEmpty ||
+          category.trim().isEmpty ||
+          subcategory.trim().isEmpty) {
+        showPopupMessage(
           context,
           context.translate('error'),
           context.translate('fill_all_fields_message'),
         );
+        refreshPageRemove();
+        return;
       }
 
-      final body = {
-        'name': prdtName,
-        'price': price,
-        'description': description,
-        'category': category,
-        'subcategory': subcategory,
+      final productData = {
+        'name': prdtName.trim(),
+        'price': price.trim(),
+        'description': description.trim(),
+        'category': category.trim(),
+        'subcategory': subcategory.trim(),
       };
 
-      final url = Uri.parse('$uploadProduct?email=$email');
+      final response = await apiService.createProduct(
+          productData, List<String>.from(images));
 
-      final request = http.MultipartRequest('POST', url);
-
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['email'] = email ?? '';
-
-      for (final filePath in images) {
-        final fileName = kIsWeb
-            ? generateUniqueFileName('prdt', 'jpg')
-            : Uri.file(filePath).pathSegments.last;
-
-        if (kIsWeb) {
-          final fileBytes = base64.decode(filePath);
-
-          request.files.add(http.MultipartFile.fromBytes(
-            'files',
-            fileBytes,
-            filename: fileName,
-          ));
-        } else {
-          request.files
-              .add(await http.MultipartFile.fromPath('files', filePath));
-        }
-      }
-
-      request.fields.addAll(body);
-
-      final response = await request.send();
-
-      if (response.statusCode == 200) {
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300) {
         showPopupMessage(
           context,
           context.translate('success'),
-          context.translate('product_added_successfully'),
+          response['message'] ??
+              context.translate('product_added_successfully'),
         );
-
-        refresh();
       } else {
-        final stream = response.stream;
-
-        final buffer = StringBuffer();
-
-        stream.listen((data) {
-          buffer.write(utf8.decode(data));
-        }, onDone: () {
-          final jsonString = buffer.toString();
-          final jsonData = jsonDecode(jsonString);
-
-          print('Received JSON data: $jsonData');
-
-          final message = jsonData['message'] ?? '';
-          final title = context.translate('error');
-
-          showPopupMessage(
-            context,
-            title,
-            message,
-          );
-        }, onError: (error) {
-          showPopupMessage(
-            context,
-            context.translate('error'),
-            context.translate('try_again_message'),
-          );
-          print('Error occurred during streaming: $error');
-        });
+        String errorMsg = response['message'] ??
+            response['error'] ??
+            context.translate('try_again_message');
+        showPopupMessage(
+          context,
+          context.translate('error'),
+          errorMsg,
+        );
+        print('API Error addProduct: ${response['statusCode']} - $errorMsg');
       }
-
-      showSpinner = false;
     } catch (e) {
-      String msg = e.toString();
+      String msg = context.translate('error_occurred') + ': ${e.toString()}';
       String title = context.translate('error');
       showPopupMessage(context, title, msg);
-      print(e);
-      showSpinner = false;
+      print('Exception in addProduct: $e');
+    } finally {
+      refreshPageRemove();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Initialize categories and subcategories inside build() where `context` is available
     categories = [
       context.translate('services'),
       context.translate('products'),
@@ -280,7 +240,9 @@ class _AjouterProduitState extends State<AjouterProduit> {
                       _label(fem, ffem, context.translate('category')),
                       CustomDropdown(
                         items: categories,
-                        value: categories.contains(category) ? category : categories.first,
+                        value: categories.contains(category)
+                            ? category
+                            : categories.first,
                         ffem: ffem,
                         onChange: onChangeCategory,
                       ),
@@ -295,7 +257,9 @@ class _AjouterProduitState extends State<AjouterProduit> {
                       _label(fem, ffem, context.translate('subcategory')),
                       CustomDropdown(
                         items: subcategories,
-                        value: subcategories.contains(subcategory) ? subcategory : subcategories.first,
+                        value: subcategories.contains(subcategory)
+                            ? subcategory
+                            : subcategories.first,
                         ffem: ffem,
                         onChange: onChangeSubCategory,
                       ),
@@ -314,7 +278,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                           price = val;
                         },
                         margin: 0,
-                        type: 2,
+                        fieldType: CustomFieldType.number,
                       ),
                     ],
                   ),
@@ -331,7 +295,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                           description = val;
                         },
                         margin: 0,
-                        type: 6,
+                        fieldType: CustomFieldType.multiline,
                       ),
                     ],
                   ),
@@ -349,17 +313,12 @@ class _AjouterProduitState extends State<AjouterProduit> {
               lite: false,
               onPress: () async {
                 try {
-                  refreshPageWait();
-
                   await addProduct();
-
-                  refreshPageRemove();
                 } catch (e) {
                   String msg = e.toString();
                   String title = context.translate('error');
                   showPopupMessage(context, title, msg);
                   print(e);
-                  refreshPageRemove();
                 }
               },
             ),
@@ -471,7 +430,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                     Icon(
                       Icons.add,
                       size: 50,
-                      color: blue,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     Text(
                       context.translate('add_image'),
@@ -480,7 +439,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
                         height: 1.255,
                         fontWeight: FontWeight.w600,
                         fontSize: 15.0,
-                        color: blue,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     )
                   ],
@@ -505,7 +464,8 @@ class _AjouterProduitState extends State<AjouterProduit> {
             ),
             alignment: Alignment.topLeft,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.black12),
+              border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(12 * fem),
               image: DecorationImage(
                   fit: BoxFit.cover, image: productImage(image)),

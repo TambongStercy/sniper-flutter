@@ -116,7 +116,7 @@ class PrdtPost extends StatelessWidget {
                     },
                     label: Icon(
                       Icons.share,
-                      color: orange,
+                      color: Theme.of(context).colorScheme.tertiary,
                       size: 30,
                     ),
                   ),

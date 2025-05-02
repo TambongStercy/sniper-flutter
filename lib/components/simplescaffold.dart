@@ -28,8 +28,8 @@ class SimpleScaffold extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        iconTheme: const IconThemeData(
-          color: Colors.black, // Set your desired back button color
+        iconTheme: IconThemeData(
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         backgroundColor: appBarColor == null ? Colors.white : appBarColor,
         actions: actions,
@@ -40,7 +40,7 @@ class SimpleScaffold extends StatelessWidget {
             fontSize: 16 * ffem,
             fontWeight: FontWeight.w500,
             height: 1.6666666667 * ffem / fem,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ),

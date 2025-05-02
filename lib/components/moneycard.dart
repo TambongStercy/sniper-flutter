@@ -17,8 +17,17 @@ class MoneyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRSold = isSold ?? false;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    final color = isRSold ? blue : limeGreen;
+    // Define colors based on theme and type (sold/benefit)
+    final Color primaryColor =
+        isRSold ? colorScheme.primary : colorScheme.secondary;
+    final Color onPrimaryColor =
+        isRSold ? colorScheme.onPrimary : colorScheme.onSecondary;
+    final Color iconBackgroundColor =
+        primaryColor.withOpacity(0.15); // Subtle background for icon
+
     final icon = isRSold
         ? Icons.account_balance_wallet_rounded
         : Icons.keyboard_double_arrow_up_rounded;
@@ -27,26 +36,33 @@ class MoneyCard extends StatelessWidget {
         : context.translate('total_profit');
 
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(vertical: 22, horizontal: 0),
       margin: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color,
+        color: primaryColor, // Use primary/secondary for background
         borderRadius: BorderRadius.circular(12),
       ),
       child: Stack(
         alignment: Alignment.center,
         children: [
+          // Position the icon on the right, vertically centered
           Align(
-            alignment: Alignment.bottomRight,
-            child: Icon(
-              icon,
-              size: 72,
-              color: Colors.white.withOpacity(0.2), // Transparent background icon
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                right: 5.0,
+              ), // Add some padding from the edge
+              child: Icon(
+                icon,
+                size: 60,
+                // Use the theme's onPrimary/onSecondary color with opacity
+                color: onPrimaryColor.withOpacity(0.16),
+              ),
             ),
           ),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 text,
@@ -55,7 +71,7 @@ class MoneyCard extends StatelessWidget {
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   height: 1.25,
-                  color: Colors.white,
+                  color: onPrimaryColor, // Use onPrimary/onSecondary for text
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -67,7 +83,7 @@ class MoneyCard extends StatelessWidget {
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   height: 1.25,
-                  color: Colors.white,
+                  color: onPrimaryColor, // Use onPrimary/onSecondary for text
                 ),
                 textAlign: TextAlign.center,
               ),

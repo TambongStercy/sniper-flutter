@@ -3,13 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
+import 'package:snipper_frontend/api_service.dart'; // Import ApiService
 
 class PpUpload extends StatefulWidget {
   const PpUpload({super.key});
@@ -22,6 +22,7 @@ class PpUpload extends StatefulWidget {
 
 class _PpUploadState extends State<PpUpload> {
   bool showSpinner = false;
+  final ApiService apiService = ApiService(); // Instantiate ApiService
 
   late SharedPreferences prefs;
 
@@ -43,53 +44,65 @@ class _PpUploadState extends State<PpUpload> {
     required BuildContext context,
     required String path,
   }) async {
+    setState(() {
+      showSpinner = true;
+    });
+
     try {
-      final url = Uri.parse('$uploadPP?email=$email');
-
-      final request = http.MultipartRequest('POST', url);
-
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['email'] = email;
-
-      final avatarName = kIsWeb
-          ? generateUniqueFileName('pp', 'jpg')
+      // Determine filename
+      final fileName = kIsWeb
+          ? generateUniqueFileName('pp', 'jpg') // Use existing util
           : Uri.file(path).pathSegments.last;
 
-      if (kIsWeb) {
-        final fileBytes = base64.decode(path);
-        request.files.add(http.MultipartFile.fromBytes(
-          'file',
-          fileBytes,
-          filename: avatarName,
-        ));
+      // Call ApiService method
+      final response = await apiService.uploadAvatar(path, fileName);
+
+      final statusCode = response['statusCode'];
+
+      if (statusCode != null && statusCode >= 200 && statusCode < 300) {
+        // Assuming the API returns the new URL in 'data' or 'imageUrl' or similar
+        // Adjust the key based on the actual response structure from apiService.uploadAvatar
+        final String? newAvatarUrl = response['data']?['avatarUrl'] ??
+            response['imageUrl'] ??
+            response['imgaeUrl']; // Check multiple keys
+
+        if (newAvatarUrl != null) {
+          avatar = newAvatarUrl;
+          await prefs.setString('avatar', newAvatarUrl);
+          print("Avatar updated successfully: $newAvatarUrl");
+          setState(() {}); // Update UI to show new avatar
       } else {
-        request.files.add(await http.MultipartFile.fromPath('file', path));
-      }
-
-      final response = await request.send();
-
-      if (response.statusCode == 200) {
-        final responseString = await response.stream.bytesToString();
-        final jsonResponse = jsonDecode(responseString);
-
-        String permanentPath = jsonResponse['imgaeUrl'];
-        avatar = permanentPath;
-        prefs.setString('avatar', permanentPath);
-
-        setState(() {});
+          print(
+              "API Success, but new avatar URL not found in response: $response");
+          showPopupMessage(
+            context,
+            context.translate('error'),
+            context
+                .translate('upload_success_no_url'), // Add this translation key
+          );
+        }
       } else {
+        // Handle API error response
+        String errorMsg = response['message'] ??
+            response['error'] ??
+            context.translate('error_occurred');
         showPopupMessage(
           context,
           context.translate('error'),
-          context.translate('error_occurred'),
+          errorMsg,
         );
+        print(
+            'API Error uploadAvatar UI: ${response['statusCode']} - $errorMsg');
       }
-      showSpinner = false;
     } catch (e) {
       String msg = e.toString();
       String title = context.translate('error');
       showPopupMessage(context, title, msg);
+      print('Exception in uploadAvatar UI: $e');
+    } finally {
+      setState(() {
       showSpinner = false;
+      });
     }
   }
 

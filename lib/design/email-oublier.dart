@@ -11,8 +11,9 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/new-password.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
+// import 'package:http/http.dart' as http; // Remove http import
 import 'package:snipper_frontend/localization_extension.dart'; // Ensure localization is set up
+import 'package:snipper_frontend/api_service.dart'; // Import ApiService
 
 class EmailOublie extends StatefulWidget {
   static const id = 'emailOublie';
@@ -25,47 +26,58 @@ class EmailOublie extends StatefulWidget {
 
 class _EmailOublieState extends State<EmailOublie> {
   String email = '';
+  final ApiService apiService = ApiService(); // Instantiate ApiService
 
   bool showSpinner = false;
 
   late SharedPreferences prefs;
 
   Future<void> sendFOTP() async {
-    if (email.isNotEmpty) {
-      final regBody = {
-        'email': email,
-      };
-
-      final response = await http.post(
-        Uri.parse(sendfOTP),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
-
-      final jsonResponse = jsonDecode(response.body);
-
-      final msg = jsonResponse['message'] ?? '';
-
-      if (response.statusCode == 200) {
-        String title = context.translate('code_sent'); // Translated
-
-        context.pushNamed(
-          NewPassword.id,
-          extra: email,
-        );
-
-        showPopupMessage(context, title, msg);
-        return;
-      } else {
-        String title = context.translate('something_wrong'); // Translated
-        showPopupMessage(context, title, msg);
-        return;
-      }
-    } else {
+    if (email.trim().isEmpty) {
       String msg = context.translate('fill_info'); // Translated
       String title = context.translate('incomplete_info'); // Translated
       showPopupMessage(context, title, msg);
       return;
+    }
+    // Optional: Add domain validation here too if desired
+    // if (!isValidEmailDomain(email.trim())) { ... }
+
+    setState(() {
+      showSpinner = true;
+    });
+
+    try {
+      final response = await apiService.requestPasswordResetOtp(email.trim());
+      final msg = response['message'] ?? '';
+
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300) {
+        String title = context.translate('code_sent'); // Translated
+        showPopupMessage(context, title,
+            msg.isNotEmpty ? msg : context.translate('otp_sent_instructions'));
+
+        // Navigate to NewPassword screen, passing the email
+        context.pushNamed(
+          NewPassword.id,
+          extra: email.trim(),
+        );
+      } else {
+        String title = context.translate('something_wrong'); // Translated
+        showPopupMessage(context, title,
+            msg.isNotEmpty ? msg : context.translate('otp_request_failed'));
+        print(
+            'API Error sendFOTP (EmailOublie): ${response['statusCode']} - $msg');
+      }
+    } catch (e) {
+      print('Exception in sendFOTP (EmailOublie): $e');
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+    } finally {
+      if (mounted)
+        setState(() {
+          showSpinner = false;
+        });
     }
   }
 
@@ -172,7 +184,7 @@ class _EmailOublieState extends State<EmailOublie> {
                           CustomTextField(
                             hintText: context
                                 .translate('email_hint'), // Translated hint
-                            type: 4,
+                            fieldType: CustomFieldType.email,
                             value: email,
                             onChange: (val) {
                               email = val;
@@ -187,24 +199,13 @@ class _EmailOublieState extends State<EmailOublie> {
                             lite: false,
                             onPress: () async {
                               try {
-                                setState(() {
-                                  showSpinner = true;
-                                });
-
                                 await sendFOTP();
-
-                                setState(() {
-                                  showSpinner = false;
-                                });
                               } catch (e) {
                                 String msg = e.toString();
                                 String title = context
                                     .translate('error'); // Translated "Error"
                                 showPopupMessage(context, title, msg);
                                 print(e);
-                                setState(() {
-                                  showSpinner = false;
-                                });
                               }
                             },
                           ),

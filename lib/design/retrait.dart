@@ -2,12 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/components/textfield.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 
@@ -24,9 +23,7 @@ class _RetraitState extends State<Retrait> {
   String selectedCurrency = 'XAF';
   List<String> availableCurrencies = ['XAF'];
 
-  // String phone = '';
   String amount = '';
-  String token = '';
   String email = '';
   String momoNumber = '';
   String momoCor = '';
@@ -42,31 +39,37 @@ class _RetraitState extends State<Retrait> {
   bool showSpinner = false;
 
   late SharedPreferences prefs;
+  final ApiService _apiService = ApiService();
 
-  // Declare the timer globally in your class
   Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     () async {
       await initSharedPref();
-      setState(() {
-        final country = getCountryFromPhoneNumber(momoNumber);
-
-        if (country != null) {
-          countryCode = country.dialCode;
-          countryCode2 = country.code;
-          updateOperatorsAndCurrencies(countryCode2); // Default to Cameroon
-        }
-      });
+      if (mounted) {
+        setState(() {
+          final country = getCountryFromPhoneNumber(momoNumber);
+          if (country != null) {
+            countryCode = country.dialCode;
+            countryCode2 = country.code;
+            updateOperatorsAndCurrencies(countryCode2); // Default to Cameroon
+          }
+        });
+      }
     }();
   }
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
 
-    token = prefs.getString('token') ?? '';
     email = prefs.getString('email') ?? '';
     momoNumber = prefs.getString('momo') ?? '';
     momoCor = prefs.getString('momoCorrespondent') ?? '';
@@ -75,10 +78,10 @@ class _RetraitState extends State<Retrait> {
 
     final country = getCountryFromPhoneNumber(momoNumber);
 
-    countryCode = country!.dialCode;
-    countryCode2 = country.code;
-
-    // phone = phone.substring(country.dialCode.length);
+    if (country != null) {
+      countryCode = country.dialCode;
+      countryCode2 = country.code;
+    }
   }
 
   void updateOperatorsAndCurrencies(String countryCode) async {
@@ -125,187 +128,252 @@ class _RetraitState extends State<Retrait> {
       },
     };
 
-    operators = correspondents[countryCode]?['operators'] ??
-        ['MTN_MOMO_CMR', 'ORANGE_CMR'];
-    availableCurrencies = correspondents[countryCode]?['currencies'] ?? ['XAF'];
-    dropdownValue = operators.first;
+    final data = correspondents[countryCode];
+    operators = data?['operators'] ?? ['MTN_MOMO_CMR', 'ORANGE_CMR'];
+    availableCurrencies = data?['currencies'] ?? ['XAF'];
+    dropdownValue = operators.contains(momoCor) ? momoCor : operators.first;
     selectedCurrency = availableCurrencies.first;
-    amountInXAF = await convertCurrencyToXAF('1', selectedCurrency);
-    setState(() {});
-  }
-
-  Future<double> convertCurrencyToXAF(String amount, String currency) async {
-    try {
-      // Construct the API URL
-      final url =
-          Uri.parse('${convertCurrency}?amount=$amount&from=$currency&to=XAF');
-
-      // Send the GET request
-      final response = await http.get(url);
-
-      // Parse the response
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(response.body);
-        return double.parse(jsonResponse['amount'].toString());
-      } else {
-        throw Exception(
-            'Failed to convert currency. Status: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error during currency conversion: $e');
-      throw Exception('Currency conversion failed');
+    if (mounted) {
+      _updateConversionRate('1');
+      setState(() {});
     }
   }
 
-  Future<void> requestWithdrawalOTP() async {
-    try {
-      if (amount.isNotEmpty && password.isNotEmpty && momoNumber.isNotEmpty) {
-        final intAmt = int.parse(amount);
-        final fee = intAmt * 0.05;
+  Future<void> _updateConversionRate(String currentAmount) async {
+    if (selectedCurrency == 'XAF') {
+      setState(() {
+        amountInXAF = double.tryParse(currentAmount) ?? 0;
+      });
+      return;
+    }
+    if (currentAmount.isEmpty || double.tryParse(currentAmount) == 0) {
+      setState(() {
+        amountInXAF = 0;
+      });
+      return;
+    }
 
-        // final sendPhone = countryCode + phone;
-
-        if (!isSubscribed) {
-          String msg = context.translate('not_subscribed');
-          String title = context.translate('error');
-          return showPopupMessage(context, title, msg);
-        }
-
-        // Convert the amount to XAF
-        double amountInXAF =
-            await convertCurrencyToXAF(amount, selectedCurrency);
-
-        // Check if the balance is sufficient
-        if (amountInXAF > balance || balance < (amountInXAF + fee)) {
-          String msg = context.translate('insufficient_balance');
-          String title = context.translate('insufficient_funds');
-          return showPopupMessage(context, title, msg);
-        }
-
-        if (intAmt < 250) {
-          String msg = context.translate('low_amount');
-          String title = context.translate('low_amount_title');
-          return showPopupMessage(context, title, msg);
-        }
-
-        final regBody = {
-          'email': email,
-          // 'phone': sendPhone,
-          'amount': amount,
-          'operator': dropdownValue,
-          'password': password,
-          'currency': selectedCurrency,
-        };
-
-        final headers = {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        };
-
-        final response = await http.post(
-          Uri.parse(requestPayoutOTP),
-          headers: headers,
-          body: jsonEncode(regBody),
-        );
-        final jsonResponse = jsonDecode(response.body);
-        final msg = jsonResponse['message'] ?? '';
-
-        if (response.statusCode == 200) {
-          setState(() {
-            otpRequested = true;
-          });
-          const title = 'Success';
-          showPopupMessage(context, title, msg);
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final response = await _apiService.convertCurrency(
+            currentAmount, selectedCurrency, 'XAF');
+        if (response['success'] == true && response['data'] != null) {
+          final conversionData = response['data'];
+          if (mounted) {
+            setState(() {
+              if (conversionData is Map &&
+                  conversionData.containsKey('amount')) {
+                amountInXAF =
+                    (conversionData['amount'] as num?)?.toDouble() ?? 0.0;
+              } else if (conversionData is num) {
+                amountInXAF = conversionData.toDouble();
+              } else {
+                amountInXAF = 0.0;
+                print("Unexpected conversion response format: $conversionData");
+              }
+            });
+          }
         } else {
-          final title = context.translate('error');
-          showPopupMessage(context, title, msg);
+          print(
+              "Currency conversion failed: ${response['message'] ?? response['error']}");
+          if (mounted) {
+            showPopupMessage(context, context.translate('error'),
+                context.translate('currency_conversion_failed'));
+            setState(() => amountInXAF = 0.0);
+          }
         }
+      } catch (e) {
+        print('Error during currency conversion: $e');
+        if (mounted) {
+          showPopupMessage(context, context.translate('error'),
+              context.translate('currency_conversion_failed'));
+          setState(() => amountInXAF = 0.0);
+        }
+      }
+    });
+  }
+
+  Future<void> requestWithdrawalOTP() async {
+    setState(() {
+      showSpinner = true;
+    });
+    try {
+      if (amount.isEmpty || password.isEmpty || momoNumber.isEmpty) {
+        throw Exception(context.translate('fill_all_fields'));
+      }
+
+      final doubleAmt = double.tryParse(amount);
+      if (doubleAmt == null || doubleAmt <= 0) {
+        throw Exception(context.translate('invalid_amount'));
+      }
+
+      final fee = doubleAmt * 0.05;
+
+      if (!isSubscribed) {
+        throw Exception(context.translate('not_subscribed'));
+      }
+
+      double checkAmountInXAF = amountInXAF;
+      if (selectedCurrency != 'XAF' && checkAmountInXAF == 0 && doubleAmt > 0) {
+        try {
+          final convResponse = await _apiService.convertCurrency(
+              amount, selectedCurrency, 'XAF');
+          if (convResponse['success'] == true && convResponse['data'] != null) {
+            final conversionData = convResponse['data'];
+            if (conversionData is Map && conversionData.containsKey('amount')) {
+              checkAmountInXAF =
+                  (conversionData['amount'] as num?)?.toDouble() ?? 0.0;
+            } else if (conversionData is num) {
+              checkAmountInXAF = conversionData.toDouble();
+            } else {
+              throw Exception(context.translate('currency_conversion_failed'));
+            }
+          } else {
+            throw Exception(context.translate('currency_conversion_failed'));
+          }
+        } catch (_) {
+          throw Exception(context.translate('currency_conversion_failed'));
+        }
+      }
+      if (checkAmountInXAF <= 0) {
+        throw Exception(context.translate('invalid_conversion'));
+      }
+
+      if (checkAmountInXAF > balance || balance < (checkAmountInXAF + fee)) {
+        throw Exception(context.translate('insufficient_balance'));
+      }
+
+      if (checkAmountInXAF < 250) {
+        throw Exception(context.translate('low_amount'));
+      }
+
+      final withdrawalData = {
+        'amount': amount,
+        'operator': dropdownValue,
+        'password': password,
+        'currency': selectedCurrency,
+      };
+
+      final response = await _apiService.requestWithdrawalOtp(withdrawalData);
+      final msg = response['message'] ?? response['error'] ?? '';
+
+      if (response['success'] == true) {
+        setState(() {
+          otpRequested = true;
+        });
+        showPopupMessage(context, context.translate('success'), msg);
       } else {
-        String msg = context.translate('fill_all_fields');
-        String title = context.translate('incomplete_info');
-        showPopupMessage(context, title, msg);
+        showPopupMessage(context, context.translate('error'), msg);
       }
     } catch (e) {
-      String msg = e.toString();
-      String title = context.translate('error');
-      showPopupMessage(context, title, msg);
+      String errorMsg = e is Exception
+          ? e.toString().replaceFirst('Exception: ', '')
+          : context.translate('error_occurred');
+      showPopupMessage(context, context.translate('error'), errorMsg);
+    } finally {
+      if (mounted)
+        setState(() {
+          showSpinner = false;
+        });
     }
   }
 
   Future<void> withdrawal() async {
+    setState(() {
+      showSpinner = true;
+    });
     try {
-      if (amount.isNotEmpty && password.isNotEmpty && otp.isNotEmpty) {
-        final intAmt = int.parse(amount);
-        final fee = intAmt * 0.05;
+      if (amount.isEmpty ||
+          password.isEmpty ||
+          otp.isEmpty ||
+          otp.length != 6) {
+        throw Exception(context.translate('fill_all_fields_otp'));
+      }
 
-        // final sendPhone = countryCode + phone;
-
-        if (!isSubscribed) {
-          String msg = context.translate('not_subscribed');
-          String title = context.translate('error');
-          return showPopupMessage(context, title, msg);
+      final doubleAmt = double.tryParse(amount);
+      if (doubleAmt == null || doubleAmt <= 0) {
+        throw Exception(context.translate('invalid_amount'));
+      }
+      final fee = doubleAmt * 0.05;
+      if (!isSubscribed) {
+        throw Exception(context.translate('not_subscribed'));
+      }
+      double checkAmountInXAF = amountInXAF;
+      if (selectedCurrency != 'XAF' && checkAmountInXAF == 0 && doubleAmt > 0) {
+        try {
+          final convResponse = await _apiService.convertCurrency(
+              amount, selectedCurrency, 'XAF');
+          if (convResponse['success'] == true && convResponse['data'] != null) {
+            final conversionData = convResponse['data'];
+            if (conversionData is Map && conversionData.containsKey('amount')) {
+              checkAmountInXAF =
+                  (conversionData['amount'] as num?)?.toDouble() ?? 0.0;
+            } else if (conversionData is num) {
+              checkAmountInXAF = conversionData.toDouble();
+            } else {
+              throw Exception(context.translate('currency_conversion_failed'));
+            }
+          } else {
+            throw Exception(context.translate('currency_conversion_failed'));
+          }
+        } catch (_) {
+          throw Exception(context.translate('currency_conversion_failed'));
         }
+      }
+      if (checkAmountInXAF <= 0) {
+        throw Exception(context.translate('invalid_conversion'));
+      }
+      if (checkAmountInXAF > balance || balance < (checkAmountInXAF + fee)) {
+        throw Exception(context.translate('insufficient_balance'));
+      }
+      if (checkAmountInXAF < 250) {
+        throw Exception(context.translate('low_amount'));
+      }
 
-        // Convert the amount to XAF
-        double amountInXAF =
-            await convertCurrencyToXAF(amount, selectedCurrency);
+      final withdrawalData = {
+        'amount': amount,
+        'operator': dropdownValue,
+        'password': password,
+        'currency': selectedCurrency,
+        'otp': otp,
+      };
 
-        // Check if the balance is sufficient
-        if (amountInXAF > balance || balance < (amountInXAF + fee)) {
-          String msg = context.translate('insufficient_balance');
-          String title = context.translate('insufficient_funds');
-          return showPopupMessage(context, title, msg);
-        }
+      final response = await _apiService.confirmWithdrawal(withdrawalData);
+      final msg = response['message'] ?? response['error'] ?? '';
 
-        if (intAmt < 250) {
-          String msg = context.translate('low_amount');
-          String title = context.translate('low_amount_title');
-          return showPopupMessage(context, title, msg);
-        }
-
-        final regBody = {
-          'email': email,
-          // 'phone': sendPhone,
-          'amount': amount,
-          'operator': dropdownValue,
-          'password': password,
-          'currency': selectedCurrency,
-          'otp': otp,
-        };
-
-        final headers = {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        };
-
-        final response = await http.post(
-          Uri.parse(withdraw),
-          headers: headers,
-          body: jsonEncode(regBody),
-        );
-        final jsonResponse = jsonDecode(response.body);
-        final msg = jsonResponse['message'] ?? '';
-
-        if (response.statusCode == 200) {
-          setState(() {
-            otpRequested = false;
-            otp = '';
-          });
-          const title = 'Success';
-          showPopupMessage(context, title, msg);
-        } else {
-          final title = context.translate('error');
-          showPopupMessage(context, title, msg);
-        }
+      if (response['success'] == true) {
+        setState(() {
+          otpRequested = false;
+          otp = '';
+          amount = '';
+          password = '';
+        });
+        _apiService.getUserProfile().then((profileResponse) {
+          if (profileResponse['success'] == true &&
+              profileResponse['data'] != null) {
+            final fetchedBalance =
+                (profileResponse['data']?['balance'] as num?)?.toDouble() ??
+                    balance;
+            prefs.setDouble('balance', fetchedBalance);
+            if (mounted)
+              setState(() => balance = fetchedBalance.floorToDouble());
+          }
+        });
+        showPopupMessage(context, context.translate('success'), msg);
       } else {
-        String msg = context.translate('fill_all_fields');
-        String title = context.translate('incomplete_info');
-        showPopupMessage(context, title, msg);
+        showPopupMessage(context, context.translate('error'), msg);
       }
     } catch (e) {
-      String msg = context.translate('error_occurred');
-      String title = context.translate('error');
-      showPopupMessage(context, title, msg);
+      String errorMsg = e is Exception
+          ? e.toString().replaceFirst('Exception: ', '')
+          : context.translate('error_occurred');
+      showPopupMessage(context, context.translate('error'), errorMsg);
+    } finally {
+      if (mounted)
+        setState(() {
+          showSpinner = false;
+        });
     }
   }
 
@@ -315,17 +383,12 @@ class _RetraitState extends State<Retrait> {
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
 
-    print(selectedCurrency);
-
     return SimpleScaffold(
       title: context.translate('withdrawal'),
       inAsyncCall: showSpinner,
       child: Container(
         margin: EdgeInsets.fromLTRB(25 * fem, 20 * fem, 25 * fem, 14 * fem),
         width: double.infinity,
-        // decoration: const BoxDecoration(
-        //   color: Color(0xffffffff),
-        // ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -347,83 +410,6 @@ class _RetraitState extends State<Retrait> {
                       ),
                     ),
                   ),
-                  // Column(
-                  //   crossAxisAlignment: CrossAxisAlignment.start,
-                  //   children: [
-                  //     Container(
-                  //       margin: EdgeInsets.fromLTRB(
-                  //           0 * fem, 0 * fem, 0 * fem, 10 * fem),
-                  //       child: Text(
-                  //         context.translate('operator'),
-                  //         style: SafeGoogleFont(
-                  //           'Montserrat',
-                  //           fontSize: 14 * ffem,
-                  //           fontWeight: FontWeight.w500,
-                  //           height: 1.4285714286 * ffem / fem,
-                  //           color: Color(0xff25313c),
-                  //         ),
-                  //       ),
-                  //     ),
-                  //     DropdownButtonFormField<String>(
-                  //       value: dropdownValue,
-                  //       onChanged: (String? newValue) {
-                  //         setState(() {
-                  //           dropdownValue = newValue!;
-                  //         });
-                  //       },
-                  //       items: operators
-                  //           .map<DropdownMenuItem<String>>((String value) {
-                  //         return DropdownMenuItem<String>(
-                  //           value: value,
-                  //           child: Text(value),
-                  //         );
-                  //       }).toList(),
-                  //     ),
-                  //   ],
-                  // ),
-
-                  // SizedBox(height: 15 * fem),
-                  // Column(
-                  //   crossAxisAlignment: CrossAxisAlignment.start,
-                  //   children: [
-                  //     Container(
-                  //       margin: EdgeInsets.fromLTRB(
-                  //           0 * fem, 0 * fem, 0 * fem, 10 * fem),
-                  //       child: Text(
-                  //         context.translate('phone_number'),
-                  //         style: SafeGoogleFont(
-                  //           'Montserrat',
-                  //           fontSize: 14 * ffem,
-                  //           fontWeight: FontWeight.w500,
-                  //           height: 1.4285714286 * ffem / fem,
-                  //           color: Color(0xff25313c),
-                  //         ),
-                  //       ),
-                  //     ),
-                  //     CustomTextField(
-                  //       hintText: context.translate('example_phone'),
-                  //       value: phone,
-                  //       onChange: (val) {
-                  //         phone = val;
-                  //       },
-                  //       getCountryDialCode: (code) {
-                  //         setState(() {
-                  //           countryCode = code;
-                  //         });
-                  //       },
-                  //       getCountryCode: (code) {
-                  //         setState(() {
-                  //           countryCode2 = code;
-                  //           updateOperatorsAndCurrencies(code);
-                  //         });
-                  //       },
-                  //       initialCountryCode: countryCode2,
-                  //       margin: 0,
-                  //       type: 5,
-                  //     ),
-                  //   ],
-                  // ),
-
                   SizedBox(height: 15 * fem),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,12 +418,11 @@ class _RetraitState extends State<Retrait> {
                         margin: EdgeInsets.fromLTRB(
                             0 * fem, 0 * fem, 0 * fem, 10 * fem),
                         child: Text(
-                          // '${context.translate('amount')} in ${selectedCurrency} ${selectedCurrency != 'XAF' ? '(${amountInXAF.toStringAsFixed(2)} XAF = 1 ${selectedCurrency})' : ''} : ${momoNumber != '' ? '${momoNumber} ${momoCor}' : ''}',
                           context.translate('amount', args: {
-                            // 'amount': amountInXAF.toStringAsFixed(2),
                             'currency': selectedCurrency,
-                            'momo': '${momoNumber} ${momoCor}',
-                            'conversion': '${selectedCurrency != 'XAF' ? '(${amountInXAF.toStringAsFixed(2)} XAF = 1 ${selectedCurrency})' : ''}',
+                            'momo': '${momoNumber} ${dropdownValue}',
+                            'conversion':
+                                '${selectedCurrency != 'XAF' ? '(${amountInXAF > 0 ? amountInXAF.toStringAsFixed(2) : '...'} XAF)' : ''}',
                           }),
                           style: SafeGoogleFont(
                             'Montserrat',
@@ -453,9 +438,10 @@ class _RetraitState extends State<Retrait> {
                         value: amount,
                         onChange: (val) {
                           amount = val;
+                          _updateConversionRate(val);
                         },
                         margin: 0,
-                        type: 2,
+                        fieldType: CustomFieldType.number,
                       ),
                     ],
                   ),
@@ -479,7 +465,7 @@ class _RetraitState extends State<Retrait> {
                       ),
                       CustomTextField(
                         hintText: '',
-                        type: 3,
+                        fieldType: CustomFieldType.password,
                         value: password,
                         onChange: (val) {
                           password = val;
@@ -507,14 +493,13 @@ class _RetraitState extends State<Retrait> {
                           ),
                         ),
                         OtpTextField(
-                          numberOfFields: 4,
+                          numberOfFields: 6,
                           borderColor: Color(0xFF512DA8),
-                          fieldWidth: 50.0,
+                          fieldWidth: 40.0,
                           margin: EdgeInsets.only(right: 8.0),
                           showFieldAsBox: true,
-                          onCodeChanged: (String code) {
-                            otp = code;
-                          },
+                          keyboardType: TextInputType.text,
+                          onCodeChanged: (String code) {},
                           onSubmit: (String verificationCode) {
                             otp = verificationCode;
                           },
@@ -522,25 +507,7 @@ class _RetraitState extends State<Retrait> {
                         SizedBox(height: 10 * fem),
                         Center(
                           child: TextButton(
-                            onPressed: () async {
-                              try {
-                                setState(() {
-                                  showSpinner = true;
-                                });
-                                await requestWithdrawalOTP();
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                              } catch (e) {
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                                String msg =
-                                    context.translate('error_occurred');
-                                String title = context.translate('error');
-                                showPopupMessage(context, title, msg);
-                              }
-                            },
+                            onPressed: requestWithdrawalOTP,
                             style:
                                 TextButton.styleFrom(padding: EdgeInsets.zero),
                             child: Text(
@@ -550,7 +517,7 @@ class _RetraitState extends State<Retrait> {
                                 fontSize: 16 * ffem,
                                 fontWeight: FontWeight.w700,
                                 height: 1.5 * ffem / fem,
-                                color: limeGreen,
+                                color: Theme.of(context).colorScheme.secondary,
                               ),
                             ),
                           ),
@@ -560,21 +527,15 @@ class _RetraitState extends State<Retrait> {
                   ],
                   SizedBox(height: 15 * fem),
                   ReusableButton(
-                    title: context.translate('confirm'),
+                    title: !otpRequested
+                        ? context.translate('request_otp')
+                        : context.translate('confirm_withdrawal'),
                     onPress: () async {
-                      setState(() {
-                        showSpinner = true;
-                      });
-
                       if (!otpRequested) {
                         await requestWithdrawalOTP();
                       } else {
                         await withdrawal();
                       }
-
-                      setState(() {
-                        showSpinner = false;
-                      });
                     },
                   ),
                 ],

@@ -30,15 +30,14 @@ class ReusableButton extends StatelessWidget {
     bool isClickable = clickable == null || clickable == true;
 
     Color color = isClickable
-        ? (mainColor ?? orange)
+        ? (mainColor ?? Theme.of(context).colorScheme.tertiary)
         : Color.fromARGB(255, 153, 184, 242);
     Color white = const Color(0xffffffff);
     bool liteColor = lite ?? true;
 
-
-
     return Container(
-      margin: EdgeInsets.fromLTRB((mh??30) * fem, 0 * fem, (mh??30) * fem, 13 * fem),
+      margin: EdgeInsets.fromLTRB(
+          (mh ?? 30) * fem, 0 * fem, (mh ?? 30) * fem, 13 * fem),
       child: TextButton(
         onPressed: isClickable ? onPress : cancel,
         style: TextButton.styleFrom(

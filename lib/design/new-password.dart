@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:io'; // Add back dart:io import for File class
+import 'package:http/http.dart'
+    as http; // Re-add http import for commented code in downloadAvatar
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +14,9 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
+import 'package:snipper_frontend/api_service.dart'; // Import ApiService
 
 // ignore: must_be_immutable
 class NewPassword extends StatefulWidget {
@@ -32,6 +35,7 @@ class NewPassword extends StatefulWidget {
 
 class _NewPasswordState extends State<NewPassword> {
   String get email => widget.email;
+  final ApiService apiService = ApiService(); // Instantiate ApiService
   String token = '';
   String? avatar = '';
   bool isSubscribed = false;
@@ -45,67 +49,97 @@ class _NewPasswordState extends State<NewPassword> {
   late SharedPreferences prefs;
 
   Future<bool> changeAndValidate() async {
-    if (password.isNotEmpty &&
-        email.isNotEmpty &&
-        otp.isNotEmpty &&
-        otp.length == 4) {
-      final regBody = {
-        'email': email,
-        'newPassword': password,
-        'otp': int.parse(otp),
-      };
-
-      final response = await http.post(
-        Uri.parse(validatefOTP),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
-
-      final jsonResponse = jsonDecode(response.body);
-
-      final myToken = jsonResponse['token'];
-      final user = jsonResponse['user'];
-      final name = user['name'];
-      final region = user['region'];
-      final phone = user['phoneNumber'].toString();
-      final msg = jsonResponse['message'] ?? '';
-
-      final userCode = user['code'];
-      final balance = user['balance'].floorToDouble();
-      final id = user['id'];
-      avatar = !kIsWeb ? user['avatar'] : user['url'];
-      isSubscribed = user['isSubscribed'] ?? false;
-
-      if (response.statusCode == 200 && myToken != null) {
-        if ((avatar != null || avatar != '') && !kIsWeb) {
-          avatar = await mobilePathGetter('Profile Pictures/Your Picture.jpg');
-          hasPP = true;
-        } else {
-          hasPP = false;
-        }
-
-        token = myToken;
-        prefs.setString('id', id);
-        prefs.setString('token', myToken);
-        prefs.setString('email', email);
-        prefs.setString('name', name);
-        prefs.setString('region', region);
-        prefs.setString('phone', phone);
-        prefs.setString('code', userCode);
-        prefs.setString('avatar', avatar ?? '');
-        prefs.setDouble('balance', balance);
-        prefs.setBool('isSubscribed', isSubscribed);
-
-        return true;
-      } else {
-        showPopupMessage(context, context.translate('error'), msg);
-        return false;
-      }
-    } else {
-      showPopupMessage(context, context.translate('incomplete_info'),
-          context.translate('fill_all_fields'));
+    if (email.isEmpty || password.isEmpty || otp.isEmpty || otp.length != 6) {
+      showPopupMessage(
+          context,
+          context.translate('incomplete_info'),
+          context
+              .translate('fill_all_fields_correctly')); // More specific message
       return false;
     }
+
+    setState(() {
+      showSpinner = true;
+    });
+    bool success = false;
+
+    try {
+      // Call ApiService to reset password
+      final response = await apiService.resetPassword(email, otp, password);
+
+      final msg = response['message'] ?? '';
+
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300) {
+        // Password reset successful on backend.
+        // The API might return user data and a *new token* after reset, or just success.
+        // Assuming it returns user data and token for immediate login:
+        final user =
+            response['data']?['user'] ?? response['data']; // Adjust key
+        final myToken =
+            response['data']?['token'] ?? response['token']; // Adjust key
+
+        if (user != null && myToken != null) {
+      final name = user['name'];
+      final region = user['region'];
+          final phone = user['phoneNumber']?.toString();
+      final userCode = user['code'];
+          final balance = (user['balance'] as num?)?.floorToDouble();
+          final id = user['id'] ?? user['_id']; // Check common ID keys
+          avatar = user['avatarUrl'] ?? user['avatar']; // Adjust key
+      isSubscribed = user['isSubscribed'] ?? false;
+
+          // Save all details to prefs for login session
+          prefs.setString('id', id ?? '');
+          prefs.setString('token', myToken);
+          prefs.setString('email', email);
+          prefs.setString('name', name ?? '');
+          prefs.setString('region', region ?? '');
+          prefs.setString('phone', phone ?? '');
+          prefs.setString('code', userCode ?? '');
+          prefs.setString('avatar', avatar ?? '');
+          if (balance != null) prefs.setDouble('balance', balance);
+          prefs.setBool('isSubscribed', isSubscribed);
+
+          // We might not need to call downloadAvatar separately if URL is returned.
+          // await downloadAvatar(); // Re-evaluate if this call is needed
+          hasPP = avatar != null && avatar!.isNotEmpty;
+
+          success = true;
+          showPopupMessage(
+              context,
+              context.translate('success'),
+              msg.isNotEmpty
+                  ? msg
+                  : context.translate('password_reset_success'));
+        } else {
+          // Handle case where API succeeded but didn't return expected data for login
+          success = false; // Treat as failure for login flow
+          print(
+              "Password reset API success, but no user/token returned: $response");
+          showPopupMessage(context, context.translate('error'),
+              context.translate('password_reset_incomplete'));
+        }
+      } else {
+        // Handle API error
+        showPopupMessage(context, context.translate('error'),
+            msg.isNotEmpty ? msg : context.translate('password_reset_failed'));
+        print('API Error changeAndValidate: ${response['statusCode']} - $msg');
+        success = false;
+      }
+    } catch (e) {
+      print('Exception in changeAndValidate: $e');
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+      success = false;
+    } finally {
+      if (mounted)
+        setState(() {
+          showSpinner = false;
+        });
+    }
+    return success;
   }
 
   Future<void> downloadAvatar() async {
@@ -118,62 +152,86 @@ class _NewPasswordState extends State<NewPassword> {
       }
 
       if (kIsWeb) {
-        return print('Already have URL for Web');
+        // If avatarPath is a full URL from the API, no download needed on web.
+        hasPP = true;
+        return print('Using URL for Web');
       }
 
-      if (ppExist(avatarPath)) {
+      // Check if file already exists locally (assuming avatar stores local path after download)
+      final file = File(avatarPath);
+      if (await file.exists()) {
         hasPP = true;
         return print('Already Downloaded');
       }
 
-      final response = await http.get(Uri.parse(avatarPath));
+      // If avatarPath is a URL from the API, download it.
+      // This requires http import temporarily or a new ApiService method.
+      // Temporarily keeping http import for this specific function.
+      // Re-import http if needed for this block:
+      // import 'package:http/http.dart' as http;
 
-      if (response.statusCode == 200) {
-        final imageBytes = response.bodyBytes;
-        String fileName = generateUniqueFileName('pp', 'jpg');
-        String folder = 'Profile Pictures';
+      // Uri? uri = Uri.tryParse(avatarPath);
+      // if (uri == null || !uri.hasScheme) {
+      //   print("Invalid avatar URL format: $avatarPath");
+      //   hasPP = false;
+      //   return;
+      // }
 
-        final permanentPath = kIsWeb
-            ? avatarPath
-            : await saveFileBytesLocally(folder, fileName, imageBytes);
+      // final response = await http.get(uri);
 
-        avatar = permanentPath;
-
-        prefs.setString('avatar', permanentPath);
-      } else {
-        print('Image request failed with status code ${response.statusCode}');
-      }
+      // if (response.statusCode == 200) {
+      //   final imageBytes = response.bodyBytes;
+      //   String fileName = generateUniqueFileName('pp', 'jpg'); // Ensure utils.dart is imported
+      //   String folder = 'Profile Pictures';
+      //   final permanentPath = await saveFileBytesLocally(folder, fileName, imageBytes);
+      //   avatar = permanentPath; // Update avatar to local path
+      //   prefs.setString('avatar', permanentPath);
+      //   hasPP = true;
+      // } else {
+      //   print('Image request failed with status code ${response.statusCode}');
+      //   hasPP = false;
+      // }
     } catch (e) {
       print(e);
+      hasPP = false;
     }
   }
 
   Future<void> sendFOTP() async {
-    if (email.isNotEmpty) {
-      final regBody = {
-        'email': email,
-      };
-
-      final response = await http.post(
-        Uri.parse(sendfOTP),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
-
-      final jsonResponse = jsonDecode(response.body);
-      final msg = jsonResponse['message'] ?? '';
-
-      if (response.statusCode == 200) {
-        showPopupMessage(context, context.translate('otp_sent'), msg);
-        return;
-      } else {
-        showPopupMessage(context, context.translate('error'), msg);
-        return;
-      }
-    } else {
-      showPopupMessage(context, context.translate('incomplete_info'),
-          context.translate('fill_all_fields'));
+    if (email.isEmpty) {
+      showPopupMessage(context, context.translate('error'),
+          context.translate('enter_email_address'));
       return;
+    }
+
+    setState(() {
+      showSpinner = true;
+    });
+
+    try {
+      // Call ApiService to request OTP
+      final response = await apiService.requestPasswordResetOtp(email);
+      final msg = response['message'] ?? '';
+
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300) {
+        showPopupMessage(context, context.translate('otp_sent'),
+            msg.isNotEmpty ? msg : context.translate('otp_sent_instructions'));
+      } else {
+        showPopupMessage(context, context.translate('error'),
+            msg.isNotEmpty ? msg : context.translate('otp_request_failed'));
+        print('API Error sendFOTP: ${response['statusCode']} - $msg');
+      }
+    } catch (e) {
+      print('Exception in sendFOTP: $e');
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+    } finally {
+      if (mounted)
+        setState(() {
+          showSpinner = false;
+        });
     }
   }
 
@@ -270,24 +328,24 @@ class _NewPasswordState extends State<NewPassword> {
                         _fieldTitle(fem, ffem,
                             context.translate('otp_code')), // 'Code OTP'
                         OtpTextField(
-                          numberOfFields: 4,
+                          numberOfFields: 6,
                           borderColor: Color(0xFF512DA8),
-                          fieldWidth: 50.0,
+                          fieldWidth: 40.0,
                           margin: EdgeInsets.only(right: 8.0),
                           showFieldAsBox: true,
+                          keyboardType: TextInputType.text,
                           onCodeChanged: (String code) {
-                            print(code);
+                            // Handle code change
                           },
                           onSubmit: (String verificationCode) {
                             otp = verificationCode;
-                            print('submit');
                           },
                         ),
                         SizedBox(height: 20 * fem),
                         CustomTextField(
                           hintText: context.translate(
                               'new_password'), // 'Nouveau mot de passe'
-                          type: 3,
+                          fieldType: CustomFieldType.password,
                           value: password,
                           onChange: (val) {
                             password = val;
@@ -303,8 +361,7 @@ class _NewPasswordState extends State<NewPassword> {
                                 showSpinner = true;
                               });
 
-                              final hasLogged =
-                                  await changeAndValidate();
+                              final hasLogged = await changeAndValidate();
 
                               if (hasLogged) {
                                 await downloadAvatar();
@@ -367,7 +424,7 @@ class _NewPasswordState extends State<NewPassword> {
                                 fontSize: 16 * ffem,
                                 fontWeight: FontWeight.w700,
                                 height: 1.5 * ffem / fem,
-                                color: limeGreen,
+                                color: Theme.of(context).colorScheme.secondary,
                               ),
                             ),
                           ),

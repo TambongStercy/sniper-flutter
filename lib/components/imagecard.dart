@@ -10,7 +10,7 @@ class ImageCard extends StatelessWidget {
 
   final String image;
   final bool network;
-  final Widget ?rating;
+  final Widget? rating;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +18,9 @@ class ImageCard extends StatelessWidget {
     double fem = MediaQuery.of(context).size.width / baseWidth;
     // double ffem = fem * 0.97;
 
-    final imageWidget = network ?  NetworkImage(image): AssetImage(image) as ImageProvider<Object>;
+    final imageWidget = network
+        ? NetworkImage(image)
+        : AssetImage(image) as ImageProvider<Object>;
 
     return Container(
       margin: EdgeInsets.fromLTRB(
@@ -32,7 +34,7 @@ class ImageCard extends StatelessWidget {
       height: 220 * fem,
       alignment: Alignment.topLeft,
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.black12),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(12 * fem),
         image: DecorationImage(
           fit: BoxFit.cover,

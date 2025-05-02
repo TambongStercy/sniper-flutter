@@ -13,16 +13,16 @@ class FilleulsCard extends StatefulWidget {
     this.buffer = '',
     required this.name,
     required this.email,
-    required this.url,
-    required this.isSub,
+    this.url,
+    this.subscriptionType,
   });
 
   final String? image;
   final String buffer;
   final String name;
   final String email;
-  final String url;
-  final bool isSub;
+  final String? url;
+  final String? subscriptionType;
 
   @override
   State<FilleulsCard> createState() => _FilleulsCardState();
@@ -36,8 +36,8 @@ class _FilleulsCardState extends State<FilleulsCard> {
       return MemoryImage(bytes);
     }
 
-    if (widget.url != '') {
-      return NetworkImage(widget.url);
+    if (widget.url != null && widget.url!.isNotEmpty) {
+      return NetworkImage(widget.url!);
     }
 
     return const AssetImage(
@@ -77,6 +77,22 @@ class _FilleulsCardState extends State<FilleulsCard> {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
+
+    // Determine badge based on subscriptionType
+    Widget? trailingBadge;
+    if (widget.subscriptionType != null) {
+      String badgeAsset =
+          'assets/assets/images/Certified - Blue.png'; // Default to Blue for 'classique' or others
+      if (widget.subscriptionType!.toLowerCase() == 'cible') {
+        badgeAsset = 'assets/assets/images/Certified - Orange.png';
+      }
+      // You can add more else if conditions here for other subscription types
+      trailingBadge = Image.asset(
+        badgeAsset,
+        width: 30,
+        height: 30,
+      );
+    }
 
     return Container(
       margin: EdgeInsets.symmetric(vertical: 10.0),
@@ -128,13 +144,7 @@ class _FilleulsCardState extends State<FilleulsCard> {
             ),
           ),
         ),
-        trailing: widget.isSub
-            ? Image.asset(
-                'assets/assets/images/Certified - Blue.png',
-                width: 30,
-                height: 30,
-              )
-            : null,
+        trailing: trailingBadge, // Use the determined badge widget
       ),
     );
   }

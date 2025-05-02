@@ -1,0 +1,257 @@
+Fonctionnalités de ciblage des contacts 
+
+Le ciblage se fera par: 
+
+-pays 
+
+-sexe 
+
+-langue parlé: français et anglais 
+
+-âge 
+
+-profession  
+
+• Médecin 
+
+• Infirmier/Infirmière 
+
+• Pharmacien 
+
+• Chirurgien 
+
+ • Psychologue 
+
+ • Dentiste 
+
+ • Kinésithérapeute 
+
+ • Ingénieur civil 
+
+ • Ingénieur en informatique 
+
+• Développeur de logiciels 
+
+• Architecte 
+
+• Technicien en électronique 
+
+ • Data scientist 
+
+• Enseignant 
+
+• Professeur d'université 
+
+• Formateur professionnel 
+
+• Éducateur spécialisé 
+
+ • Conseiller pédagogique 
+
+ • Artiste (peintre, sculpteur) 
+
+ • Designer graphique 
+
+ • Photographe 
+
+• Musicien 
+
+• Écrivain 
+
+• Réalisateur 
+
+ • Responsable marketing 
+
+• Vendeur/Vendeuse 
+
+• Gestionnaire de produit 
+
+• Analyste de marché 
+
+• Consultant en stratégie 
+
+ • Avocat 
+
+• Notaire 
+
+• Juge 
+
+• Huissier de justice  
+
+• Chercheur scientifique 
+
+• Biologiste 
+
+• Chimiste 
+
+• Physicien 
+
+• Statisticien  
+
+• Travailleur social 
+
+• Conseiller en orientation 
+
+• Animateur socioculturel 
+
+• Médiateur familial 
+
+• Maçon 
+
+• Électricien 
+
+• Plombier 
+
+• Charpentier 
+
+ • Architecte d'intérieur  
+
+• Chef cuisinier 
+
+• Serveur/Serveuse 
+
+• Gestionnaire d'hôtel 
+
+• Barman/Barmane  
+
+• Conducteur de train 
+
+• Pilote d'avion 
+
+• Logisticien 
+
+ • Gestionnaire de chaîne d'approvisionnement  
+
+• Administrateur système 
+
+ • Spécialiste en cybersécurité 
+
+ • Ingénieur réseau 
+
+ • Consultant en technologies de l'information 
+
+ • Journaliste 
+
+ • Rédacteur web 
+
+ • Chargé de communication 
+
+ • Community manager 
+
+  • Comptable 
+
+  
+
+• Analyste financier 
+
+• Auditeur interne 
+
+• Conseiller fiscal  
+
+• Agriculteur/Agricultrice 
+
+• Ingénieur agronome 
+
+• Écologiste 
+
+• Gestionnaire de ressources naturelles 
+
+ 
+
+-par centre d’intérêts 
+
+ • Football 
+
+• Basketball 
+
+• Course à pied 
+
+• Natation 
+
+ • Yoga 
+
+ • Randonnée 
+
+ • Cyclisme 
+
+  • Musique (instruments, chant) 
+
+ • Danse 
+
+• Peinture et dessin 
+
+ • Photographie 
+
+  • Théâtre 
+
+  • Cinéma 
+
+  • Programmation 
+
+ • Robotique 
+
+ • Sciences de la vie 
+
+  • Astronomie 
+
+ • Électronique 
+
+ • Découverte de nouvelles cultures 
+
+  • Randonnées en nature 
+
+ • Tourisme local et international 
+
+  • Cuisine du monde 
+
+ • Pâtisserie 
+
+  • Dégustation de vins 
+
+   • Aide aux personnes défavorisées 
+
+  • Protection de l’environnement 
+
+ • Participation à des événements caritatifs 
+
+ • Lecture 
+
+  • Méditation 
+
+ • Apprentissage de nouvelles langues 
+
+ • Jeux vidéo 
+
+ • Jeux de société 
+
+ • Énigmes et casse-têtes 
+
+ • Stylisme 
+
+ • Décoration d'intérieur 
+
+ • Artisanat  
+
+ • Fitness 
+
+ • Nutrition 
+
+  • Médecine alternative 
+
+ -par ville 
+
+A PROPOS DE L’UTULISATEUR: 
+
+A l'inscription il aura deux choix d’abonnement: 
+
+1er choix abonnement classique 2070 FCFA avec une seule possibilité de ciblage: le pays 
+
+L'utilisateur pourra décider des contacts du pays qu’il désire 
+
+ 
+
+2e choix d’abonnement Ciblé 5000FCFA: 
+
+L'utilisateur aura la possibilité de cibler les contacts qu’il veut 
+
+Un utilisateur classique pourra upgrader pour le pack ciblé en payant juste la différence soit 3000fcfa. 

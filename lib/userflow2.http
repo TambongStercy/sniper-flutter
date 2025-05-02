@@ -1,0 +1,477 @@
+# VS Code REST Client / HTTP File
+# User Flows: Focused on Auth, Subscriptions, Contacts, Products
+
+# =========================================
+# 0. VARIABLES & SETUP
+# =========================================
+
+# --- API Gateway ---
+@gateway_url = http://localhost:3000/api
+
+# --- User Credentials ---
+@test_email = tambongsterling@gmail.com
+@test_password = 123456
+@user_id = 65d2b0344a7e2b9efbf6205d
+@otp_code = CnqtZP
+
+# --- Admin Credentials ---
+@admin_email = test1@example.com # Assuming this admin exists
+@admin_password = StrongPassword123!
+@admin_id = # Set by Admin Login
+@admin_otp_code = # Set manually if needed for OTP verification
+
+# --- Tokens (Set by Login/Verify OTP requests) ---
+@auth_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NWQyYjAzNDRhN2UyYjllZmJmNjIwNWQiLCJpZCI6IjY1ZDJiMDM0NGE3ZTJiOWVmYmY2MjA1ZCIsImVtYWlsIjoidGFtYm9uZ3N0ZXJsaW5nQGdtYWlsLmNvbSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc0NTk0MTUyMCwiZXhwIjoxNzQ2MDI3OTIwfQ.HmxdrCN-6nGjs63QJx9tKp6-bkFwx0h6csvtrVhfm1c
+@admin_auth_token = # Admin's JWT
+
+# --- Dynamic IDs (Set during flows) ---
+@product_id = # Set after creating a product
+@rating_id = # Set after creating a rating
+@payment_session_id = # Set after initiating a payment intent
+@ad_pack_id = # (Advertising - Lower Priority)
+@advertisement_id = # (Advertising - Lower Priority)
+@tombola_id = # (Tombola - Lower Priority)
+
+# =========================================
+# 1. AUTHENTICATION FLOW (User Service)
+# =========================================
+
+### 1.1 Register a New User
+# @name registerUser
+# Hits: User Service via Gateway
+POST {{gateway_url}}/users/register
+Content-Type: application/json
+
+{
+  "email": "{{test_email}}",
+  "password": "{{test_password}}",
+  "name": "Test User Registration",
+  "region": "Littoral", # Required field
+  "country": "CM", # Derived from phoneNumber or explicit
+  "phoneNumber": "237690000000", 
+  "sex": "male",
+  "birthDate": "1995-05-15",
+  "language": ["fr", "en"],
+  "profession": "Engineer",
+  "interests": ["Business", "Technology"]
+}
+
+# Capture user ID if returned upon registration
+# > {% client.global.set("user_id", response.body.data?.user?._id || response.body.data?._id); %}
+# Capture token if returned directly (depends on implementation)
+# > {% client.global.set("auth_token", response.body.data?.token); %}
+
+### 1.2 Login User
+# @name loginUser
+# Hits: User Service via Gateway
+POST {{gateway_url}}/users/login
+Content-Type: application/json
+
+{
+  "email": "{{test_email}}",
+  "password": "{{test_password}}"
+}
+
+# Capture user ID and potentially token (if not requiring OTP)
+# > {%
+#     client.global.set("user_id", response.body.data?.user?._id || response.body.data?._id);
+#     client.global.set("auth_token", response.body.data?.token);
+# %}
+
+### 1.3 Verify User OTP (If 2FA is required/enabled after login)
+# @name verifyUserOtp
+# Hits: User Service via Gateway
+# Requires: user_id from Login step if OTP is needed
+POST {{gateway_url}}/users/verify-otp
+Content-Type: application/json
+
+{
+  "userId": "{{user_id}}",
+  "otpCode": "{{otp_code}}"
+}
+
+# Capture the final auth token after OTP verification
+# > {% client.global.set("auth_token", response.body.data?.token); %}
+
+### 1.4 Get Logged-in User Profile
+# @name getUserProfile
+# Hits: User Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/users/me
+Authorization: Bearer {{auth_token}}
+
+### 1.5 Update Logged-in User Profile
+# @name updateUserProfile
+# Hits: User Service via Gateway
+# Requires: @auth_token
+PUT {{gateway_url}}/users/me
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "region": "Centre",
+  "city": "Yaounde",
+  "language": ["en","fr"],
+  "interests": ["Business", "Technology"],
+  "preferenceCategories": ["Football", "Music", "Politics"],
+  "shareContactInfo": true
+}
+
+### 1.6 Login Admin (Similar flow as user, use separate variables)
+# @name loginAdmin
+# Hits: User Service via Gateway
+POST {{gateway_url}}/users/login
+Content-Type: application/json
+
+{
+  "email": "{{admin_email}}",
+  "password": "{{admin_password}}"
+}
+
+# Capture admin ID and potentially token
+# > {%
+#     client.global.set("admin_id", response.body.data?.user?._id || response.body.data?._id);
+#     client.global.set("admin_auth_token", response.body.data?.token);
+# %}
+
+### 1.7 Verify Admin OTP (If needed)
+# @name verifyAdminOtp
+# Hits: User Service via Gateway
+POST {{gateway_url}}/users/verify-otp
+Content-Type: application/json
+
+{
+  "userId": "{{admin_id}}", 
+  "otpCode": "{{admin_otp_code}}"
+}
+
+# Capture the final admin auth token
+# > {% client.global.set("admin_auth_token", response.body.data?.token); %}
+
+
+# =========================================
+# 2. SUBSCRIPTION MANAGEMENT FLOW (Subscription Service)
+# =========================================
+
+### 2.1 Get Available Subscription Plans
+# @name getSubscriptionPlans
+# Hits: Subscription Service via Gateway
+# Public or requires auth - check implementation. Assuming public for now.
+GET {{gateway_url}}/subscriptions/plans
+# Authorization: Bearer {{auth_token}} # Add if required
+
+### 2.2 Check User's Current Subscription Status (Optional)
+# @name getUserSubscriptionsActiveCheck
+# Hits: Subscription Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/subscriptions/active?limit=1 # Check if any active sub exists
+Authorization: Bearer {{auth_token}}
+
+### 2.3 Initiate Purchase of CLASSIQUE Subscription
+# @name initiatePurchaseClassique
+# Hits: Subscription Service (calls Payment Service internally)
+# Requires: @auth_token
+POST {{gateway_url}}/subscriptions/purchase
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "planType": "CLASSIQUE"
+}
+
+# Capture payment session ID needed to simulate payment check
+# Note: Actual subscription activation happens via Payment Service webhook confirmation.
+# > {% client.global.set("payment_session_id", response.body.data?.paymentDetails?.sessionId || response.body.data?.sessionId); %}
+
+### 2.4 Initiate Purchase of CIBLE Subscription
+# @name initiatePurchaseCible
+# Hits: Subscription Service (calls Payment Service internally)
+# Requires: @auth_token
+POST {{gateway_url}}/subscriptions/purchase
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "planType": "CIBLE"
+}
+
+# Capture payment session ID
+# > {% client.global.set("payment_session_id", response.body.data?.paymentDetails?.sessionId || response.body.data?.sessionId); %}
+
+
+### 2.5 (Simulation) Check Subscription Payment Status
+# @name checkSubscriptionPaymentStatus
+# Hits: Payment Service via Gateway
+# Requires: @auth_token, @payment_session_id from purchase/upgrade step
+# Simulates checking payment status. Does NOT activate the subscription.
+GET {{gateway_url}}/payments/intents/{{payment_session_id}}/status
+Authorization: Bearer {{auth_token}}
+
+### 2.6 Initiate Upgrade from CLASSIQUE to CIBLE
+# @name initiateUpgradeToCible
+# Hits: Subscription Service (calls Payment Service internally)
+# Requires: @auth_token, User must have an active CLASSIQUE subscription.
+POST {{gateway_url}}/subscriptions/upgrade
+Authorization: Bearer {{auth_token}}
+# No body needed, service checks current plan and calculates upgrade
+
+# Capture payment session ID for the upgrade fee
+# > {% client.global.set("payment_session_id", response.body.data?.paymentDetails?.sessionId || response.body.data?.sessionId); %}
+
+### 2.7 Get User's Subscriptions History (All)
+# @name getUserSubscriptionsAll
+# Hits: Subscription Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/subscriptions?page=1&limit=10
+Authorization: Bearer {{auth_token}}
+
+### 2.8 Get User's Active Subscriptions
+# @name getUserSubscriptionsActive
+# Hits: Subscription Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/subscriptions/active?page=1&limit=10
+Authorization: Bearer {{auth_token}}
+
+
+# =========================================
+# 3. CONTACT SEARCH & EXPORT FLOW (Contact Service / User Service?)
+# Note: Endpoints likely part of User Service, managing user profiles and contact sharing.
+# =========================================
+
+### 3.1 Search Contacts (Requires CIBLE Subscription)
+# @name searchContacts
+# Hits: User Service (Contacts) via Gateway
+# Requires: @auth_token, Active CIBLE Subscription
+# Example: Find male contacts in Cameroon (CM), aged 30-40, interested in Business, page 1.
+GET {{gateway_url}}/contacts/search?country=CM&sex=male&minAge=30&maxAge=40&interests=Business&page=1&limit=20
+Authorization: Bearer {{auth_token}}
+
+### 3.2 Search Contacts (Filter by Region)
+# @name searchContactsByRegion
+# Hits: User Service (Contacts) via Gateway
+# Requires: @auth_token, Active CIBLE Subscription
+GET {{gateway_url}}/contacts/search?region=Littoral
+Authorization: Bearer {{auth_token}}
+
+### 3.3 Export Contacts (Requires CLASSIQUE or CIBLE Subscription)
+# @name exportContacts
+# Hits: User Service (Contacts) via Gateway
+# Requires: @auth_token, Active CLASSIQUE or CIBLE Subscription
+# Example: Export female contacts in Cameroon (CM), aged 25+, interested in Technology.
+# Note: CIBLE needed for complex filtering, CLASSIQUE might allow basic export.
+GET {{gateway_url}}/contacts/export?country=CM&sex=female&minAge=25&interests=Technology
+Authorization: Bearer {{auth_token}}
+
+### 3.4 Export Contacts (No Filters - Requires CLASSIQUE/CIBLE)
+# @name exportContactsSimple
+# Hits: User Service (Contacts) via Gateway
+# Requires: @auth_token, Active CLASSIQUE or CIBLE Subscription
+GET {{gateway_url}}/contacts/export
+Authorization: Bearer {{auth_token}}
+
+### Export Contacts (Combined Filters)
+# Requires user login (@auth_token) and CIBLE subscription for multiple filters.
+# Example: Export female contacts in Cameroon (CM), aged 30+, interested in Business.
+# @name exportContactsCombined
+GET {{gateway_url}}/contacts/export?country=CM&sex=male&minAge=30&interests=Business
+Authorization: Bearer {{auth_token}}
+
+# =========================================
+# 6. PRODUCT FLOW
+# =========================================
+
+# --- Dynamic Product/Rating IDs ---
+@product_id = 6803ac2df6551228685aa71d
+@rating_id = 6803ac5cf6551228685aa726
+
+### Create Product
+# Requires user login (@auth_token)
+# @name createProduct
+POST {{gateway_url}}/products
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "name": "My Test Product",
+  "description": "This is a detailed description.",
+  "price": 5000,
+  "category": "Electronics",
+  "subcategory": "Smartphones",
+  "stock": 100,
+  "images": [
+    {"url": "https://via.placeholder.com/300?text=ProductImage1", "public_id": "img1"},
+    {"url": "https://via.placeholder.com/300?text=ProductImage2", "public_id": "img2"}
+  ],
+  "tags": ["test", "example"],
+  "specifications": {
+    "color": "Blue",
+    "size": "Large"
+  }
+}
+
+# Capture the new product ID
+# > {% client.global.set("product_id", response.body.data._id); %}
+
+### Get User's Products
+# Requires user login (@auth_token)
+# @name getUserProducts
+GET {{gateway_url}}/products/user
+Authorization: Bearer {{auth_token}}
+
+### Search Products (Public)
+# Example: Search for products with 'Test' in name/desc
+# @name searchProducts
+GET {{gateway_url}}/products/search?search=Test&page=1&limit=10
+
+### Get Specific Product (Public)
+# Requires @product_id from 'Create Product' step
+# @name getProductById
+GET {{gateway_url}}/products/{{product_id}}
+
+### Update Product
+# Requires user login (@auth_token) and @product_id
+# @name updateProduct
+PUT {{gateway_url}}/products/{{product_id}}
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "description": "Updated detailed description.",
+  "price": 5500,
+  "stock": 95
+}
+
+### Rate Product
+# Requires user login (@auth_token) and @product_id
+# @name rateProduct
+POST {{gateway_url}}/products/{{product_id}}/ratings
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "review": "Excellent product!",
+  "helpful": true
+}
+
+# Capture the new rating ID
+# > {% client.global.set("rating_id", response.body.data._id); %}
+
+### Get Product Ratings (Public)
+# Requires @product_id
+# @name getProductRatings
+GET {{gateway_url}}/products/{{product_id}}/ratings
+
+### Get User's Ratings
+# Requires user login (@auth_token)
+# @name getUserRatings
+GET {{gateway_url}}/products/user/ratings
+Authorization: Bearer {{auth_token}}
+
+### Mark Rating as Helpful
+# Requires user login (@auth_token) and @rating_id
+# @name markRatingHelpful
+POST {{gateway_url}}/products/ratings/{{rating_id}}/helpful
+Authorization: Bearer {{auth_token}}
+
+### Delete Rating
+# Requires user login (@auth_token) and @rating_id
+# @name deleteRating
+DELETE {{gateway_url}}/products/ratings/{{rating_id}}
+Authorization: Bearer {{auth_token}}
+
+# ### Admin: Update Product Status
+# # Requires admin login (@admin_auth_token) and @product_id
+# # @name adminUpdateProductStatus
+# PATCH {{gateway_url}}/products/{{product_id}}/status
+# Authorization: Bearer {{admin_auth_token}}
+# Content-Type: application/json
+
+# {
+#   "status": "approved" 
+# }
+
+# {
+#   "status": "rejected",
+#   "rejectionReason": "This product is not approved."
+# }
+
+# {
+#   "status": "pending"
+# }
+
+### Delete Product
+# Requires user login (@auth_token) and @product_id
+# @name deleteProduct
+DELETE {{gateway_url}}/products/{{product_id}}
+Authorization: Bearer {{auth_token}}
+
+
+# =========================================
+# 7. FLASH SALE FLOW
+# =========================================
+
+# --- Dynamic Flash Sale ID ---
+@flash_sale_id = 6803cea7450bd22a23006266
+
+### Create Flash Sale (Initiates Fee Payment)
+# Requires user login (@auth_token) and a valid @product_id
+# NOTE: The response contains feePaymentIntentId, but the sale is PENDING_PAYMENT.
+# Requires payment service confirmation (webhook) to become SCHEDULED/ACTIVE.
+# @name createFlashSale
+POST {{gateway_url}}/flash-sales
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "productId": "{{product_id}}",
+  "discountedPrice": 4000,
+  "startTime": "2025-04-19T17:29:00Z",
+  "endTime": "2025-04-21T12:00:00Z"
+}
+
+ # Example: Start tomorrow
+ # Example: End day after tomorrow
+
+# Capture the new flash sale ID
+# > {% client.global.set("flash_sale_id", response.body.data._id); %}
+
+### Get User's Flash Sales
+# Requires user login (@auth_token)
+# @name getUserFlashSales
+GET {{gateway_url}}/flash-sales/my
+Authorization: Bearer {{auth_token}}
+
+### Get Active Flash Sales (Public)
+# @name getActiveFlashSales
+GET {{gateway_url}}/flash-sales
+
+### Update Flash Sale
+# Requires user login (@auth_token) and @flash_sale_id
+# Only possible if status is PENDING_PAYMENT or SCHEDULED
+# @name updateFlashSale
+PUT {{gateway_url}}/flash-sales/{{flash_sale_id}}
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "discountedPrice": 3800
+}
+
+### Cancel Flash Sale
+# Requires user login (@auth_token) and @flash_sale_id
+# Only possible before it becomes ACTIVE
+# @name cancelFlashSale
+DELETE {{gateway_url}}/flash-sales/{{flash_sale_id}}
+Authorization: Bearer {{auth_token}}
+
+### Track Flash Sale View
+# Public endpoint
+# @name trackFlashSaleView
+POST {{gateway_url}}/flash-sales/{{flash_sale_id}}/track-view
+
+### Track Flash Sale WhatsApp Click
+# Public endpoint
+# @name trackFlashSaleWhatsappClick
+POST {{gateway_url}}/flash-sales/{{flash_sale_id}}/track-whatsapp-click
+

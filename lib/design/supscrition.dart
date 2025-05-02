@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/pricingcard.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
 // ignore: must_be_immutable
@@ -26,96 +26,97 @@ class Subscrition extends StatefulWidget {
 class _SubscritionState extends State<Subscrition> {
   bool showSpinner = false;
 
-  late SharedPreferences prefs;
-
-  String token = '';
-  String email = '';
-  String avatar = '';
-  String id = '';
-  String name = '';
+  String? id;
+  String? email;
+  String? name;
+  String? avatar;
+  String? token;
   bool isSubscribed = false;
   bool isPartner = false;
 
+  late SharedPreferences prefs;
+  final ApiService _apiService = ApiService();
+
   Future<void> getInfos() async {
+    setState(() {
+      showSpinner = true;
+    });
     String msg = '';
-    String error = '';
+    await initSharedPref();
+
     try {
-      await initSharedPref();
+      final response =
+          await _apiService.getUserProfile(); // Already fetches profile
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
+      msg =
+          response['message'] ?? response['error'] ?? 'Error fetching profile';
 
-      final url = Uri.parse('$getUpdates?email=$email');
+      if (response['success'] == true && response['data'] != null) {
+        final userProfile = response['data'] as Map<String, dynamic>;
 
-      final response = await http.get(url, headers: headers);
+        // Extract data using the correct keys from the profile response
+        final name = userProfile['name'] as String?;
+        final region = userProfile['region'] as String?;
+        final phone = userProfile['phoneNumber']?.toString();
+        final userCode = userProfile['referralCode'] as String?;
+        final balance = (userProfile['balance'] as num?)?.toDouble();
+        final totalBenefits = (userProfile['totalBenefits'] as num?)
+            ?.toDouble(); // Use totalBenefits
+        final momo = userProfile['momoNumber']?.toString();
+        final momoCorrespondent = userProfile['momoOperator'] as String?;
+        final List<dynamic> activeSubscriptions =
+            userProfile['activeSubscriptions'] as List<dynamic>? ?? [];
+        final fetchedAvatar = userProfile['avatar'] as String?;
 
-      final jsonResponse = jsonDecode(response.body);
+        // Update local state
+        this.name = name ?? this.name;
+        this.isSubscribed = activeSubscriptions.isNotEmpty;
+        this.avatar = fetchedAvatar ?? this.avatar;
+        // Partner status logic removed as it's not in this response
 
-      msg = jsonResponse['message'] ?? '';
-      error = jsonResponse['error'] ?? '';
-
-      if (response.statusCode == 200) {
-        final user = jsonResponse['user'];
-        final links = jsonResponse['links'];
-
-        final region = user['region'];
-        final phone = user['phoneNumber'].toString();
-        final userCode = user['code'];
-        final balance = user['balance'].floorToDouble();
-        final benefit = user['benefits'].floorToDouble();
-
-        final partner = user['partner'];
-
-        final whatsappLink = links['whatsapp'];
-        final telegramLink = links['telegram'];
-
-        name = user['name'] ?? name;
-        isSubscribed = user['isSubscribed'] ?? false;
-
-        final momo = user['momoNumber'];
-        final momoCorrespondent = user['momoCorrespondent'];
-
-        if (momo != null) {
-          prefs.setString('momo', momo.toString());
-
-          if (momoCorrespondent != null) {
+        // Update SharedPreferences with fresh data
+        prefs = await SharedPreferences.getInstance();
+        if (name != null) prefs.setString('name', name);
+        if (region != null) prefs.setString('region', region);
+        if (phone != null) prefs.setString('phone', phone);
+        if (userCode != null) prefs.setString('code', userCode);
+        if (balance != null) prefs.setDouble('balance', balance);
+        if (totalBenefits != null)
+          prefs.setDouble(
+              'benefit', totalBenefits); // Save totalBenefits as benefit
+        if (momo != null) prefs.setString('momo', momo);
+        if (momoCorrespondent != null)
             prefs.setString('momoCorrespondent', momoCorrespondent);
-          }
+        if (fetchedAvatar != null) prefs.setString('avatar', fetchedAvatar);
+        prefs.setBool('isSubscribed', this.isSubscribed);
+        prefs.setStringList('activeSubscriptions',
+            activeSubscriptions.map((s) => s.toString()).toList());
+
+        if (this.isSubscribed) {
+          if (mounted) context.go('/');
         }
-
-        prefs.setString('name', name);
-        prefs.setString('whatsapp', whatsappLink);
-        prefs.setString('telegram', telegramLink);
-        prefs.setString('region', region);
-        prefs.setString('phone', phone);
-        prefs.setString('code', userCode);
-        prefs.setDouble('balance', balance);
-        prefs.setDouble('benefit', benefit);
-
-        if (partner != null) {
-          final partnerAmount = partner['amount'].toDouble();
-          final partnerPack = partner['pack'];
-          prefs.setDouble('partnerAmount', partnerAmount);
-          prefs.setString('partnerPack', partnerPack);
-          isPartner = true;
-        }
-
-        prefs.setBool('isSubscribed', isSubscribed);
-
-        if (isSubscribed) {
-          context.go('/');
-        }
-
+      } else {
+        print('API Error getInfos: ${response['statusCode']} - $msg');
+        showPopupMessage(
+            context,
+            context.translate('error'),
+            msg.isNotEmpty
+                ? msg
+                : context.translate('failed_to_load_user_data'));
       }
     } catch (e) {
-      print(e);
+      print('Exception in getInfos: $e');
       String title = context.translate('error');
-      showPopupMessage(context, title, msg);
+      showPopupMessage(context, title,
+          context.translate('error_occurred') + ': ${e.toString()}');
+    } finally {
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
     }
   }
-
 
   @override
   void initState() {
@@ -144,82 +145,119 @@ class _SubscritionState extends State<Subscrition> {
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
   }
 
-  Future<void> subscribe() async {
+  Future<void> subscribe(int planCode, String amount) async {
+    String planTypeString;
+    switch (planCode) {
+      case 10:
+        planTypeString = 'CLASSIQUE';
+        break;
+      case 11:
+        planTypeString = 'CIBLE';
+        break;
+      default:
+        print('Unknown plan code: $planCode');
+        showPopupMessage(context, context.translate('error'),
+            context.translate('invalid_plan_selected'));
+        return;
+    }
+
+    setState(() {
+      showSpinner = true;
+    });
+
     try {
-      if (token != '' && email != '') {
-        final regBody = {
-          'email': email,
-        };
+      final response = await _apiService.purchaseSubscription(planTypeString);
 
-        final uri = Uri.parse('$subscriptiion?email=$email');
+      final msg = response['message'] ?? response['error'] ?? 'Unknown error';
 
-        final headers = {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        };
+      if (response['success'] == true) {
+        final responseData = response['data'];
+        final paymentDetails = responseData['paymentDetails'];
+        final dynamic rawSessionId =
+            paymentDetails['sessionId']; // Get potential sessionId
+        print(rawSessionId);
 
-        final response =
-            await http.post(uri, headers: headers, body: jsonEncode(regBody));
+        // Check if sessionId is valid String before proceeding
+        if (rawSessionId is String && rawSessionId.isNotEmpty) {
+          final String sessionId = rawSessionId; // Cast to String
+        final paymentLink = responseData?['paymentDetails']?['paymentLink'] ??
+              responseData?['paymentLink']; // Existing logic for paymentLink
 
-        final jsonResponse = jsonDecode(response.body);
-        final paymentLink = jsonResponse['paymentLink'];
-        final message = jsonResponse['message'] ?? '';
-
-        if (response.statusCode == 200 && paymentLink != null) {
-          launchURL(paymentLink);
+          // Now it's safe to generate the URL
+          final paymentUrl = _apiService.generatePaymentUrl(sessionId);
+          launchURL(paymentUrl);
+          showPopupMessage(
+              context, context.translate('redirecting_to_payment'), '');
         } else {
-          String msg = message;
-          String title = context.translate('something_went_wrong');
-          showPopupMessage(context, title, msg);
+          // Handle missing or invalid sessionId
+          print(
+              "Error: Missing or invalid sessionId in subscription response: $rawSessionId");
+          String title = context.translate('error');
+          showPopupMessage(
+              context,
+              title,
+              context.translate(
+                      'error_initiating_payment') // Add new translation key if needed
+                  ??
+                  'Error initiating payment session. Session ID missing.');
         }
+      } else {
+        String title = context.translate('error');
+        showPopupMessage(context, title, msg);
       }
     } catch (e) {
-      String msg = e.toString();
+      print('Error initiating subscription: $e');
       String title = context.translate('error');
-      showPopupMessage(context, title, msg);
+      showPopupMessage(context, title, context.translate('error_occurred'));
+    } finally {
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
     }
   }
 
   Future<void> logoutUser() async {
-    final email = prefs.getString('email');
-    final token = prefs.getString('token');
     final avatar = prefs.getString('avatar');
 
-    var regBody = {
-      'email': email,
-      'token': token,
-    };
+    setState(() {
+      showSpinner = true;
+    });
 
-    await http.post(
-      Uri.parse(logout),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode(regBody),
-    );
+    try {
+      final response = await _apiService.logoutUser();
 
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300) {
     await deleteFile(avatar ?? '');
-    // await unInitializeOneSignal();
-    prefs.setString('token', '');
-    prefs.setString('id', '');
-    prefs.setString('email', '');
-    prefs.setString('name', '');
-    prefs.setString('token', '');
-    prefs.setString('region', '');
-    prefs.setString('phone', '');
-    prefs.setString('code', '');
-    prefs.setString('avatar', '');
-    prefs.setInt('balance', 0);
-    prefs.setBool('isSubscribed', false);
-    await deleteNotifications();
-    await deleteAllKindTransactions();
+        await prefs.clear();
 
-    String msg = 'You where successfully logged out';
-    String title = 'Logout';
-
+        String msg =
+            response['message'] ?? context.translate('logged_out_successfully');
+        String title = context.translate('logout');
     showPopupMessage(context, title, msg);
 
-    context.go('/');
+        if (mounted) context.go('/');
+      } else {
+        String errorMsg = response['message'] ??
+            response['error'] ??
+            context.translate('logout_failed');
+        showPopupMessage(context, context.translate('error'), errorMsg);
+        print('API Error logoutUser: ${response['statusCode']} - $errorMsg');
+      }
+    } catch (e) {
+      print('Exception in logoutUser: $e');
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+    } finally {
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
+    }
   }
 
   @override
@@ -235,7 +273,8 @@ class _SubscritionState extends State<Subscrition> {
           child: ModalProgressHUD(
             inAsyncCall: showSpinner,
             child: Container(
-              margin: EdgeInsets.fromLTRB(15 * fem, 20 * fem, 15 * fem, 14 * fem),
+              margin:
+                  EdgeInsets.fromLTRB(15 * fem, 20 * fem, 15 * fem, 14 * fem),
               padding: EdgeInsets.fromLTRB(3 * fem, 0 * fem, 0 * fem, 0 * fem),
               width: double.infinity,
               child: ListView(
@@ -296,47 +335,44 @@ class _SubscritionState extends State<Subscrition> {
                     height: 50.0,
                   ),
                   PricingCard(
-                    type: 0,
-                    onCommand: () async {
-                      setState(() {
-                        showSpinner = true;
-                      });
-        
-                      await subscribe();
-        
-                      setState(() {
-                        showSpinner = false;
-                      });
+                    type: 10,
+                    onCommand: () {
+                      subscribe(10, '2070');
+                    },
+                  ),
+                  PricingCard(
+                    type: 11,
+                    onCommand: () {
+                      subscribe(11, '5000');
                     },
                   ),
                   SizedBox(
                     height: 20 * fem,
                   ),
                   ReusableButton(
-                    title: context.translate('logout'), // 'Deconnexion'
+                    title: context.translate('logout'),
                     onPress: () async {
                       try {
                         setState(() {
                           showSpinner = true;
                         });
-        
+
                         await logoutUser();
-        
+
                         setState(() {
                           showSpinner = false;
                         });
-        
-                        String msg = context.translate(
-                            'logged_out_successfully'); // 'You were successfully logged out'
-                        String title = context.translate('logout'); // 'Logout'
+
+                        String msg =
+                            context.translate('logged_out_successfully');
+                        String title = context.translate('logout');
                         showPopupMessage(context, title, msg);
                       } catch (e) {
                         setState(() {
                           showSpinner = false;
                         });
-                        String msg = context.translate(
-                            'error_occurred'); // 'An Error has occurred please try again'
-                        String title = context.translate('error'); // 'Error'
+                        String msg = context.translate('error_occurred');
+                        String title = context.translate('error');
                         showPopupMessage(context, title, msg);
                         print(e);
                       }
@@ -350,8 +386,8 @@ class _SubscritionState extends State<Subscrition> {
       ),
     );
   }
-  
+
   void refreshPage() {
-    if(mounted) setState(() {});
+    if (mounted) setState(() {});
   }
 }

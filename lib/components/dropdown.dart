@@ -20,9 +20,9 @@ class CustomDropdown extends StatelessWidget {
     return items
         .where((item) => item.isNotEmpty) // Exclude empty strings
         .map((item) {
-          String capitalizedStr = item[0].toUpperCase() + item.substring(1);
-          return DropdownMenuItem(child: Text(capitalizedStr), value: item);
-        }).toList();
+      String capitalizedStr = item[0].toUpperCase() + item.substring(1);
+      return DropdownMenuItem(child: Text(capitalizedStr), value: item);
+    }).toList();
   }
 
   @override
@@ -33,18 +33,25 @@ class CustomDropdown extends StatelessWidget {
     return DropdownButtonFormField(
       isExpanded: true,
       decoration: InputDecoration(
+        prefixIcon: Icon(
+          Icons.category_rounded,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(5),
-          borderSide: const BorderSide(
-            color: blue,
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: blue, width: 1),
+          borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary, width: 1),
           borderRadius: BorderRadius.circular(5),
         ),
       ),

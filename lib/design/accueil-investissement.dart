@@ -46,7 +46,7 @@ class Investissement extends StatelessWidget {
             ),
             LinearProgressIndicator(
               value: 1,
-              color: Color(0xff92b127),
+              color: Theme.of(context).colorScheme.secondary,
               borderRadius: BorderRadius.circular(15),
             ),
           ],

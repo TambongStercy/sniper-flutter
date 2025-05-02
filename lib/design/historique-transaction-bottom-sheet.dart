@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/historycard.dart';
-import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Assuming you have this for context.translate
-import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/components/transaction_detail_modal.dart'; // Import the new modal widget
 
 class BottomHitory extends StatefulWidget {
   final String? type;
@@ -30,12 +30,18 @@ class _BottomHitoryState extends State<BottomHitory> {
     scrollController.addListener(_onScroll);
   }
 
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
+  }
+
   void _onScroll() {
-    if (!scrollController.hasClients) return;
+    if (!scrollController.hasClients || isLoading || !hasMore) return;
 
     final maxScroll = scrollController.position.maxScrollExtent;
     final currentScroll = scrollController.offset;
-    if (currentScroll >= (maxScroll * 0.8) && hasMore) {
+    if (currentScroll >= (maxScroll * 0.8)) {
       getUserTransactions();
     }
   }
@@ -44,6 +50,7 @@ class _BottomHitoryState extends State<BottomHitory> {
   bool showSpinner = true;
   late SharedPreferences prefs;
   String? errorMessage;
+  final ApiService _apiService = ApiService();
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
@@ -52,14 +59,11 @@ class _BottomHitoryState extends State<BottomHitory> {
 
   final scrollController = ScrollController();
 
-  String get link =>
-      widget.type == 'partner' ? getPartnerTransactions : getTransactions;
-
   int page = 1;
   bool isLoading = false;
-  int totalPages = 0;
   int itemCount = 0;
   bool hasMore = true;
+  final List<Map<String, dynamic>> transactions = [];
 
   Future<void> getUserTransactions() async {
     if (isLoading || !hasMore || !mounted) return;
@@ -68,62 +72,105 @@ class _BottomHitoryState extends State<BottomHitory> {
     if (mounted) setState(() {});
 
     try {
-      final token = prefs.getString('token');
-      final uri = Uri.parse('${link}?email=$email&page=$page&limit=20');
-
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
+      final filters = {
+        'page': page.toString(),
+        'limit': '10',
+        'sortBy': 'createdAt',
+        'sortOrder': 'desc',
+        if (widget.type != null && widget.type!.isNotEmpty)
+          'type': widget.type!,
       };
 
-      var response = await http.get(uri, headers: headers);
-      final jsonResponse = json.decode(response.body);
-      final msg = jsonResponse['message'] ?? '';
+      final response = await _apiService.getTransactions(filters);
 
-      if (response.statusCode == 200) {
-        final jsonTransactions = jsonResponse['transactions'];
-        totalPages = jsonResponse['totalPages'];
+      if (response['success'] == true && response['transactions'] != null) {
+        final List<dynamic> jsonTransactions = response['transactions'];
+        final pagination = response['pagination'] as Map<String, dynamic>?;
 
-        page++;
-        isLoading = false;
-
-        if (jsonTransactions == null ||
-            jsonTransactions.length < 20 ||
-            page >= totalPages) {
-          hasMore = false;
-        }
-
-        List<Map<String, dynamic>> newTrans =
-            (jsonTransactions as List).map((item) {
-          if (item['date'] != null) {
-            DateTime date = DateTime.parse(item['date']);
-            item['date'] = date;
+        List<Map<String, dynamic>> newTrans = jsonTransactions.map((item) {
+          if (item is Map<String, dynamic>) {
+            try {
+              item['date'] = DateTime.parse(item['createdAt']);
+              item['isDeposit'] = item['type'] == 'deposit';
+              item['pending'] = item['status'] == 'pending';
+              item['amount'] = (item['amount'] as num?)?.toDouble() ?? 0.0;
+              return item;
+            } catch (e) {
+              print("Error processing transaction item: $item, Error: $e");
+              return {
+                'date': DateTime.now(),
+                'amount': 0.0,
+                'isDeposit': false,
+                'pending': false,
+                'type': 'error',
+                'status': 'error'
+              };
+            }
+          } else {
+            print("Skipping invalid transaction item: $item");
+            return {
+              'date': DateTime.now(),
+              'amount': 0.0,
+              'isDeposit': false,
+              'pending': false,
+              'type': 'error',
+              'status': 'error'
+            };
           }
-          return item as Map<String, dynamic>;
         }).toList();
 
-        transactions.addAll(newTrans);
-        itemCount = transactions.length;
+        newTrans.removeWhere((t) => t['type'] == 'error');
 
-        if (mounted) setState(() {});
+        if (mounted) {
+          setState(() {
+            transactions.addAll(newTrans);
+            itemCount = transactions.length;
+
+            if (pagination != null) {
+              final int totalItems = pagination['total'] ?? 0;
+              final int limit = pagination['limit'] ?? 10;
+              final int totalPages = (totalItems / limit).ceil();
+              final int skip = pagination['skip'] ?? (page - 1) * limit;
+              final int currentPageFromApi = (skip / limit).floor() + 1;
+
+              hasMore = currentPageFromApi < totalPages;
+              page = currentPageFromApi + 1;
+            } else {
+              hasMore = newTrans.length == 10;
+              if (hasMore) page++;
+            }
+          });
+        }
       } else {
+        final msg = response['message'] ??
+            response['error'] ??
+            'Failed to load transactions';
         errorMessage = msg;
-        if (mounted) setState(() {});
+        if (mounted)
+          setState(() {
+            hasMore = false;
+          });
       }
     } catch (e) {
-      errorMessage = e.toString();
+      print("Exception fetching transactions: $e");
+      errorMessage = context.translate('error_occurred');
+      if (mounted)
+        setState(() {
+          hasMore = false;
+        });
+    } finally {
+      isLoading = false;
       if (mounted) setState(() {});
     }
-
-    isLoading = false;
-    if (mounted) setState(() {});
   }
 
   void showError(BuildContext context) {
     if (errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        showPopupMessage(context, context.translate('error'), errorMessage!);
-        errorMessage = null;
+        if (mounted) {
+          showPopupMessage(context, context.translate('error'), errorMessage!);
+          errorMessage = null;
+        }
       });
     }
   }
@@ -138,7 +185,43 @@ class _BottomHitoryState extends State<BottomHitory> {
     await getUserTransactions();
   }
 
-  final List<Map<String, dynamic>> transactions = [];
+  // Function to show transaction details
+  void _showTransactionDetails(String transactionId) async {
+    // Show loading indicator while fetching
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final response = await _apiService.getTransactionById(transactionId);
+      Navigator.pop(context); // Close loading indicator
+
+      if (response['success'] == true && response['transaction'] != null) {
+        final transactionData = response['transaction'] as Map<String, dynamic>;
+        // Show the details modal
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent, // Make background transparent
+          builder: (context) =>
+              TransactionDetailModal(transaction: transactionData),
+        );
+      } else {
+        // Show error popup if fetch failed
+        final errorMsg = response['message'] ??
+            response['error'] ??
+            context.translate('error_fetching_details');
+        showPopupMessage(context, context.translate('error'), errorMsg);
+      }
+    } catch (e) {
+      Navigator.pop(context); // Close loading indicator on error
+      print("Exception fetching transaction details: $e");
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +233,7 @@ class _BottomHitoryState extends State<BottomHitory> {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xffffffff),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(25 * fem),
           topRight: Radius.circular(25 * fem),
@@ -160,7 +243,7 @@ class _BottomHitoryState extends State<BottomHitory> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            margin: EdgeInsets.only(top: 20 * fem, bottom: 15 * fem),
+            margin: EdgeInsets.only(top: 10 * fem, bottom: 15 * fem),
             padding: EdgeInsets.symmetric(horizontal: 25 * fem),
             child: Text(
               context.translate('transaction_history'),
@@ -169,7 +252,7 @@ class _BottomHitoryState extends State<BottomHitory> {
                 fontSize: 20 * ffem,
                 fontWeight: FontWeight.w500,
                 height: 1 * ffem / fem,
-                color: const Color(0xff25313c),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -177,27 +260,34 @@ class _BottomHitoryState extends State<BottomHitory> {
             child: RefreshIndicator(
               onRefresh: refresh,
               child: Container(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 padding: EdgeInsets.symmetric(horizontal: 25 * fem),
                 child: ListView.builder(
                   controller: scrollController,
                   itemBuilder: ((context, index) {
                     if (index < transactions.length) {
                       final trans = transactions[index];
-                      final date = formatTime(trans['date']);
-                      final isDeposit = trans['transType'] == 'deposit';
-                      final amount = trans['amount'] != null
-                          ? double.tryParse(trans['amount'].toString())?.floor() ?? 0
-                          : 0;
+                      final date =
+                          trans['date'] as DateTime?; // Already DateTime
+                      final isDeposit = trans['isDeposit'] as bool? ?? false;
+                      final amount = (trans['amount'] as num?)?.floor() ?? 0;
+                      final pending = trans['pending'] as bool? ?? false;
+                      final transactionId = trans['transactionId']
+                          as String?; // Extract transactionId
 
-                      final pending = trans['status'] != null &&
-                          trans['status'] == 'pending';
+                      if (date == null || transactionId == null) {
+                        // Skip rendering if essential data is missing
+                        return SizedBox.shrink();
+                      }
 
                       return HistoryCard(
-                        time: date,
+                        transactionId: transactionId, // Pass transactionId
+                        dateTime: date,
                         deposit: isDeposit,
                         amount: amount,
                         pending: pending,
+                        onTap:
+                            _showTransactionDetails, // Pass the handler function
                       );
                     } else {
                       return Padding(
@@ -210,7 +300,7 @@ class _BottomHitoryState extends State<BottomHitory> {
                       );
                     }
                   }),
-                  itemCount: transactions.length + 1,
+                  itemCount: transactions.length + (hasMore ? 1 : 0),
                 ),
               ),
             ),

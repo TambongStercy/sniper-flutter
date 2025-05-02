@@ -7,16 +7,16 @@ import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/textfield.dart';
-import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/email-oublier.dart';
 import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
+// import 'package:http/http.dart' as http; // Remove unused import
 
 class Connexion extends StatefulWidget {
   static const id = 'connexion';
@@ -34,13 +34,14 @@ class _ConnexionState extends State<Connexion> {
   FocusNode passwordFocusNode = FocusNode();
 
   String email = '';
-  String token = '';
-  String? avatar = '';
-  bool isSubscribed = false;
+  // Remove token, avatar, isSubscribed from here, set in completeLoginProcess
+  // String token = '';
+  // String? avatar = '';
+  // bool isSubscribed = false;
 
   // Add new state variables for OTP verification
   bool showOtpScreen = false;
-  String userId = '';
+  String userId = ''; // Store userId if OTP is required
   String otp = '';
 
   String password = '';
@@ -49,228 +50,236 @@ class _ConnexionState extends State<Connexion> {
   bool hasPP = false;
 
   late SharedPreferences prefs;
+  final ApiService _apiService = ApiService(); // Instantiate ApiService
 
-  // First step of login process
-  Future<bool> initiateLogin() async {
+  // Refactored login logic (Handles both initial login and OTP step)
+  Future<void> _handleLogin() async {
+    setState(() {
+      showSpinner = true;
+    });
     String msg = '';
 
     try {
-      if (password.isNotEmpty && email.isNotEmpty) {
-        final regBody = {
-          'email': email,
-          'password': password,
-        };
+      if (!showOtpScreen) {
+        // --- Initial Login Attempt (Password Check) ---
+        if (email.isNotEmpty && password.isNotEmpty) {
+          final response = await _apiService.loginUser(email.trim(), password);
+          msg =
+              response['message'] ?? response['error'] ?? 'Unknown login error';
 
-        final response = await http.post(
-          Uri.parse(login),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode(regBody),
-        );
+          // If password is correct (status 200), expect userId and prompt for OTP
+          if (response['statusCode'] == 200) {
+            final responseData = response['data'];
+            final receivedUserId = responseData?['userId']; // Expect userId
 
-        final jsonResponse = jsonDecode(response.body);
-        msg = jsonResponse['message'] ?? '';
-        print(msg);
-        print(response.statusCode);
-        print(jsonResponse);
-        if (response.statusCode == 200) {
-          // Check if OTP verification is required
-          if (jsonResponse['requireOTP'] == true) {
-            final receivedUserId = jsonResponse['userId'];
-
-            setState(() {
-              userId = receivedUserId;
-              showOtpScreen = true;
-            });
-
-            String title = context.translate('verification_required');
+            if (receivedUserId != null) {
+              print(
+                  "Login Step 1 Success. UserID: $receivedUserId. Message: $msg");
+              // Always show OTP screen after successful password check
+              setState(() {
+                userId = receivedUserId; // Store userId for OTP verification
+                showOtpScreen = true; // Show OTP input screen
+              });
+              // Show message from the API (e.g., "OTP sent")
+              String title = context.translate('verification_required');
+              showPopupMessage(context, title, msg);
+            } else {
+              // Handle case where status is 200 but userId is missing (API issue)
+              print(
+                  "Error: Login API returned 200 but missing userId. Response: $response");
+              showPopupMessage(context, context.translate('error'),
+                  context.translate('login_failed_unexpected'));
+            }
+          } else {
+            // Login failed (invalid credentials or other error)
+            String title = context.translate('error');
             showPopupMessage(context, title, msg);
-            return false; // Return false to indicate login process is not complete yet
+            print('API Error Login Step 1: ${response['statusCode']} - $msg');
           }
-
-          // If no OTP required (which should not happen with the new flow), proceed as before
-          final myToken = jsonResponse['token'];
-          final user = jsonResponse['user'];
-
-          completeLoginProcess(myToken, user);
-          return true;
         } else {
-          String title = context.translate('error');
-          print(msg);
+          // Fields not filled
+          msg = context.translate("fill_info");
+          String title = context.translate("incomplete_info");
           showPopupMessage(context, title, msg);
-          return false;
         }
       } else {
-        String msg = context.translate("fill_info");
-        String title = context.translate("incomplete_info");
-        showPopupMessage(context, title, msg);
-        return false;
+        // --- OTP Verification Step (Remains largely the same) ---
+        if (userId.isNotEmpty && otp.length == 6) {
+          final response = await _apiService.verifyOtp(userId, otp);
+          msg = response['message'] ?? response['error'] ?? 'Unknown OTP error';
+
+          if (response['statusCode'] == 200 && response['success'] == true) {
+            // OTP Correct: Expect token and user data now
+            final responseData = response['data'];
+            final myToken = responseData?['token'];
+            final user = responseData?['user'];
+            if (myToken != null && user != null) {
+              await completeLoginProcess(myToken, user);
+            } else {
+              print(
+                  "Error: Missing token/user data after successful OTP. Response: $response");
+              showPopupMessage(context, context.translate('error'),
+                  context.translate('login_failed_incomplete_data'));
+            }
+          } else {
+            // OTP verification failed
+            String title = context.translate('error');
+            showPopupMessage(context, title, msg);
+            print(
+                'API Error Login Step 2 (OTP): ${response['statusCode']} - $msg');
+          }
+        } else {
+          // Invalid OTP format or missing userId
+          msg = context.translate("enter_valid_otp");
+          String title = context.translate("incomplete_info");
+          showPopupMessage(context, title, msg);
+        }
       }
-    } on http.ClientException catch (e) {
-      print('ClientException occurred: $e');
-      String title = context.translate("network_error");
-      String errorMsg = context.translate("network_error_message");
-      showPopupMessage(context, title, errorMsg);
-      return false;
     } catch (e) {
-      print('An unexpected error occurred: $e');
+      // Handle exceptions
+      print('Exception during login/OTP process: $e');
       String title = context.translate("error");
-      showPopupMessage(context, title, msg);
-      return false;
+      showPopupMessage(context, title, context.translate("error_occurred"));
+    } finally {
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
     }
   }
 
-  // Second step of login with OTP verification
-  Future<bool> verifyLoginWithOTP() async {
-    String msg = '';
+  // Handles saving data and navigation after successful login/OTP verification
+  Future<void> completeLoginProcess(
+      String myToken, dynamic otpUserResponseData) async {
+    // 1. Save the token immediately so getUserProfile can use it.
+    prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', myToken);
+
+    setState(() {
+      showSpinner = true; // Show spinner while fetching profile
+    });
 
     try {
-      if (otp.isNotEmpty &&
-          otp.length == 4 &&
-          password.isNotEmpty &&
-          email.isNotEmpty) {
-        final regBody = {
-          'email': email,
-          'password': password,
-          'otp': otp,
-        };
+      // 2. Fetch the full user profile using the new token
+      final profileResponse = await _apiService.getUserProfile();
 
-        final response = await http.post(
-          Uri.parse(login),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode(regBody),
-        );
+      if (profileResponse['success'] == true &&
+          profileResponse['data'] != null) {
+        final userProfile = profileResponse['data'] as Map<String, dynamic>;
 
-        final jsonResponse = jsonDecode(response.body);
-        msg = jsonResponse['message'] ?? '';
+        // 3. Extract comprehensive data from the profile response
+        final name = userProfile['name'] as String? ?? '';
+        final region = userProfile['region'] as String? ?? '';
+        final country = userProfile['country'] as String? ?? '';
+        final phone = userProfile['phoneNumber']?.toString() ?? '';
+        final momo = userProfile['momoNumber']?.toString();
+        final momoCorrespondent = userProfile['momoOperator'] as String?;
+        final userEmail = userProfile['email'] as String? ??
+            email; // Fallback to entered email
+        final String? avatar = userProfile['avatar'] as String?;
+        final avatarId = userProfile['avatarId'] as String?;
+        final userRole = userProfile['role'] as String? ?? 'user';
+        final userCode = userProfile['referralCode'] as String? ?? '';
+        final balance = (userProfile['balance'] as num?)?.toDouble() ?? 0.0;
+        final totalBenefits =
+            (userProfile['totalBenefits'] as num?)?.toDouble() ??
+                0.0; // Use totalBenefits
+        final id =
+            userProfile['_id'] as String? ?? userId; // Use _id from profile
+        final List<dynamic> activeSubscriptions =
+            userProfile['activeSubscriptions'] as List<dynamic>? ?? [];
+        final bool isSubscribed =
+            activeSubscriptions.isNotEmpty; // Derive from activeSubscriptions
+        final List<String> interests =
+            List<String>.from(userProfile['interests'] as List<dynamic>? ?? []);
+        final profession = userProfile['profession'] as String?;
+        final dob =
+            userProfile['dob'] as String?; // Assuming dob is string YYYY-MM-DD
+        final sex = userProfile['sex'] as String?;
+        final List<String> language =
+            List<String>.from(userProfile['language'] as List<dynamic>? ?? []);
 
-        if (response.statusCode == 200) {
-          final myToken = jsonResponse['token'];
-          final user = jsonResponse['user'];
+        hasPP = avatar != null && avatar.isNotEmpty;
+        final String finalAvatar = avatar ?? ''; // Use empty string if null
 
-          completeLoginProcess(myToken, user);
-          return true;
-        } else {
-          String title = context.translate('error');
-          showPopupMessage(context, title, msg);
-          return false;
+        // 4. Save ALL extracted data to prefs
+        await prefs.setString('id', id);
+        // Token is already saved
+        await prefs.setString('email', userEmail);
+        await prefs.setString('name', name);
+        await prefs.setString('region', region);
+        await prefs.setString('country', country);
+        await prefs.setString('phone', phone);
+        if (momo != null) await prefs.setString('momo', momo);
+        if (momoCorrespondent != null)
+          await prefs.setString('momoCorrespondent', momoCorrespondent);
+        await prefs.setString('code', userCode);
+        await prefs.setString('avatar', finalAvatar);
+        if (avatarId != null) await prefs.setString('avatarId', avatarId);
+        await prefs.setString('role', userRole);
+        await prefs.setDouble('balance', balance);
+        await prefs.setDouble(
+            'benefit', totalBenefits); // Save totalBenefits as benefit
+        await prefs.setBool('isSubscribed', isSubscribed);
+        await prefs.setStringList('activeSubscriptions',
+            activeSubscriptions.map((s) => s.toString()).toList());
+        if (dob != null) await prefs.setString('dob', dob);
+        if (sex != null) await prefs.setString('sex', sex);
+        await prefs.setStringList('language', language);
+        if (profession != null) await prefs.setString('profession', profession);
+        await prefs.setStringList('interests', interests);
+
+        // 5. Navigation Logic (remains the same)
+        if (mounted) {
+          if (!hasPP) {
+            context.goNamed(PpUpload.id);
+          } else if (!isSubscribed) {
+            context.goNamed(Subscrition.id);
+          } else {
+            context.go('/');
+          }
         }
       } else {
-        String msg = context.translate("enter_valid_otp");
-        String title = context.translate("incomplete_info");
-        showPopupMessage(context, title, msg);
-        return false;
+        // Handle failed profile fetch after successful OTP
+        print(
+            "Error: Failed to fetch user profile after login. Response: $profileResponse");
+        String errorMsg = profileResponse['message'] ??
+            profileResponse['error'] ??
+            context.translate('fetch_profile_error');
+        showPopupMessage(context, context.translate('error'), errorMsg);
       }
     } catch (e) {
-      print('An unexpected error occurred: $e');
-      String title = context.translate("error");
-      showPopupMessage(context, title, msg);
-      return false;
+      print("Exception during profile fetch: $e");
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred'));
+    } finally {
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
     }
   }
 
-  // Helper method to complete the login process after successful authentication
-  void completeLoginProcess(String myToken, dynamic user) {
-    final name = user['name'];
-    final region = user['region'];
-    final phone = user['phoneNumber'].toString();
-
-    final momo = user['momoNumber'];
-
-    final userCode = user['code'];
-    final balance = user['balance'].toDouble();
-    final benefit = user['benefits'].floorToDouble();
-
-    final id = user['id'];
-    avatar = user['avatar'] ?? user['url'];
-    isSubscribed = user['isSubscribed'] ?? false;
-    if (avatar != null && avatar != '') {
-      hasPP = true;
-    } else {
-      avatar = d_PP;
-      hasPP = false;
-    }
-
-    token = myToken;
-    prefs.setString('id', id);
-    prefs.setString('token', myToken);
-    prefs.setString('email', email);
-    prefs.setString('name', name);
-    prefs.setString('region', region);
-    prefs.setString('phone', phone);
-    if (momo != null) {
-      prefs.setString('momo', momo.toString());
-    }
-    prefs.setString('code', userCode);
-    prefs.setString('avatar', avatar ?? '');
-    prefs.setDouble('balance', balance);
-    prefs.setDouble('benefit', benefit);
-    prefs.setBool('isSubscribed', isSubscribed);
-  }
-
+  // Placeholder - Actual download/caching might be needed for offline/performance
   Future<void> downloadAvatar() async {
-    try {
-      final avatarPath = avatar;
-
-      if (avatarPath == null || avatarPath.isEmpty) {
-        hasPP = false;
-        return print('User does not have a Profile Photo');
-      }
-
-      if (kIsWeb) {
-        return print('Already have URL for Web');
-      }
-
-      if (ppExist(avatarPath)) {
-        hasPP = true;
-        return print('Already Downloaded');
-      }
-
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
-      final url = Uri.parse('$downloadPP?email=$email');
-
-      final response = await http.get(url, headers: headers);
-
-      final jsonResponse = jsonDecode(response.body);
-
-      final avatarUrl = jsonResponse['url'];
-
-      final imageData = jsonResponse['imageData'];
-
-      if (response.statusCode == 200) {
-        print(avatarUrl);
-        final imageBytes = (imageData);
-        String fileName = generateUniqueFileName('pp', 'jpg');
-        // String fileName = 'Your Picture.jpg';
-        String folder = 'Profile Pictures';
-
-        final permanentPath = kIsWeb
-            ? avatarUrl
-            : await saveFileBytesLocally(folder, fileName, imageBytes);
-
-        avatar = permanentPath;
-
-        prefs.setString('avatar', permanentPath);
-      } else {
-        // Handle errors, e.g., image not found
-        print('Image request failed with status code ${response.statusCode}');
-      }
-    } catch (e) {
-      print(e);
-    }
+    print(
+        "Avatar check: URL is stored in prefs. Display handled by profileImage utility.");
+    // Potentially implement local caching here if needed later
   }
 
   @override
   void initState() {
     super.initState();
-    initSharedPref();
+    // No need to initSharedPref here, it's done in completeLoginProcess
   }
 
-  void initSharedPref() async {
-    prefs = await SharedPreferences.getInstance();
+  @override
+  void dispose() {
+    emailFocusNode.dispose();
+    passwordFocusNode.dispose();
+    super.dispose();
   }
 
   String? get affiliationCode => widget.affiliationCode;
@@ -358,11 +367,123 @@ class _ConnexionState extends State<Connexion> {
                       ),
                     ),
                     Container(
+                      padding: EdgeInsets.fromLTRB(
+                          25 * fem, 0 * fem, 25 * fem, 32.83 * fem),
                       width: double.infinity,
-                      height: 500 * fem,
-                      child: showOtpScreen
-                          ? _buildOtpScreen(fem, ffem)
-                          : _buildLoginScreen(fem, ffem),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // --- Conditional UI for Login / OTP ---
+                          if (!showOtpScreen)
+                            // --- Login Fields ---
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _fieldTitle(
+                                    fem, ffem, context.translate('email')),
+                                CustomTextField(
+                                  hintText: context.translate('example_email'),
+                                  fieldType: CustomFieldType.email,
+                                  value: email,
+                                  onChange: (val) {
+                                    email = val;
+                                  },
+                                  focusNode: emailFocusNode,
+                                ),
+                                SizedBox(height: 15 * fem),
+                                _fieldTitle(
+                                    fem, ffem, context.translate('password')),
+                                CustomTextField(
+                                  hintText: context.translate('password'),
+                                  fieldType: CustomFieldType.password,
+                                  value: password,
+                                  onChange: (val) {
+                                    password = val;
+                                  },
+                                  focusNode: passwordFocusNode,
+                                ),
+                                SizedBox(height: 10 * fem),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () {
+                                      context.pushNamed(EmailOublie.id);
+                                    },
+                                    child: Text(
+                                      context.translate('forgot_password'),
+                                      style: SafeGoogleFont(
+                                        'Montserrat',
+                                        fontSize: 14 * ffem,
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.4 * ffem / fem,
+                                        color: Color(0xfff49101),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            // --- OTP Field ---
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                _fieldTitle(
+                                    fem, ffem, context.translate('otp_code')),
+                                OtpTextField(
+                                  numberOfFields: 6,
+                                  borderColor:
+                                      Theme.of(context).colorScheme.primary,
+                                  fieldWidth: 40.0,
+                                  margin: EdgeInsets.only(right: 8.0),
+                                  showFieldAsBox: true,
+                                  keyboardType: TextInputType.text,
+                                  onSubmit: (String verificationCode) {
+                                    otp = verificationCode;
+                                    // Optionally trigger login immediately on submit
+                                    // _handleLogin();
+                                  },
+                                ),
+                                // Optionally add a resend OTP button if backend supports it for login
+                              ],
+                            ),
+                          SizedBox(height: 20 * fem),
+                          // --- Login/Verify Button ---
+                          ReusableButton(
+                            title: !showOtpScreen
+                                ? context.translate('connexion')
+                                : context.translate('verify'),
+                            lite: false,
+                            onPress:
+                                _handleLogin, // Always call the same handler
+                          ),
+                          SizedBox(height: 20 * fem),
+                          // --- Registration Link ---
+                          Center(
+                            child: TextButton(
+                              onPressed: () {
+                                context.pushNamed(Inscription.id,
+                                    queryParameters: {
+                                      'affiliationCode':
+                                          widget.affiliationCode ?? ''
+                                    });
+                              },
+                              style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero),
+                              child: Text(
+                                context.translate('no_account_register'),
+                                style: SafeGoogleFont(
+                                  'Montserrat',
+                                  fontSize: 16 * ffem,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.5 * ffem / fem,
+                                  color: Color(0xff25313c),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -371,239 +492,6 @@ class _ConnexionState extends State<Connexion> {
           ),
         ),
       ),
-    );
-  }
-
-  // Widget for the initial login screen
-  Widget _buildLoginScreen(double fem, double ffem) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        CustomTextField(
-          hintText: context.translate('email'),
-          type: 4,
-          value: email,
-          focusNode: emailFocusNode,
-          onChange: (val) {
-            email = val;
-          },
-        ),
-        CustomTextField(
-          hintText: context.translate('password'),
-          type: 3,
-          value: password,
-          focusNode: passwordFocusNode,
-          onChange: (val) {
-            password = val;
-          },
-        ),
-        SizedBox(height: 20 * fem),
-        ReusableButton(
-          title: context.translate("login"),
-          lite: false,
-          onPress: () async {
-            try {
-              setState(() {
-                showSpinner = true;
-              });
-
-              final loginComplete = await initiateLogin();
-
-              if (loginComplete) {
-                await downloadAvatar();
-
-                if (isSubscribed) {
-                  if (hasPP) {
-                    context.go('/');
-                  } else {
-                    context.goNamed(PpUpload.id);
-                  }
-                } else {
-                  context.goNamed(Subscrition.id);
-                }
-              }
-
-              setState(() {
-                showSpinner = false;
-              });
-            } catch (e) {
-              String msg = context.translate("login_failed");
-              String title = context.translate("error");
-              showPopupMessage(context, title, msg);
-              print(e);
-              setState(() {
-                showSpinner = false;
-              });
-            }
-          },
-        ),
-        SizedBox(height: 20 * fem),
-        TextButton(
-          onPressed: () {
-            context.goNamed(
-              Inscription.id,
-              queryParameters: {'affiliationCode': affiliationCode},
-            );
-          },
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.zero,
-          ),
-          child: Text(
-            context.translate("no_account_signup"),
-            style: SafeGoogleFont(
-              'Montserrat',
-              fontSize: 16 * ffem,
-              fontWeight: FontWeight.w700,
-              height: 1.5 * ffem / fem,
-              color: Color(0xff25313c),
-            ),
-          ),
-        ),
-        SizedBox(height: 10 * fem),
-        TextButton(
-          onPressed: () {
-            context.pushNamed(EmailOublie.id);
-          },
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.zero,
-          ),
-          child: Text(
-            context.translate("forgot_password"),
-            style: SafeGoogleFont(
-              'Montserrat',
-              fontSize: 16 * ffem,
-              fontWeight: FontWeight.w700,
-              height: 1.5 * ffem / fem,
-              color: Color(0xff25313c),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Widget for the OTP verification screen
-  Widget _buildOtpScreen(double fem, double ffem) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _fieldTitle(fem, ffem, context.translate('otp_code')),
-        OtpTextField(
-          numberOfFields: 4,
-          borderColor: Color(0xFF512DA8),
-          fieldWidth: 50.0,
-          margin: EdgeInsets.only(right: 8.0),
-          showFieldAsBox: true,
-          onCodeChanged: (String code) {
-            // Handle code change
-          },
-          onSubmit: (String verificationCode) {
-            otp = verificationCode;
-          },
-        ),
-        SizedBox(height: 20 * fem),
-        ReusableButton(
-          title: context.translate('verify'),
-          lite: false,
-          onPress: () async {
-            try {
-              setState(() {
-                showSpinner = true;
-              });
-
-              final loginComplete = await verifyLoginWithOTP();
-
-              if (loginComplete) {
-                await downloadAvatar();
-
-                if (isSubscribed) {
-                  if (hasPP) {
-                    context.go('/');
-                  } else {
-                    context.goNamed(PpUpload.id);
-                  }
-                } else {
-                  context.goNamed(Subscrition.id);
-                }
-              }
-
-              setState(() {
-                showSpinner = false;
-              });
-            } catch (e) {
-              String msg = context.translate("verification_failed");
-              String title = context.translate("error");
-              showPopupMessage(context, title, msg);
-              print(e);
-              setState(() {
-                showSpinner = false;
-              });
-            }
-          },
-        ),
-        SizedBox(height: 20 * fem),
-        TextButton(
-          onPressed: () {
-            // Go back to login screen
-            setState(() {
-              showOtpScreen = false;
-              otp = '';
-              userId = '';
-            });
-          },
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.zero,
-          ),
-          child: Text(
-            context.translate("back_to_login"),
-            style: SafeGoogleFont(
-              'Montserrat',
-              fontSize: 16 * ffem,
-              fontWeight: FontWeight.w700,
-              height: 1.5 * ffem / fem,
-              color: Color(0xff25313c),
-            ),
-          ),
-        ),
-        SizedBox(height: 10 * fem),
-        TextButton(
-          onPressed: () async {
-            try {
-              setState(() {
-                showSpinner = true;
-              });
-
-              // Send the login request again to resend OTP
-              await initiateLogin();
-
-              setState(() {
-                showSpinner = false;
-              });
-            } catch (e) {
-              String msg = context.translate("otp_resend_failed");
-              String title = context.translate("error");
-              showPopupMessage(context, title, msg);
-              print(e);
-              setState(() {
-                showSpinner = false;
-              });
-            }
-          },
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.zero,
-          ),
-          child: Text(
-            context.translate("resend_otp"),
-            style: SafeGoogleFont(
-              'Montserrat',
-              fontSize: 16 * ffem,
-              fontWeight: FontWeight.w700,
-              height: 1.5 * ffem / fem,
-              color: limeGreen,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -626,5 +514,50 @@ class _ConnexionState extends State<Connexion> {
 
   void popUntilAndPush(BuildContext context) {
     context.go('/');
+  }
+
+  Future<void> verifyOtpAndProceed() async {
+    if (userId == null || otp.length != 6) {
+      showPopupMessage(context, context.translate('error'),
+          context.translate('enter_valid_otp'));
+      return;
+    }
+
+    setState(() {
+      showSpinner = true;
+    });
+
+    try {
+      final response = await _apiService.verifyOtp(userId, otp);
+
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300 &&
+          response.containsKey('token')) {
+        // --- Login OTP Verification Success ---
+        final token = response['token'] as String;
+        // The login response often contains more user details than registration verify
+        final user = response['user'] as Map<String, dynamic>? ?? {};
+
+        await completeLoginProcess(
+            token, user); // Call the existing processing function
+      } else {
+        // --- OTP Verification Failed ---
+        String errorMsg = response['message'] ??
+            response['error'] ??
+            context.translate('invalid_otp_or_error');
+        showPopupMessage(context, context.translate('error'), errorMsg);
+      }
+    } catch (e) {
+      print('Exception during login OTP verification: $e');
+      showPopupMessage(context, context.translate('error'),
+          context.translate('error_occurred_retry'));
+    } finally {
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
+    }
   }
 }

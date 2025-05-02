@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 
 import 'package:dotted_border/dotted_border.dart';
 import 'package:file_picker/file_picker.dart';
@@ -9,11 +10,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/dropdown.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
-import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/api_service.dart';
 
 class ModifyProduct extends StatefulWidget {
   static const id = 'modProduct';
@@ -22,13 +23,13 @@ class ModifyProduct extends StatefulWidget {
 
   final Map<String, dynamic> product;
 
-
   @override
   State<ModifyProduct> createState() => _ModifyProductState();
 }
 
 class _ModifyProductState extends State<ModifyProduct> {
   bool showSpinner = false;
+  final ApiService apiService = ApiService();
 
   late SharedPreferences prefs;
 
@@ -55,8 +56,8 @@ class _ModifyProductState extends State<ModifyProduct> {
   String? token;
   String avatar = '';
   bool isSubscribed = false;
-  List images = [];
-  List existingImages = [];
+  List<String> images = [];
+  List<Map<String, dynamic>> existingImages = [];
 
   String prdtid = '';
   String prdtName = '';
@@ -67,14 +68,18 @@ class _ModifyProductState extends State<ModifyProduct> {
   void initState() {
     super.initState();
 
-    existingImages = product['urls'];
+    final imageListFromProduct =
+        widget.product['images'] as List<dynamic>? ?? [];
+    existingImages = imageListFromProduct
+        .map((img) => Map<String, dynamic>.from(img))
+        .toList();
 
-    prdtid = product['id'];
-    prdtName = product['name'];
-    price = product['price'].toString();
-    description = product['description'];
-    category = product['category'];
-    subcategory = product['subcategory'];
+    prdtid = widget.product['_id'] as String? ?? '';
+    prdtName = widget.product['name'] as String? ?? '';
+    price = (widget.product['price'] as num?)?.toString() ?? '0';
+    description = widget.product['description'] as String? ?? '';
+    category = widget.product['category'] as String? ?? 'produits';
+    subcategory = widget.product['subcategory'] as String? ?? '';
 
     subcategories =
         List.from(category == 'produits' ? subProducts : subServices);
@@ -135,78 +140,61 @@ class _ModifyProductState extends State<ModifyProduct> {
   String subcategory = "électronique et gadgets";
 
   Future<void> modifyProduct(BuildContext context) async {
+    refreshPageWait();
+
     try {
-      final body = {
-        'id': prdtid,
-        'name': prdtName,
-        'price': price,
-        'description': description,
-        'category': category,
-        'subcategory': subcategory,
-        'existingImages': jsonEncode(existingImages),
+      // Prepare the data map with only the fields to be updated
+      final Map<String, String> productUpdates = {
+        'name': prdtName.trim(),
+        'price': price.trim(),
+        'description': description.trim(),
+        'category': category.trim(),
+        'subcategory': subcategory.trim(),
+        // Add other updatable fields if any
       };
 
-      final url = Uri.parse('$updateProduct?email=$email');
+      // Pass only the NEW image paths/data. The API handles replacement.
+      final response = await apiService.updateProduct(
+        prdtid,
+        productUpdates,
+        List<String>.from(images),
+      );
 
-      final request = http.MultipartRequest('POST', url);
+      final msg = response['message'] ?? response['error'] ?? '';
 
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['email'] = email ?? '';
-
-      for (final filePath in images) {
-        final fileName = kIsWeb
-            ? generateUniqueFileName('prdt', 'jpg')
-            : Uri.file(filePath).pathSegments.last;
-
-        if (kIsWeb) {
-          print('filePath is fileBytes but in String form');
-
-          final fileBytes = base64.decode(filePath);
-
-          request.files.add(http.MultipartFile.fromBytes(
-            'files',
-            fileBytes,
-            filename: fileName,
-          ));
-        } else {
-          request.files
-              .add(await http.MultipartFile.fromPath('files', filePath));
-        }
-      }
-
-      // Add body parameters
-      request.fields.addAll(body);
-
-      final response = await request.send();
-
-      if (response.statusCode == 200) {
+      if (response['statusCode'] != null &&
+          response['statusCode'] >= 200 &&
+          response['statusCode'] < 300) {
         showPopupMessage(
           context,
-          'Succès',
-          'Produit, modifié avec succès',
+          context.translate('success'), // 'Succès'
+          msg.isNotEmpty
+              ? msg
+              : context.translate(
+                  'product_modified_successfully'), // 'Produit, modifié avec succès'
         );
-
-        refresh();
+        // Optionally refresh parent screen or navigate back
+        // refresh(); // Might need adjustment
       } else {
-        print('request failed with status: ${response.statusCode}');
-        // ignore: use_build_context_synchronously
+        print('API Error modifyProduct: ${response['statusCode']} - $msg');
         showPopupMessage(
           context,
-          'Erreur',
-          'Une erreur est survenue. Veuillez reessayer plus tard',
+          context.translate('error'), // 'Erreur'
+          msg.isNotEmpty
+              ? msg
+              : context.translate(
+                  'error_occurred_retry'), // 'Une erreur est survenue. Veuillez reessayer plus tard'
         );
       }
-
-      showSpinner = false;
     } catch (e) {
-      String msg = e.toString();
-      String title = 'Error';
-      showPopupMessage(context, title, msg);
-      print(e);
-      showSpinner = false;
+      String errorMsg = e.toString();
+      String title = context.translate('error'); // 'Error'
+      showPopupMessage(context, title, errorMsg);
+      print('Exception in modifyProduct: $e');
+    } finally {
+      refreshPageRemove();
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +236,11 @@ class _ModifyProductState extends State<ModifyProduct> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, context.translate('product_name')), // 'Nom du produit/service'
+                      _label(
+                          fem,
+                          ffem,
+                          context.translate(
+                              'product_name')), // 'Nom du produit/service'
                       CustomTextField(
                         hintText: prdtName,
                         onChange: (val) {
@@ -263,7 +255,8 @@ class _ModifyProductState extends State<ModifyProduct> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, context.translate('category')), // 'Catégorie'
+                      _label(fem, ffem,
+                          context.translate('category')), // 'Catégorie'
                       CustomDropdown(
                         items: categories,
                         value: category,
@@ -276,7 +269,8 @@ class _ModifyProductState extends State<ModifyProduct> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, context.translate('subcategory')), // 'Sous-catégorie'
+                      _label(fem, ffem,
+                          context.translate('subcategory')), // 'Sous-catégorie'
                       CustomDropdown(
                         items: subcategories,
                         value: subcategory,
@@ -289,7 +283,8 @@ class _ModifyProductState extends State<ModifyProduct> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, context.translate('price')), // 'Prix(FCFA)'
+                      _label(fem, ffem,
+                          context.translate('price')), // 'Prix(FCFA)'
                       CustomTextField(
                         hintText: price,
                         value: price,
@@ -297,7 +292,7 @@ class _ModifyProductState extends State<ModifyProduct> {
                           price = val;
                         },
                         margin: 0,
-                        type: 2,
+                        fieldType: CustomFieldType.number,
                       ),
                     ],
                   ),
@@ -305,7 +300,8 @@ class _ModifyProductState extends State<ModifyProduct> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _label(fem, ffem, context.translate('description')), // 'Déscription'
+                      _label(fem, ffem,
+                          context.translate('description')), // 'Déscription'
                       CustomTextField(
                         hintText: description,
                         value: description,
@@ -313,7 +309,7 @@ class _ModifyProductState extends State<ModifyProduct> {
                           description = val;
                         },
                         margin: 0,
-                        type: 6,
+                        fieldType: CustomFieldType.multiline,
                       ),
                     ],
                   ),
@@ -327,12 +323,10 @@ class _ModifyProductState extends State<ModifyProduct> {
               lite: false,
               onPress: () async {
                 try {
-                  refreshPageWait();
                   await modifyProduct(context);
-                  refreshPageRemove();
                 } catch (e) {
-                  showPopupMessage(context, context.translate('error'), e.toString());
-                  refreshPageRemove();
+                  showPopupMessage(
+                      context, context.translate('error'), e.toString());
                 }
               },
             ),
@@ -341,7 +335,7 @@ class _ModifyProductState extends State<ModifyProduct> {
       ),
     );
   }
-  
+
   void onChangeCategory(String? newValue) {
     if (mounted)
       setState(() {
@@ -416,12 +410,11 @@ class _ModifyProductState extends State<ModifyProduct> {
               images.add(filePath);
             }
 
-
             refreshPageRemove();
 
-            if(heavy)
-            showPopupMessage(context, 'Fichier trop volumineux', 'Un ou plusieures images sont trop lourdes, chaque ficher dois être inferieur a 5Mo');
-            
+            if (heavy)
+              showPopupMessage(context, 'Fichier trop volumineux',
+                  'Un ou plusieures images sont trop lourdes, chaque ficher dois être inferieur a 5Mo');
           } catch (e) {
             print(e);
             refreshPageRemove();
@@ -449,7 +442,7 @@ class _ModifyProductState extends State<ModifyProduct> {
                     Icon(
                       Icons.add,
                       size: 50,
-                      color: blue,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     Text(
                       'Ajouter une image',
@@ -458,7 +451,7 @@ class _ModifyProductState extends State<ModifyProduct> {
                         height: 1.255,
                         fontWeight: FontWeight.w600,
                         fontSize: 15.0,
-                        color: blue,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     )
                   ],
@@ -472,12 +465,12 @@ class _ModifyProductState extends State<ModifyProduct> {
   }
 
   List<Stack> imageDisplay(double fem) {
-    final imageList = existingImages + images;
+    // Combine existing images (as Maps) and new images (as Strings) for display purposes
+    final List<dynamic> displayList = [...existingImages, ...images];
 
-    return imageList.map((image) {
-      bool isExistingImage = existingImages.contains(image);
-
-      final imageUse = isExistingImage ? existingImages : images;
+    return displayList.map((image) {
+      // Check if the current item is from the existingImages list (it will be a Map)
+      bool isExistingImage = image is Map<String, dynamic>;
 
       return Stack(
         children: [
@@ -489,12 +482,17 @@ class _ModifyProductState extends State<ModifyProduct> {
             ),
             alignment: Alignment.topLeft,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.black12),
+              border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(12 * fem),
               image: DecorationImage(
                 fit: BoxFit.cover,
-                image:
-                    isExistingImage ? NetworkImage(image) : productImage(image),
+                image: isExistingImage
+                    ? NetworkImage(
+                        // Construct URL for existing using fileId directly
+                        '$settingsFileBaseUrl${image['fileId'] ?? ''}')
+                    : productImage(
+                        image as String), // Use helper for new (path/base64)
               ),
             ),
           ),
@@ -505,8 +503,14 @@ class _ModifyProductState extends State<ModifyProduct> {
               onPressed: () {
                 if (mounted)
                   setState(() {
-                    imageUse.remove(image);
-                    if(existingImages.contains(image)) existingImages.remove(image);
+                    // Remove from the correct list based on type
+                    if (isExistingImage) {
+                      existingImages.removeWhere((imgMap) =>
+                          imgMap['fileId'] ==
+                          image['fileId']); // Match by fileId
+                    } else {
+                      images.remove(image as String);
+                    }
                   });
               },
               icon: Container(

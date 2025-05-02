@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-// import 'package:snipper_frontend/components/button.dart';
+import 'package:snipper_frontend/components/button.dart';
+import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/localization_extension.dart';
 
 class BonusCard extends StatelessWidget {
   const BonusCard({
@@ -30,23 +32,23 @@ class BonusCard extends StatelessWidget {
     String path = 'tshirtfill.png';
 
     if (type == 1) {
-      categ = 'BASIQUE';
-      price = '180,000';
+      categ = context.translate('pack_basic');
+      price = '2000';
       icon = Icons.directions_walk_sharp;
       good = 'UN T-SHIRT ET UNE CASQUETTE DE LA SBC';
-      color = Color(0xff1862f0);
+      color = Theme.of(context).colorScheme.primary;
     } else if (type == 2) {
       categ = 'Pro';
       price = '500,000';
       good = 'UNE MONTRE';
       icon = Icons.watch;
-      color = Color(0xff92b127);
+      color = Theme.of(context).colorScheme.secondary;
     } else {
       categ = 'Gold';
       price = '1,000,000';
       good = 'UN IPHONE 11 PRO MAX';
       icon = Icons.phone_android_outlined;
-      color = Color(0xfff49101);
+      color = Theme.of(context).colorScheme.tertiary;
     }
 
     return Container(
@@ -121,7 +123,9 @@ class BonusCard extends StatelessWidget {
                 Container(
                   margin:
                       EdgeInsets.fromLTRB(0 * fem, 0 * fem, 4 * fem, 0 * fem),
-                  child: type == 1?Image.asset('assets/design/images/$path'):Icon(icon),
+                  child: type == 1
+                      ? Image.asset('assets/design/images/$path')
+                      : Icon(icon),
                   height: 20,
                 ),
               ],

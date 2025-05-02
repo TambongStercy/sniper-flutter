@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart';
+
+// Helper function to format DateTime
+String formatDateTime(DateTime dateTime) {
+  // Example format: Feb 19, 2024 09:25 AM
+  return DateFormat('MMM d, yyyy hh:mm a').format(dateTime);
+}
 
 class HistoryCard extends StatelessWidget {
   HistoryCard({
     super.key,
+    required this.transactionId,
     required this.amount,
-    required this.time,
+    required this.dateTime,
     required this.deposit,
     this.pending,
+    this.onTap,
   });
 
+  final String transactionId;
   final int amount;
-  final String time;
+  final DateTime dateTime;
   final bool deposit;
   bool? pending;
+  final Function(String transactionId)? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -33,12 +44,21 @@ class HistoryCard extends StatelessWidget {
       action = context.translate('withdraw_action');
     } 
 
-    if(pending != null && pending == true){
+    if (pending != null && pending == true) {
       color = Color(0xfff59e0b);
       action = context.translate('pending');
     }
 
-    return Container(
+    // Format the DateTime object
+    String formattedDateTime = formatDateTime(dateTime);
+
+    return InkWell(
+      onTap: () {
+        if (onTap != null) {
+          onTap!(transactionId);
+        }
+      },
+      child: Container(
       padding: EdgeInsets.fromLTRB(24 * fem, 9 * fem, 24 * fem, 9 * fem),
       margin: EdgeInsets.symmetric(vertical: 10 * fem),
       width: double.infinity,
@@ -52,12 +72,7 @@ class HistoryCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            margin: EdgeInsets.fromLTRB(
-              0 * fem,
-              0 * fem,
-              0 * fem,
-              0 * fem,
-            ),
+              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 0 * fem),
             height: double.infinity,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,7 +88,7 @@ class HistoryCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  time,
+                    formattedDateTime,
                   style: SafeGoogleFont(
                     'Montserrat',
                     fontSize: 10 * ffem,
@@ -96,6 +111,7 @@ class HistoryCard extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

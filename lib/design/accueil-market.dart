@@ -5,13 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/prodtpost.dart';
 import 'package:snipper_frontend/components/rating_tag.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/produit-page.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
 import 'package:snipper_frontend/localization_extension.dart';
 
 class Market extends StatefulWidget {
@@ -28,27 +28,25 @@ class Market extends StatefulWidget {
 class _MarketState extends State<Market> {
   final List prdtList = [];
   String email = '';
-  String token = '';
   int itemCount = 0;
   int page = 1;
   bool hasMore = true;
-  bool isSubscribed = false;
-  bool isloading = false;
+  bool isLoading = false;
+  bool _isInitialLoading = true;
+  bool showSpinner = false;
 
   late SharedPreferences prefs;
+  final ApiService _apiService = ApiService();
 
   final scrollController = ScrollController();
   String search = '';
-  String queue = '';
+  String currentSearchTerm = '';
   String category = '';
   String subcategory = '';
-  double randNum = 0.5;
 
   Future<void> initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
     email = prefs.getString('email') ?? '';
-    token = prefs.getString('token') ?? '';
-    isSubscribed = prefs.getBool('isSubscribed') ?? false;
   }
 
   @override
@@ -57,135 +55,145 @@ class _MarketState extends State<Market> {
 
     page = widget.page ?? page;
 
-    final random = Random();
-    randNum = random.nextDouble();
-
-    getProductsOnline();
-
-    scrollController.addListener(_onScroll);
+    () async {
+      await initSharedPref();
+      await getProductsOnline();
+      scrollController.addListener(_onScroll);
+    }();
   }
 
-  
   void _onScroll() {
-    if (!scrollController.hasClients) return;
+    if (!scrollController.hasClients || isLoading) return;
 
     final maxScroll = scrollController.position.maxScrollExtent;
     final currentScroll = scrollController.offset;
     if (currentScroll >= (maxScroll * 0.8) && hasMore) {
-      getProductsOnline();
+      getProductsOnline(loadMore: true);
     }
   }
 
-  Future<void> getProductsOnline() async {
-    if (isloading) return;
-    isloading = true;
+  Future<void> getProductsOnline({bool loadMore = false}) async {
+    if (isLoading) return;
+    isLoading = true;
     String msg = '';
     String error = '';
     try {
       await initSharedPref();
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/x-www-form-urlencoded',
+      if (!loadMore) {
+        page = 1;
+        prdtList.clear();
+        hasMore = true;
+        currentSearchTerm = search;
+      }
+
+      Map<String, dynamic> filters = {
+        'page': page.toString(),
+        'limit': '10',
+        if (currentSearchTerm.isNotEmpty) 'search': currentSearchTerm,
+        if (category.isNotEmpty) 'category': category,
+        if (subcategory.isNotEmpty) 'subcategory': subcategory,
       };
+      filters.removeWhere((key, value) => value == null || value.isEmpty);
 
-      final url = Uri.parse(
-          '$getProducts?email=$email&page=$page&search=$queue&category=$category&subcategory=$subcategory&randNum=$randNum');
+      print("Fetching products with filters: $filters");
 
-      final response = await http.get(url, headers: headers);
+      final response = await _apiService.getProducts(filters);
 
-      final jsonResponse = jsonDecode(response.body);
+      if (response['success'] == true && response['data'] != null) {
+        final data = response['data'] as Map<String, dynamic>;
+        final List<dynamic> newItems = data['products'] as List<dynamic>? ?? [];
+        final pagination = data['paginationInfo'] as Map<String, dynamic>?;
 
-      msg = jsonResponse['message'] ?? '';
-      error = jsonResponse['error'] ?? '';
+        print('data : ${data['products'].first}');
+        if (mounted) {
+          setState(() {
+            print('Mounted and running setstate');
+            prdtList.addAll(newItems);
+            itemCount = prdtList.length;
 
-      if (response.statusCode == 200) {
-        final newItems = jsonResponse['products'];
-        page++;
-        isloading = false;
-
-        if (newItems.length < 10) {
-          hasMore = false;
+            if (pagination != null) {
+              final int currentPageFromApi = pagination['currentPage'] ?? page;
+              final int totalPages = pagination['totalPages'] ?? 1;
+              hasMore = currentPageFromApi < totalPages;
+              page = currentPageFromApi + 1;
+            } else {
+              hasMore = newItems.length == 10;
+              if (hasMore) page++;
+            }
+          });
         }
-
-        prdtList.addAll(newItems);
-        itemCount = prdtList.length;
-
-        if (mounted) setState(() {});
       } else {
-        if (error == 'Accès refusé') {
-          String title = context.translate('error_access_denied');
-          showPopupMessage(context, title, msg);
+        msg = response['message'] ??
+            response['error'] ??
+            'Failed to load products or no products found';
+        if (mounted) {
+          if (response['success'] != true) {
+            showPopupMessage(context, context.translate('error'), msg);
+          }
+          setState(() {
+            hasMore = false;
+          });
         }
-
-        String title = context.translate('error');
-        showPopupMessage(context, title, msg);
-
-        print('something went wrong');
       }
     } catch (e) {
-      print(e);
-      String title = context.translate('error');
-      showPopupMessage(context, title, msg);
+      print("Error fetching products: $e");
+      if (mounted) {
+        showPopupMessage(context, context.translate('error'),
+            context.translate('error_occurred'));
+        setState(() {
+          hasMore = false;
+        });
+      }
+    } finally {
+      isLoading = false;
+      // Set initial loading to false only after the first fetch attempt
+      if (_isInitialLoading) {
+        _isInitialLoading = false;
+      }
+      if (mounted) setState(() {});
     }
   }
 
-  Future<void> rateProduct(
-      String sellerId, String prdtId, double rating) async {
+  Future<void> _rateProductApiCall(String prdtId, double rating) async {
+    setState(() {
+      showSpinner = true;
+    });
     String msg = '';
-    String error = '';
     try {
-      final regBody = {
-        'sellerId': sellerId,
-        'email': email,
-        'prdtId': prdtId,
-        'rating': rating,
-      };
+      final response = await _apiService.rateProduct(prdtId, rating);
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      };
+      msg = response['message'] ?? response['error'] ?? 'Rating failed';
+      final title =
+          (response['statusCode'] == 200 && response['success'] == true)
+              ? context.translate('success')
+              : context.translate('error');
 
-      final response = await http.post(
-        Uri.parse(rateThisProduct),
-        headers: headers,
-        body: jsonEncode(regBody),
-      );
-
-      final jsonResponse = jsonDecode(response.body);
-
-      msg = jsonResponse['message'] ?? '';
-      error = jsonResponse['error'] ?? '';
-
-      final title = (response.statusCode == 200)
-          ? context.translate('success')
-          : context.translate('error');
-
-      showPopupMessage(context, title, msg);
+      if (mounted) {
+        showPopupMessage(context, title, msg);
+      }
       print(msg);
+
+      if (response['statusCode'] == 200 && response['success'] == true) {
+        await refresh();
+      }
     } catch (e) {
-      print(e);
-      String title = context.translate('error');
-      showPopupMessage(context, title, msg);
+      print("Error rating product: $e");
+      if (mounted) {
+        String title = context.translate('error');
+        showPopupMessage(context, title, context.translate('error_occurred'));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
     }
   }
 
   Future<void> refresh() async {
-    final random = Random();
-    double randomValue = random.nextDouble();
-
-    print(randomValue);
-
-    setState(() {
-      prdtList.clear();
-      itemCount = 0;
-      page = 1;
-      hasMore = true;
-      randNum = randomValue;
-    });
-
-    getProductsOnline();
+    await getProductsOnline(loadMore: false);
   }
 
   @override
@@ -196,66 +204,67 @@ class _MarketState extends State<Market> {
 
   void showRatingBar(BuildContext context, prdtAndUser) {
     final prdt = prdtAndUser['product'];
-    final prdtId = prdt['id'];
+    final prdtId = prdt['_id'] as String?;
 
-    final seller = prdtAndUser['userInfo'];
-    final sellerId = seller['id'];
+    if (prdtId == null) {
+      print("Error: Product ID is null in showRatingBar");
+      showPopupMessage(context, context.translate('error'),
+          "Cannot rate product: Missing ID.");
+      return;
+    }
 
     double userRating = 3;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            context.translate('product_rating_prompt'),
-            textAlign: TextAlign.center,
-            style: SafeGoogleFont(
-              'Montserrat',
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              height: 1.5,
-              color: Color(0xff25313c),
+        return StatefulBuilder(builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              context.translate('product_rating_prompt'),
+              textAlign: TextAlign.center,
+              style: SafeGoogleFont(
+                'Montserrat',
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                height: 1.5,
+                color: Color(0xff25313c),
+              ),
             ),
-          ),
-          content: RatingBar.builder(
-            initialRating: userRating,
-            minRating: 1,
-            direction: Axis.horizontal,
-            allowHalfRating: true,
-            itemCount: 5,
-            itemPadding: EdgeInsets.symmetric(horizontal: 4.0),
-            itemBuilder: (context, _) => Icon(
-              Icons.star,
-              color: Colors.amber,
-            ),
-            onRatingUpdate: (rating) {
-              setState(() {
-                userRating = rating;
-              });
-              print(rating);
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                try {
-                  context.pop();
-                  await rateProduct(sellerId, prdtId, userRating);
-                } on Exception catch (e) {
-                  print(e);
-                }
+            content: RatingBar.builder(
+              initialRating: userRating,
+              minRating: 1,
+              direction: Axis.horizontal,
+              allowHalfRating: true,
+              itemCount: 5,
+              itemPadding: EdgeInsets.symmetric(horizontal: 4.0),
+              itemBuilder: (context, _) => Icon(
+                Icons.star,
+                color: Colors.amber,
+              ),
+              onRatingUpdate: (rating) {
+                setDialogState(() {
+                  userRating = rating;
+                });
               },
-              child: Text(context.translate('ok')),
             ),
-            TextButton(
-              onPressed: () {
-                context.pop();
-              },
-              child: Text(context.translate('cancel')),
-            ),
-          ],
-        );
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _rateProductApiCall(prdtId, userRating);
+                },
+                child: Text(context.translate('ok')),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text(context.translate('cancel')),
+              ),
+            ],
+          );
+        });
       },
     );
   }
@@ -265,6 +274,11 @@ class _MarketState extends State<Market> {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
 
+    // Show initial loading indicator
+    if (_isInitialLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
     List<String> subCategories = [];
 
     if (category == 'services') {
@@ -272,8 +286,9 @@ class _MarketState extends State<Market> {
     } else if (category == 'produits') {
       subCategories.addAll(subProducts);
     } else {
-      final list = [...subProducts, ...subServices];
-      subCategories.addAll(list.toSet().toList());
+      // If category is empty ('all'), include both product and service subcategories
+      // Optionally add an 'all' button explicitly if needed, but for now, empty means no subcategory filter
+      // subCategories.add(''); // Representing 'All' subcategories if needed
     }
 
     return Container(
@@ -288,11 +303,12 @@ class _MarketState extends State<Market> {
                 CustomTextField(
                   hintText: context.translate('search_product_or_service'),
                   onChange: (val) {
-                    setState(() {
-                      queue = val;
-                    });
+                    search = val;
                   },
                   onSearch: () async {
+                    // Set currentSearchTerm here before calling refresh
+                    // This ensures the refresh uses the latest search term from the field
+                    currentSearchTerm = search;
                     await refresh();
                   },
                   searchMode: true,
@@ -307,83 +323,25 @@ class _MarketState extends State<Market> {
               ],
             ),
           ),
-          Container(
-            height: 45 * fem,
-            padding: EdgeInsets.symmetric(vertical: 10 * fem),
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: subCategories
-                  .map((val) => _subcategButton(fem, val))
-                  .toList(),
+          // Only show subcategories if a main category (produits/services) is selected
+          if (category == 'produits' || category == 'services')
+            Container(
+              height: 45 * fem,
+              padding: EdgeInsets.symmetric(vertical: 10 * fem),
+              child: ListView(scrollDirection: Axis.horizontal, children: [
+                _subcategButton(fem, ''), // Add "All" for subcategories
+                ...subCategories // Use spread operator
+                    .map((val) => _subcategButton(fem, val))
+                    .toList(),
+              ]),
             ),
-          ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: refresh,
               child: Container(
                 color: Colors.white,
-                child: ListView.builder(
-                  controller: scrollController,
-                  shrinkWrap: true,
-                  itemBuilder: ((context, index) {
-                    final itemCount = prdtList.length;
-
-                    if (index < itemCount) {
-                      final prdtAndUser = prdtList[index];
-                      final prdt = prdtAndUser['product'];
-                      final link = prdt['whatsappLink'];
-                      final prdtName = prdt['name'];
-                      final price = prdt['price'] ?? 0;
-                      final imageUrl = (prdt['urls'])[0];
-                      final rating = (prdt['overallRating'] ?? 0.0).toDouble();
-                      final ratingLength = (prdt['ratings'] ?? []).length;
-
-                      final prdtId = prdt['id'];
-                      final seller = prdtAndUser['userInfo'];
-                      final sellerId = seller['id'];
-
-                      return InkWell(
-                        onTap: () {
-                          context.pushNamed(
-                            ProduitPage.id,
-                            extra: prdtAndUser,
-                          );
-                        },
-                        child: PrdtPost(
-                          image: imageUrl,
-                          onContact: () {
-                            launchURL(link);
-                          },
-                          prdtId: prdtId,
-                          sellerId: sellerId,
-                          price: price,
-                          title: prdtName,
-                          rating: InkWell(
-                            onTap: () {
-                              showRatingBar(context, prdtAndUser);
-                            },
-                            child: RatingTag(
-                              value: rating,
-                              margin: EdgeInsets.all(3.0),
-                              length: ratingLength,
-                            ),
-                          ),
-                        ),
-                      );
-                    } else {
-                      return Padding(
-                        padding: EdgeInsets.all(0),
-                        child: Center(
-                          child: hasMore
-                              ? CircularProgressIndicator()
-                              : Text(context.translate('no_more_products')),
-                        ),
-                      );
-                    }
-                  }),
-                  itemCount: prdtList.length + 1,
-                  padding: EdgeInsets.all(8.0),
-                ),
+                // Use the helper method to build the list view
+                child: _buildProductList(context),
               ),
             ),
           ),
@@ -392,10 +350,134 @@ class _MarketState extends State<Market> {
     );
   }
 
+  // Helper method to build the product list or show appropriate messages
+  Widget _buildProductList(BuildContext context) {
+    // Case: Initial load finished, list is empty, and API confirms no more items.
+    if (prdtList.isEmpty && !hasMore && !isLoading) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            context.translate(
+                'no_products_services'), // Or a more specific "No results found" message
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    // Case: Still loading initially (after _isInitialLoading is false but before first items arrive)
+    // or during refresh when list is cleared, or when loading more items.
+    // Show centered indicator only if list is currently empty.
+    // If list has items, the indicator will be at the bottom.
+    else if (prdtList.isEmpty && isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    // Build the list using ListView.builder
+    return ListView.builder(
+      controller: scrollController,
+      itemCount: prdtList.length + (hasMore ? 1 : 0),
+      itemBuilder: ((context, index) {
+        // Logic for the "load more" indicator or "no more items" text
+        if (index == prdtList.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(
+              child: hasMore
+                  // Only show indicator if actively loading more
+                  ? (isLoading
+                      ? CircularProgressIndicator()
+                      : SizedBox.shrink())
+                  // Show "No more products" only if hasMore is false and list isn't empty
+                  : (prdtList.isNotEmpty
+                      ? Text(context.translate('no_more_products'))
+                      : SizedBox.shrink()),
+            ),
+          );
+        }
+
+        // --- Render Product Item ---
+        final prdt = prdtList[index] as Map<String, dynamic>? ?? {};
+
+        final prdtName = prdt['name'] as String? ?? 'N/A';
+        final price = (prdt['price'] as num?)?.toDouble() ?? 0.0;
+        // final imagesUrlList = prdt['imagesUrl'] as List<dynamic>? ?? [];
+        // final imageUrl =
+        // imagesUrlList.isNotEmpty ? imagesUrlList[0]?.toString() ?? '' : '';
+
+        // --- New image handling ---
+        final imagesList = prdt['images'] as List<dynamic>? ?? [];
+        String imageUrl = '';
+        if (imagesList.isNotEmpty) {
+          final firstImageMap = imagesList[0] as Map<String, dynamic>?;
+          final imageId = firstImageMap?['fileId'] as String?;
+          if (imageId != null && imageId.isNotEmpty) {
+            imageUrl = '$settingsFileBaseUrl$imageId';
+          }
+        }
+        // --- End new image handling ---
+
+        final rating = (prdt['overallRating'] as num?)?.toDouble() ?? 0.0;
+        final ratingLength = (prdt['ratings'] as List<dynamic>? ?? []).length;
+        final prdtId = prdt['_id'] as String?;
+        // Correctly access userId instead of sellerId
+        final sellerId = prdt['userId'] as String?;
+
+        // Basic validation: Skip rendering if essential data is missing
+        if (prdtId == null || sellerId == null) {
+          print(
+              "Skipping item at index $index due to missing prdtId or sellerId");
+          return SizedBox.shrink();
+        }
+
+        return InkWell(
+          onTap: () {
+            print("Tapping product: $prdtId by seller: $sellerId");
+            // Pass the whole product map as extra
+            context.pushNamed(
+              ProduitPage.id,
+              extra: {'productId': prdtId, 'sellerId': sellerId}, // Pass IDs
+            );
+          },
+          child: PrdtPost(
+            image: imageUrl,
+            onContact: () {
+              // TODO: Implement actual contact logic (e.g., navigate to seller profile or chat)
+              showPopupMessage(
+                context,
+                'Contact Seller', // Replace with translation key
+                'Seller: $sellerId - Contact functionality to be implemented.', // Replace
+              );
+            },
+            prdtId: prdtId,
+            sellerId: sellerId, // Pass the correct sellerId
+            price: price.toInt(),
+            title: prdtName,
+            rating: InkWell(
+              onTap: () {
+                // Pass the specific product data to the rating bar
+                showRatingBar(context, {'product': prdt});
+              },
+              child: RatingTag(
+                value: rating,
+                margin: EdgeInsets.all(3.0),
+                length: ratingLength,
+              ),
+            ),
+          ),
+        );
+        // --- End Render Product Item ---
+      }),
+      padding: EdgeInsets.all(8.0),
+    );
+  }
+
   InkWell _subcategButton(double fem, String subCateg) {
     subCateg = subCateg.toLowerCase();
 
-    final value = subCateg == '' ? context.translate('all') : subCateg;
+    final value = subCateg.isEmpty
+        ? context.translate('all')
+        : context.translate(subCateg);
 
     return InkWell(
       onTap: () async {
@@ -412,7 +494,9 @@ class _MarketState extends State<Market> {
         margin: EdgeInsets.symmetric(horizontal: 4 * fem),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(10 * fem)),
-          color: subcategory == subCateg ? blue : Colors.grey[200],
+          color: subcategory == subCateg
+              ? Theme.of(context).colorScheme.primary
+              : Colors.grey[200],
         ),
         child: Text(
           value,
@@ -449,7 +533,8 @@ class _MarketState extends State<Market> {
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.vertical(top: Radius.circular(10 * fem)),
-            color: category == catg ? blue : null,
+            color:
+                category == catg ? Theme.of(context).colorScheme.primary : null,
           ),
           child: Text(
             value,

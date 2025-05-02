@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/button.dart';
-import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/localization_extension.dart';
@@ -35,54 +34,73 @@ class _VerifyRegistrationState extends State<VerifyRegistration> {
   bool showSpinner = false;
 
   late SharedPreferences prefs;
+  final ApiService _apiService = ApiService();
 
-  Future<void> verifyRegistrationOTP() async {
-    if (userId.isNotEmpty && otp.isNotEmpty && otp.length == 4) {
-      final regBody = {
-        'userId': userId,
-        'otp': otp,
-      };
+  Future<void> _verifyOTP() async {
+    if (userId.isNotEmpty && otp.isNotEmpty && otp.length == 6) {
+      setState(() {
+        showSpinner = true;
+      });
+      try {
+        final response = await _apiService.verifyOtp(userId, otp);
 
-      final response = await http.post(
-        Uri.parse(verifyRegistration),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
+        final msg = response['message'] ?? response['error'] ?? 'Unknown error';
 
-      final jsonResponse = jsonDecode(response.body);
-      final msg = jsonResponse['message'] ?? '';
+        if (response['statusCode'] == 200 && response['success'] == true) {
+          if (response['data'] is Map<String, dynamic>) {
+            final responseData = response['data'] as Map<String, dynamic>;
+            final myToken = responseData['token'] as String?;
+            final dynamic userData = responseData['user'];
 
-      if (response.statusCode == 200) {
-        final myToken = jsonResponse['token'];
-        final user = jsonResponse['user'];
+            if (myToken != null && userData is Map<String, dynamic>) {
+              final user = userData;
 
-        final name = user['name'] ?? '';
-        final region = user['region'] ?? '';
-        final phone = user['phoneNumber'] ?? '';
-        final userCode = user['code'] ?? '';
-        final balance = user['balance'] ?? 0;
-        final id = user['id'] ?? '';
-        final isSubscribed = user['isSubscribed'] ?? false;
+            final name = user['name'] as String? ?? '';
+            final region = user['region'] as String? ?? '';
+            final phone = user['phoneNumber']?.toString() ?? '';
+            final userCode = user['referralCode'] as String? ?? '';
+            final balance = (user['balance'] as num?)?.toDouble() ?? 0.0;
+            final id = user['_id'] as String? ?? userId;
+            final isSubscribed = user['isSubscribed'] as bool? ?? false;
 
-        prefs = await SharedPreferences.getInstance();
-        prefs.setString('id', id);
-        prefs.setString('email', email);
-        prefs.setString('name', name);
-        prefs.setString('token', myToken);
-        prefs.setString('region', region);
-        prefs.setString('phone', phone.toString());
-        prefs.setString('code', userCode);
-        prefs.setInt('balance', balance);
-        prefs.setString('avatar', '');
-        prefs.setBool('isSubscribed', isSubscribed);
+            prefs = await SharedPreferences.getInstance();
+            await prefs.setString('id', id);
+            await prefs.setString('email', email);
+            await prefs.setString('name', name);
+            await prefs.setString('token', myToken);
+            await prefs.setString('region', region);
+            await prefs.setString('phone', phone);
+            await prefs.setString('code', userCode);
+            await prefs.setDouble('balance', balance);
+            await prefs.setString('avatar', user['avatar'] as String? ?? '');
+            await prefs.setBool('isSubscribed', isSubscribed);
 
-        String title = context.translate('success');
-        showPopupMessage(context, title, msg);
-
-        context.goNamed(PpUpload.id);
-      } else {
-        String title = context.translate('error');
-        showPopupMessage(context, title, msg);
+            String title = context.translate('success');
+            showPopupMessage(context, title, msg, callback: () {
+              if (mounted) context.goNamed(PpUpload.id);
+            });
+          } else {
+            String title = context.translate('error');
+            showPopupMessage(context, title,
+                  'Verification successful, but incomplete login data received.');
+            }
+          } else {
+            String title = context.translate('error');
+            showPopupMessage(context, title,
+                'Verification successful, but failed to retrieve user details.');
+          }
+        } else {
+          String title = context.translate('error');
+          showPopupMessage(context, title, msg);
+        }
+      } catch (e) {
+        print('Error verifying OTP: $e');
+        showPopupMessage(context, context.translate('error'),
+            context.translate('error_occurred'));
+      } finally {
+        setState(() {
+          showSpinner = false;
+        });
       }
     } else {
       showPopupMessage(context, context.translate('incomplete_info'),
@@ -90,25 +108,28 @@ class _VerifyRegistrationState extends State<VerifyRegistration> {
     }
   }
 
-  Future<void> resendOTP() async {
+  Future<void> _resendOTP() async {
     if (userId.isNotEmpty) {
-      final regBody = {
-        'userId': userId,
-      };
+      setState(() {
+        showSpinner = true;
+      });
+      try {
+        final response = await _apiService.resendVerificationOtp(userId);
+        final msg = response['message'] ?? response['error'] ?? 'Unknown error';
 
-      final response = await http.post(
-        Uri.parse(createOTPLink),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(regBody),
-      );
-
-      final jsonResponse = jsonDecode(response.body);
-      final msg = jsonResponse['message'] ?? '';
-
-      if (response.statusCode == 200) {
-        showPopupMessage(context, context.translate('otp_sent'), msg);
-      } else {
-        showPopupMessage(context, context.translate('error'), msg);
+        if (response['statusCode'] == 200 && response['success'] == true) {
+          showPopupMessage(context, context.translate('otp_sent'), msg);
+        } else {
+          showPopupMessage(context, context.translate('error'), msg);
+        }
+      } catch (e) {
+        print('Error resending OTP: $e');
+        showPopupMessage(context, context.translate('error'),
+            context.translate('error_occurred'));
+      } finally {
+        setState(() {
+          showSpinner = false;
+        });
       }
     } else {
       showPopupMessage(context, context.translate('error'),
@@ -198,64 +219,34 @@ class _VerifyRegistrationState extends State<VerifyRegistration> {
                         children: [
                           _fieldTitle(fem, ffem, context.translate('otp_code')),
                           OtpTextField(
-                            numberOfFields: 4,
+                            numberOfFields: 6,
                             borderColor: Color(0xFF512DA8),
-                            fieldWidth: 50.0,
+                            fieldWidth: 40.0,
                             margin: EdgeInsets.only(right: 8.0),
                             showFieldAsBox: true,
-                            onCodeChanged: (String code) {
-                              // Handle code change
-                            },
+                            autoFocus: true,
+                            keyboardType: TextInputType.number,
                             onSubmit: (String verificationCode) {
+                              setState(() {
                               otp = verificationCode;
+                              });
+                            },
+                            onCodeChanged: (String code) {
+                              setState(() {
+                                otp = code;
+                              });
                             },
                           ),
                           SizedBox(height: 20 * fem),
                           ReusableButton(
                             title: context.translate('verify'),
                             lite: false,
-                            onPress: () async {
-                              try {
-                                setState(() {
-                                  showSpinner = true;
-                                });
-
-                                await verifyRegistrationOTP();
-
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                              } catch (e) {
-                                showPopupMessage(context,
-                                    context.translate('error'), e.toString());
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                              }
-                            },
+                            onPress: _verifyOTP,
                           ),
                           SizedBox(height: 20 * fem),
                           Center(
                             child: TextButton(
-                              onPressed: () async {
-                                try {
-                                  setState(() {
-                                    showSpinner = true;
-                                  });
-
-                                  await resendOTP();
-
-                                  setState(() {
-                                    showSpinner = false;
-                                  });
-                                } catch (e) {
-                                  showPopupMessage(context,
-                                      context.translate('error'), e.toString());
-                                  setState(() {
-                                    showSpinner = false;
-                                  });
-                                }
-                              },
+                              onPressed: _resendOTP,
                               style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero),
                               child: Text(
@@ -265,7 +256,8 @@ class _VerifyRegistrationState extends State<VerifyRegistration> {
                                   fontSize: 16 * ffem,
                                   fontWeight: FontWeight.w700,
                                   height: 1.5 * ffem / fem,
-                                  color: limeGreen,
+                                  color:
+                                      Theme.of(context).colorScheme.secondary,
                                 ),
                               ),
                             ),

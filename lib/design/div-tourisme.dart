@@ -28,7 +28,10 @@ class Scene extends StatelessWidget {
                 color: Color(0xff25313c),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0x3f92b127),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .secondary
+                        .withOpacity(0.25),
                     offset: Offset(0 * fem, 2 * fem),
                     blurRadius: 5 * fem,
                   ),
@@ -229,15 +232,18 @@ class Scene extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 1 * fem, 20 * fem),
+                    margin: EdgeInsets.fromLTRB(
+                        0 * fem, 0 * fem, 1 * fem, 20 * fem),
                     width: 340 * fem,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 15 * fem),
+                          margin: EdgeInsets.fromLTRB(
+                              0 * fem, 0 * fem, 0 * fem, 15 * fem),
                           child: Text(
-                            context.translate('past_events'), // Translated string
+                            context
+                                .translate('past_events'), // Translated string
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 16 * ffem,
@@ -271,15 +277,18 @@ class Scene extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    margin: EdgeInsets.fromLTRB(1 * fem, 0 * fem, 0 * fem, 0 * fem),
+                    margin:
+                        EdgeInsets.fromLTRB(1 * fem, 0 * fem, 0 * fem, 0 * fem),
                     width: 340 * fem,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          margin: EdgeInsets.fromLTRB(6 * fem, 0 * fem, 0 * fem, 15 * fem),
+                          margin: EdgeInsets.fromLTRB(
+                              6 * fem, 0 * fem, 0 * fem, 15 * fem),
                           child: Text(
-                            context.translate('upcoming_events'), // Translated string
+                            context.translate(
+                                'upcoming_events'), // Translated string
                             style: SafeGoogleFont(
                               'Montserrat',
                               fontSize: 16 * ffem,
@@ -307,7 +316,8 @@ class Scene extends StatelessWidget {
                               ),
                               SizedBox(height: 10 * fem),
                               Text(
-                                context.translate('visit_waza_park'), // Translated string
+                                context.translate(
+                                    'visit_waza_park'), // Translated string
                                 style: SafeGoogleFont(
                                   'Montserrat',
                                   fontSize: 16 * ffem,
@@ -321,13 +331,14 @@ class Scene extends StatelessWidget {
                                 width: double.infinity,
                                 height: 40 * fem,
                                 decoration: BoxDecoration(
-                                  color: Color(0xff1862f0),
+                                  color: Theme.of(context).colorScheme.primary,
                                   borderRadius: BorderRadius.circular(66 * fem),
                                 ),
                                 child: Center(
                                   child: Center(
                                     child: Text(
-                                      context.translate('book_now'), // Translated string
+                                      context.translate(
+                                          'book_now'), // Translated string
                                       textAlign: TextAlign.center,
                                       style: SafeGoogleFont(
                                         'Montserrat',
@@ -365,14 +376,15 @@ class Scene extends StatelessWidget {
                       onPressed: () {},
                       style: TextButton.styleFrom(padding: EdgeInsets.zero),
                       child: Container(
-                        padding:
-                            EdgeInsets.fromLTRB(7.1 * fem, 21 * fem, 7.1 * fem, 19 * fem),
+                        padding: EdgeInsets.fromLTRB(
+                            7.1 * fem, 21 * fem, 7.1 * fem, 19 * fem),
                         height: double.infinity,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Container(
-                              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 6 * fem),
+                              margin: EdgeInsets.fromLTRB(
+                                  0 * fem, 0 * fem, 0 * fem, 6 * fem),
                               width: 64 * fem,
                               height: 32 * fem,
                               child: Image.asset(
@@ -382,7 +394,8 @@ class Scene extends StatelessWidget {
                               ),
                             ),
                             Container(
-                              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 0 * fem),
+                              margin: EdgeInsets.fromLTRB(
+                                  0 * fem, 0 * fem, 0 * fem, 0 * fem),
                               child: Text(
                                 context.translate('home'), // Translated string
                                 textAlign: TextAlign.center,
@@ -411,7 +424,8 @@ class Scene extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Container(
-                              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0.01 * fem, 12.27 * fem),
+                              margin: EdgeInsets.fromLTRB(
+                                  0 * fem, 0 * fem, 0.01 * fem, 12.27 * fem),
                               width: 27.57 * fem,
                               height: 15.77 * fem,
                               child: Image.asset(
@@ -446,7 +460,8 @@ class Scene extends StatelessWidget {
                             top: 0 * fem,
                             child: TextButton(
                               onPressed: () {},
-                              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                              style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero),
                               child: Container(
                                 padding: EdgeInsets.fromLTRB(
                                     3.6 * fem, 21 * fem, 3.6 * fem, 19 * fem),
@@ -456,7 +471,8 @@ class Scene extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Container(
-                                      margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 6 * fem),
+                                      margin: EdgeInsets.fromLTRB(
+                                          0 * fem, 0 * fem, 0 * fem, 6 * fem),
                                       width: 64 * fem,
                                       height: 32 * fem,
                                       child: Image.asset(
@@ -466,7 +482,8 @@ class Scene extends StatelessWidget {
                                       ),
                                     ),
                                     Text(
-                                      context.translate('marketplace'), // Translated string
+                                      context.translate(
+                                          'marketplace'), // Translated string
                                       textAlign: TextAlign.center,
                                       style: SafeGoogleFont(
                                         'Montserrat',
@@ -486,15 +503,16 @@ class Scene extends StatelessWidget {
                             left: 78.1999511719 * fem,
                             top: 0 * fem,
                             child: Container(
-                              padding:
-                                  EdgeInsets.fromLTRB(0 * fem, 17 * fem, 0 * fem, 15 * fem),
+                              padding: EdgeInsets.fromLTRB(
+                                  0 * fem, 17 * fem, 0 * fem, 15 * fem),
                               width: 78.2 * fem,
                               height: 94 * fem,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Container(
-                                    margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 6 * fem),
+                                    margin: EdgeInsets.fromLTRB(
+                                        0 * fem, 0 * fem, 0 * fem, 6 * fem),
                                     width: 104 * fem,
                                     height: 40 * fem,
                                     child: Image.asset(
@@ -504,7 +522,8 @@ class Scene extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    context.translate('entertainment_tourism'), // Translated string
+                                    context.translate(
+                                        'entertainment_tourism'), // Translated string
                                     textAlign: TextAlign.center,
                                     style: SafeGoogleFont(
                                       'Montserrat',
@@ -526,14 +545,16 @@ class Scene extends StatelessWidget {
                       onPressed: () {},
                       style: TextButton.styleFrom(padding: EdgeInsets.zero),
                       child: Container(
-                        padding: EdgeInsets.fromLTRB(0 * fem, 21 * fem, 0 * fem, 19 * fem),
+                        padding: EdgeInsets.fromLTRB(
+                            0 * fem, 21 * fem, 0 * fem, 19 * fem),
                         width: 78.2 * fem,
                         height: double.infinity,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Container(
-                              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 6 * fem),
+                              margin: EdgeInsets.fromLTRB(
+                                  0 * fem, 0 * fem, 0 * fem, 6 * fem),
                               width: 64 * fem,
                               height: 32 * fem,
                               child: Image.asset(
@@ -543,7 +564,8 @@ class Scene extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              context.translate('investment'), // Translated string
+                              context
+                                  .translate('investment'), // Translated string
                               textAlign: TextAlign.center,
                               style: SafeGoogleFont(
                                 'Montserrat',

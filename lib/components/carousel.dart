@@ -24,7 +24,9 @@ class _CustomCarouselState extends State<CustomCarousel> {
           width: 10,
           height: 10,
           decoration: BoxDecoration(
-            color: currentIndex == index ? Color(0xff1862f0) : Colors.black26,
+            color: currentIndex == index
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
             shape: BoxShape.circle,
           ),
         ),
