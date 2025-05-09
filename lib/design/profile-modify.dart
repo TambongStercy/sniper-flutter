@@ -6,8 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/api_service.dart';
-import 'package:snipper_frontend/components/button.dart';
-import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/design/modify-email.dart';
 import 'package:snipper_frontend/utils.dart';
@@ -18,6 +16,7 @@ import 'package:flutter/gestures.dart'; // Needed for multi-select
 import 'package:intl/intl.dart'; // Import intl for date formatting
 // Import the global countries list
 import 'package:snipper_frontend/constants/countries.dart';
+import 'package:snipper_frontend/theme.dart';
 
 // Define language list (you might want to move this to a constants file)
 final List<Map<String, String>> allLanguages = [
@@ -159,13 +158,9 @@ class _ProfileModState extends State<ProfileMod> {
       ], // Congo (DRC)
       'KE': ['SAFARICOM_MOMO_KEN'], // Kenya
       'NG': ['MTN_MOMO_NGA', 'AIRTEL_MOMO_NGA'], // Nigeria
-      'SN': [
-        'ORANGE_MOMO_SEN',
-        'FREE_MOMO_SEN',
-        'EXPRESSO_MOMO_SEN'
-      ], // Senegal
-      'CG': ['MTN_MOMO_COG', 'AIRTEL_MOMO_COG'], // Congo-Brazzaville
-      'GA': ['AIRTEL_MOMO_GAB', 'MOOV_MOMO_GAB'], // Gabon
+      'SN': ['ORANGE_MOMO_SEN', 'FREE_MOMO_SEN', 'EXPRESSO_MOMO_SEN'],
+      'CG': ['MTN_MOMO_COG', 'AIRTEL_MOMO_COG'],
+      'GA': ['AIRTEL_MOMO_GAB', 'MOOV_MOMO_GAB'],
       'CI': [
         'MTN_MOMO_CIV',
         'MOOV_MOMO_CIV',
@@ -191,10 +186,10 @@ class _ProfileModState extends State<ProfileMod> {
     try {
       // Basic validation (adjust as needed for new fields)
       if (name == null ||
-          name!.isEmpty ||
-          region == null ||
-          region!.isEmpty ||
-          phone.isEmpty ||
+              name!.isEmpty ||
+              region == null ||
+              region!.isEmpty ||
+              phone.isEmpty ||
               // code == null || // Sponsor code is likely not sent in update
               // code!.isEmpty ||
               city == null ||
@@ -365,444 +360,497 @@ class _ProfileModState extends State<ProfileMod> {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
-
-    return SimpleScaffold(
-      title: context.translate('modify'), // 'Modifier'
-      inAsyncCall: showSpinner,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(25 * fem, 32 * fem, 25 * fem, 32 * fem),
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          color: Color(0xffffffff),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text(
+          context.translate('modify'),
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        child: SingleChildScrollView(
-          // Wrap content in SingleChildScrollView
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                padding:
-                    EdgeInsets.fromLTRB(1 * fem, 0 * fem, 1 * fem, 15 * fem),
-                width: double.infinity,
-                child: id != null
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Container(
-                                  width: 122 * fem,
-                                  height: 122 * fem,
-                                  decoration: BoxDecoration(
-                                    borderRadius:
-                                        BorderRadius.circular(61 * fem),
-                                    border: Border.all(
-                                      color: Color(0xffffffff),
-                                      width: 2.0,
-                                    ),
-                                    color: Color(0xffc4c4c4),
-                                    image: DecorationImage(
-                                      fit: BoxFit.cover,
-                                      image: profileImage(
-                                          avatar), // Uses util function
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  margin: EdgeInsets.fromLTRB(
-                                      0 * fem, 0 * fem, 0 * fem, 7 * fem),
-                                  child: Text(
-                                    email, // Display email
-                                    style: SafeGoogleFont(
-                                      'Montserrat',
-                                      fontSize: 12 * ffem,
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.3333333333 * ffem / fem,
-                                      letterSpacing: 0.400000006 * fem,
-                                      color: Color(0xff6d7d8b),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  height: 20.0 * fem,
-                                ),
-                                ReusableButton(
-                                  title: context.translate(
-                                      'modify_photo'), // 'Modifier Photo'
-                                  onPress: () async {
-                                    try {
-                                      final result =
-                                          await FilePicker.platform.pickFiles(
-                                        type: FileType.image,
-                                        withData:
-                                            kIsWeb, // Read bytes only on web
-                                      );
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: showSpinner
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: id != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Profile Photo Section
+                            Center(
+                              child: Column(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () async {
+                                      try {
+                                        final result =
+                                            await FilePicker.platform.pickFiles(
+                                          type: FileType.image,
+                                          withData: kIsWeb,
+                                        );
 
-                                      if (result == null) return;
+                                        if (result == null) return;
 
-                                      final file = result.files.single;
-                                      final String pathOrBase64 = kIsWeb
-                                          ? base64.encode(file.bytes!)
-                                          : file.path!;
-                                      final String originalFileName = file.name;
+                                        final file = result.files.single;
+                                        final String pathOrBase64 = kIsWeb
+                                            ? base64.encode(file.bytes!)
+                                            : file.path!;
+                                        final String originalFileName =
+                                            file.name;
 
-                                      await uploadAvatar(
-                                        context: context,
-                                        path: pathOrBase64,
-                                        originalFileName: originalFileName,
-                                      );
-                                    } catch (e) {
-                                      print("File picking/upload error: $e");
-                                      if (mounted) {
-                                        showPopupMessage(
-                                            context,
-                                            context.translate('error'),
-                                            context.translate(
-                                                'error_picking_file'));
+                                        await uploadAvatar(
+                                          context: context,
+                                          path: pathOrBase64,
+                                          originalFileName: originalFileName,
+                                        );
+                                      } catch (e) {
+                                        print("File picking/upload error: $e");
+                                        if (mounted) {
+                                          showPopupMessage(
+                                              context,
+                                              context.translate('error'),
+                                              context.translate(
+                                                  'error_picking_file'));
+                                        }
+                                        if (mounted && showSpinner)
+                                          setState(() => showSpinner = false);
                                       }
-                                      // Ensure spinner is stopped if error occurs before upload call
-                                      if (mounted && showSpinner)
-                                        setState(() => showSpinner = false);
-                                    }
-                                  },
-                                ),
-                              ],
+                                    },
+                                    child: Stack(
+                                      children: [
+                                        Container(
+                                          width: 120,
+                                          height: 120,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.grey[200],
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black
+                                                    .withOpacity(0.1),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                            image: DecorationImage(
+                                              fit: BoxFit.cover,
+                                              image: profileImage(
+                                                  prefs.getString('avatarId')),
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: 0,
+                                          right: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryBlue,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.camera_alt,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                          ),
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    email,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          SizedBox(
-                            height: 15 * fem,
-                          ),
-                          // --- Modifiable Fields ---
-                          _buildEditableTextField(
-                                  fem,
-                                  ffem,
-                              context.translate('name'),
-                              context.translate('name_example'),
-                              name,
-                              (val) => name = val),
-                          _buildEditableTextField(
-                                  fem,
-                                  ffem,
-                              context.translate('city'),
-                              context.translate('example_city'),
-                              city,
-                              (val) => city = val),
-                          _buildPhoneField(
-                                fem,
-                                ffem,
+
+                            const SizedBox(height: 32),
+
+                            // Form Section Title
+                            Text(
+                              context.translate('personal_info'),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Personal Information Section
+                            _buildEditableTextField(
+                                context.translate('name'),
+                                context.translate('name_example'),
+                                name,
+                                (val) => name = val),
+
+                            _buildEditableTextField(
+                                context.translate('city'),
+                                context.translate('example_city'),
+                                city,
+                                (val) => city = val),
+
+                            _buildPhoneField(
                               context.translate('whatsapp_number'),
                               phone,
                               countryCode2,
                               (val) => phone = val,
                               (code) => countryCode = code,
-                              (cCode) {}), // No country update for WhatsApp #
-                          _buildEditableTextField(
-                                  fem,
-                                  ffem,
-                              context.translate('region'),
-                              'Enter region',
-                              region,
-                              (val) => region = val),
-                          _buildEditableTextField(
-                              fem,
-                              ffem,
-                              context.translate('sponsor_code'),
-                              'Enter sponsor code',
-                              code,
-                              (val) => code = val),
-                          _buildPhoneField(
-                              fem,
-                              ffem,
-                              context.translate('momo_number'),
-                              momo ?? '',
-                              cCode2,
-                              (val) => momo = val,
-                              (code) => cCode = code,
-                              (country) => updateCorrespondents(country)),
-                          _buildDropdownField(
-                              fem,
-                              ffem,
-                              context.translate('momo_correspondent'),
-                              dropdownValue,
-                              correspondents,
-                              (val) => setState(() => dropdownValue = val!)),
-                          _buildProfessionDropdown(fem, ffem),
-                          _buildMultiSelectModalButton(
-                              fem,
-                              ffem,
-                              context.translate('language'),
-                              allLanguages
-                                  .map((l) => l['name']!)
-                                  .toList(), // All available names
-                              language
-                                  .map((code) => allLanguages.firstWhere(
-                                      (l) => l['code'] == code,
-                                      orElse: () => {'name': ''})['name']!)
-                                  .where((name) => name.isNotEmpty)
-                                  .toList(), // Currently selected names
-                              (selectedNames) {
-                            // Convert back to codes when saving
-                            language = selectedNames
-                                .map((name) => allLanguages.firstWhere(
-                                    (l) => l['name'] == name)['code']!)
-                                .toList();
-                          }),
-                          _buildMultiSelectModalButton(
-                              fem,
-                              ffem,
-                              context.translate('interests'),
-                              allInterests,
-                              interests,
-                              (selected) => interests = selected),
-                          _buildSwitchField(
-                              fem,
-                              ffem,
-                              context.translate('share_contact_info'),
-                              shareContactInfo,
-                              (val) => shareContactInfo = val),
+                              (cCode) {},
+                            ),
 
-                          // --- NEW Editable Fields for Country, Sex, DOB ---
-                          _buildCountryDropdown(fem, ffem),
-                          _buildSexDropdown(fem, ffem),
-                          _buildDOBField(fem, ffem),
-                          // --- End NEW Fields ---
+                            _buildEditableTextField(context.translate('region'),
+                                'Enter region', region, (val) => region = val),
 
-                          SizedBox(height: 15 * fem),
-                          ReusableButton(
-                            title: context.translate('modify'), // 'Modifier'
-                            lite: false,
-                            onPress: modifyUser,
-                          ),
-                          SizedBox(
-                            height: 15 * fem,
-                          ),
-                          ReusableButton(
-                            title: context.translate(
-                                'modify_email'), // 'Modifier l'adresse e-mail'
-                            lite: false,
-                            onPress: () async {
-                              showPopupMessage(
-                                context,
-                                context.translate('modify_email'),
-                                context.translate('email_modify_otp',
-                                    args: {'email': email}),
-                                callback: () async {
-                                  await sendOTP();
-                                  context.pushNamed(ModifyEmail.id);
+                            _buildEditableTextField(
+                                context.translate('sponsor_code'),
+                                'Enter sponsor code',
+                                code,
+                                (val) => code = val),
+
+                            _buildPhoneField(
+                                context.translate('momo_number'),
+                                momo ?? '',
+                                cCode2,
+                                (val) => momo = val,
+                                (code) => cCode = code,
+                                (country) => updateCorrespondents(country)),
+
+                            _buildDropdownField(
+                                context.translate('momo_correspondent'),
+                                dropdownValue,
+                                correspondents,
+                                (val) => setState(() => dropdownValue = val!)),
+
+                            _buildProfessionDropdown(),
+
+                            _buildMultiSelectModalButton(
+                                context.translate('language'),
+                                allLanguages.map((l) => l['name']!).toList(),
+                                language
+                                    .map((code) => allLanguages.firstWhere(
+                                        (l) => l['code'] == code,
+                                        orElse: () => {'name': ''})['name']!)
+                                    .where((name) => name.isNotEmpty)
+                                    .toList(), (selectedNames) {
+                              language = selectedNames
+                                  .map((name) => allLanguages.firstWhere(
+                                      (l) => l['name'] == name)['code']!)
+                                  .toList();
+                            }),
+
+                            _buildMultiSelectModalButton(
+                                context.translate('interests'),
+                                allInterests,
+                                interests,
+                                (selected) => interests = selected),
+
+                            _buildSwitchField(
+                                context.translate('share_contact_info'),
+                                shareContactInfo,
+                                (val) => shareContactInfo = val),
+
+                            _buildCountryDropdown(),
+
+                            _buildSexDropdown(),
+
+                            _buildDOBField(),
+
+                            const SizedBox(height: 32),
+
+                            // Submit Buttons Section
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: modifyUser,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 16.0),
+                                  child: Text(
+                                    context.translate('modify'),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () async {
+                                  showPopupMessage(
+                                    context,
+                                    context.translate('modify_email'),
+                                    context.translate('email_modify_otp',
+                                        args: {'email': email}),
+                                    callback: () async {
+                                      context.pushNamed(ModifyEmail.id);
+                                    },
+                                  );
                                 },
-                              );
-                            },
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: AppTheme.primaryBlue),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 16.0),
+                                  child: Text(
+                                    context.translate('modify_email'),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.primaryBlue,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Center(
+                          child: Text(
+                            context.translate('no_profile_data'),
+                            style: TextStyle(fontSize: 16),
                           ),
-                        ],
-                      )
-                    : const SizedBox(), // Show empty space if id is null
+                        ),
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
-  }
-
-  Future<void> sendOTP() async {
-    // No longer needs id if endpoint relies on token
-    // if (id != null && id!.isNotEmpty) {
-    setState(() {
-      showSpinner = true;
-    });
-    try {
-      final response =
-          await _apiService.requestEmailChangeOtp(); // Use new method
-      final msg = response['message'] ??
-          response['error'] ??
-          context.translate('otp_request_failed');
-
-      if (response['success'] == true) {
-        showPopupMessage(context, context.translate('otp_sent'), msg);
-        // Optionally return true or handle navigation based on success
-      } else {
-        showPopupMessage(context, context.translate('error'), msg);
-      }
-    } catch (e) {
-      print("Error sending email change OTP: $e");
-      showPopupMessage(context, context.translate('error'),
-          context.translate('error_occurred'));
-    } finally {
-      if (mounted)
-        setState(() {
-          showSpinner = false;
-        });
-    }
-    // } else {
-    //   showPopupMessage(context, context.translate('error'),
-    //       context.translate('user_id_missing'));
-    // }
   }
 
   // --- Helper Methods for Building Form Fields ---
 
-  Widget _buildEditableTextField(double fem, double ffem, String label,
-      String hint, String? initialValue, Function(String) onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(fem, ffem, label),
-        CustomTextField(
-          hintText: hint,
-          onChange: onChanged,
-          margin: 0,
-          value: initialValue,
-        ),
-        SizedBox(height: 15 * fem),
-      ],
+  Widget _buildEditableTextField(String label, String hint,
+      String? initialValue, Function(String) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          CustomTextField(
+            hintText: hint,
+            onChange: onChanged,
+            margin: 0,
+            value: initialValue,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildPhoneField(
-      double fem,
-      double ffem,
       String label,
       String initialValue,
       String initialCountryCode,
       Function(String) onPhoneChanged,
       Function(String) onDialCodeChanged,
       Function(String) onCountryCodeChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(fem, ffem, label),
-        CustomTextField(
-          hintText: '',
-          onChange: onPhoneChanged,
-          getCountryDialCode: onDialCodeChanged,
-          getCountryCode: onCountryCodeChanged,
-          initialCountryCode: initialCountryCode,
-          margin: 0,
-          value: initialValue,
-          fieldType: CustomFieldType.phone,
-        ),
-        SizedBox(height: 15 * fem),
-      ],
-    );
-  }
-
-  Widget _buildDropdownField(double fem, double ffem, String label,
-      String currentValue, List<String> items, Function(String?) onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(fem, ffem, label),
-        DropdownButtonFormField<String>(
-          value: items.contains(currentValue) ? currentValue : items.first,
-          onChanged: onChanged,
-          items: items.map<DropdownMenuItem<String>>((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 10 * fem, vertical: 5 * fem),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
           ),
-          isExpanded: true,
-        ),
-        SizedBox(height: 15 * fem),
-      ],
-    );
-  }
-
-  Widget _buildProfessionDropdown(double fem, double ffem) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(fem, ffem, context.translate('profession')),
-        DropdownButtonFormField<String>(
-          value: (profession != null && allProfessions.contains(profession))
-              ? profession
-              : null,
-          hint: Text(context.translate('select_profession')),
-          items: allProfessions.map((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
-          onChanged: (String? newValue) {
-            setState(() {
-              profession = newValue;
-            });
-          },
-          isExpanded: true,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 10 * fem, vertical: 5 * fem),
+          const SizedBox(height: 8),
+          CustomTextField(
+            hintText: '',
+            onChange: onPhoneChanged,
+            getCountryDialCode: onDialCodeChanged,
+            getCountryCode: onCountryCodeChanged,
+            initialCountryCode: initialCountryCode,
+            margin: 0,
+            value: initialValue,
+            fieldType: CustomFieldType.phone,
           ),
-        ),
-        SizedBox(height: 15 * fem),
-      ],
+        ],
+      ),
     );
   }
 
-  // New helper for modal multi-select
+  Widget _buildDropdownField(String label, String currentValue,
+      List<String> items, Function(String?) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[400]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: items.contains(currentValue) ? currentValue : items.first,
+              onChanged: onChanged,
+              items: items.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+              isExpanded: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfessionDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.translate('profession'),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[400]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: (profession != null && allProfessions.contains(profession))
+                  ? profession
+                  : null,
+              hint: Text(context.translate('select_profession')),
+              items: allProfessions.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  profession = newValue;
+                });
+              },
+              isExpanded: true,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMultiSelectModalButton(
-    double fem,
-    double ffem,
     String label,
     List<String> allOptions,
     List<String> selectedOptions,
     Function(List<String>) onSave,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(fem, ffem, label),
-        InkWell(
-          onTap: () {
-            _showMultiSelectModal(
-                context, label, allOptions, selectedOptions, onSave);
-          },
-          child: Container(
-          width: double.infinity,
-          padding:
-              EdgeInsets.symmetric(horizontal: 12 * fem, vertical: 15 * fem),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8 * fem),
-            border: Border.all(color: Colors.grey[400]!),
-          ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  selectedOptions.isEmpty
-                      ? context
-                          .translate('tap_to_select') // Add translation key
-                      : context.translate('selected_count', args: {
-                          'count': selectedOptions.length.toString()
-                        }), // Add key
-            style: SafeGoogleFont(
-              'Montserrat',
-              fontSize: 14 * ffem,
-                    color: selectedOptions.isEmpty
-                        ? Colors.grey[600]
-                        : Color(0xff25313c),
-                  ),
-                ),
-                Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
-              ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
             ),
           ),
-        ),
-        SizedBox(height: 15 * fem),
-      ],
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () {
+              _showMultiSelectModal(
+                  context, label, allOptions, selectedOptions, onSave);
+            },
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[400]!),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    selectedOptions.isEmpty
+                        ? context.translate('tap_to_select')
+                        : context.translate('selected_count',
+                            args: {'count': selectedOptions.length.toString()}),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: selectedOptions.isEmpty
+                          ? Colors.grey[600]
+                          : Colors.black87,
+                    ),
+                  ),
+                  Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -842,14 +890,10 @@ class _ProfileModState extends State<ProfileMod> {
                             }
                           });
                         },
-                        selectedColor:
-                            Theme.of(context).colorScheme.primaryContainer,
-                        checkmarkColor:
-                            Theme.of(context).colorScheme.onPrimaryContainer,
+                        selectedColor: AppTheme.primaryBlue.withOpacity(0.2),
+                        checkmarkColor: AppTheme.primaryBlue,
                         labelStyle: TextStyle(
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.onPrimaryContainer
-                              : null,
+                          color: isSelected ? AppTheme.primaryBlue : null,
                         ),
                       );
                     }).toList(),
@@ -863,15 +907,10 @@ class _ProfileModState extends State<ProfileMod> {
                     Navigator.of(context).pop();
                   },
                 ),
-                TextButton(
-                  child: Text(context.translate('save')), // Add translation key
-                  style: TextButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  ),
+                ElevatedButton(
+                  child: Text(context.translate('save')),
                   onPressed: () {
                     setState(() {
-                      // Update the parent state
                       onSave(currentSelection);
                     });
                     Navigator.of(context).pop();
@@ -885,164 +924,200 @@ class _ProfileModState extends State<ProfileMod> {
     );
   }
 
-  Widget _buildSwitchField(double fem, double ffem, String label,
-      bool initialValue, Function(bool) onChanged) {
-    return SwitchListTile(
-      title: Text(label),
-      value: initialValue,
-      onChanged: (bool value) {
-        setState(() {
-          onChanged(value);
-        });
-      },
-      contentPadding: EdgeInsets.zero,
-      activeColor: Theme.of(context).colorScheme.primary,
-    );
-    // Add SizedBox(height: 15 * fem) after calling this if needed
-  }
-
-  // New helper for Country Dropdown
-  Widget _buildCountryDropdown(double fem, double ffem) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(fem, ffem, context.translate('country')),
-        DropdownButtonFormField<String>(
-          value: (country != null &&
-                  africanCountries.any((c) => c.code == country))
-              ? country
-              : null,
-          hint:
-              Text(context.translate('select_country')), // Add translation key
-          items: africanCountries.map((CountryInfo countryInfo) {
-            return DropdownMenuItem<String>(
-              value: countryInfo.code,
-              child: Text(countryInfo.name),
-            );
-          }).toList(),
-          onChanged: (String? newValue) {
-            setState(() {
-              country = newValue;
-            });
-          },
-          isExpanded: true,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 10 * fem, vertical: 5 * fem),
+  Widget _buildSwitchField(
+      String label, bool initialValue, Function(bool) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
           ),
         ),
-        SizedBox(height: 15 * fem),
-      ],
-    );
-  }
-
-  // New helper for Sex Dropdown
-  Widget _buildSexDropdown(double fem, double ffem) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(fem, ffem, context.translate('sex')),
-        DropdownButtonFormField<String>(
-          value: (sex != null && sexOptions.contains(sex)) ? sex : null,
-          hint: Text(context.translate('select_sex')), // Add translation key
-          items: sexOptions.map((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(context.translate(value
-                      .toLowerCase()) // Translate options like 'male', 'female'
-                  ),
-            );
-          }).toList(),
-          onChanged: (String? newValue) {
+        trailing: Switch(
+          value: initialValue,
+          onChanged: (bool value) {
             setState(() {
-              sex = newValue;
+              onChanged(value);
             });
           },
-          isExpanded: true,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 10 * fem, vertical: 5 * fem),
-          ),
+          activeColor: AppTheme.primaryBlue,
         ),
-        SizedBox(height: 15 * fem),
-      ],
+      ),
     );
   }
 
-  // New helper for DOB Field with Date Picker
-  Widget _buildDOBField(double fem, double ffem) {
-    // Controller to display the formatted date
+  Widget _buildCountryDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.translate('country'),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[400]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: (country != null &&
+                      africanCountries.any((c) => c.code == country))
+                  ? country
+                  : null,
+              hint: Text(context.translate('select_country')),
+              items: africanCountries.map((CountryInfo countryInfo) {
+                return DropdownMenuItem<String>(
+                  value: countryInfo.code,
+                  child: Text(countryInfo.name),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  country = newValue;
+                });
+              },
+              isExpanded: true,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSexDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.translate('sex'),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[400]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: (sex != null && sexOptions.contains(sex)) ? sex : null,
+              hint: Text(context.translate('select_sex')),
+              items: sexOptions.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(context.translate(value.toLowerCase())),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  sex = newValue;
+                });
+              },
+              isExpanded: true,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDOBField() {
     final TextEditingController _dobController = TextEditingController();
-    // Store the selected DateTime object separately
     DateTime? _selectedDate;
 
-    // Initialize date if dob exists
     if (dob != null) {
       try {
-        _selectedDate = DateFormat('yyyy-MM-dd')
-            .parse(dob!); // Assuming ISO format YYYY-MM-DD
-        _dobController.text =
-            DateFormat.yMMMd().format(_selectedDate!); // Format for display
+        _selectedDate = DateFormat('yyyy-MM-dd').parse(dob!);
+        _dobController.text = DateFormat.yMMMd().format(_selectedDate);
       } catch (e) {
         print("Error parsing initial DOB: $e");
-        _dobController.text =
-            context.translate('invalid_date_format'); // Show error
+        _dobController.text = context.translate('invalid_date_format');
       }
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(fem, ffem, context.translate('date_of_birth')),
-        TextField(
-          controller: _dobController,
-          readOnly: true,
-          decoration: InputDecoration(
-            hintText: context
-                .translate('select_date_of_birth'), // Add translation key
-            border: OutlineInputBorder(),
-            suffixIcon: Icon(Icons.calendar_today),
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 10 * fem, vertical: 15 * fem),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.translate('date_of_birth'),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
           ),
-          onTap: () async {
-            DateTime? pickedDate = await showDatePicker(
-              context: context,
-              initialDate: _selectedDate ?? DateTime.now(),
-              firstDate: DateTime(1900), // Set a reasonable lower bound
-              lastDate: DateTime.now(), // Cannot select future date
-            );
-            if (pickedDate != null && pickedDate != _selectedDate) {
-              setState(() {
-                _selectedDate = pickedDate;
-                // Format for display
-                _dobController.text = DateFormat.yMMMd().format(_selectedDate!);
-                // Format for saving (YYYY-MM-DD for backend/prefs)
-                dob = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-              });
-            }
-          },
-        ),
-        SizedBox(height: 15 * fem),
-      ],
-    );
-  }
-
-  Container _label(double fem, double ffem, String title) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 7 * fem),
-      child: Text(
-        title,
-        style: SafeGoogleFont(
-          'Montserrat',
-          fontSize: 12 * ffem,
-          fontWeight: FontWeight.w500,
-          height: 1.3333333333 * ffem / fem,
-          letterSpacing: 0.400000006 * fem,
-          color: Color(0xff6d7d8b),
-        ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _dobController,
+            readOnly: true,
+            decoration: InputDecoration(
+              hintText: context.translate('select_date_of_birth'),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[400]!),
+              ),
+              suffixIcon:
+                  Icon(Icons.calendar_today, color: AppTheme.primaryBlue),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            ),
+            onTap: () async {
+              DateTime? pickedDate = await showDatePicker(
+                context: context,
+                initialDate: _selectedDate ?? DateTime.now(),
+                firstDate: DateTime(1900),
+                lastDate: DateTime.now(),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: ColorScheme.light(
+                        primary: AppTheme.primaryBlue,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (pickedDate != null && pickedDate != _selectedDate) {
+                setState(() {
+                  _selectedDate = pickedDate;
+                  _dobController.text =
+                      DateFormat.yMMMd().format(_selectedDate!);
+                  dob = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+                });
+              }
+            },
+          ),
+        ],
       ),
     );
   }

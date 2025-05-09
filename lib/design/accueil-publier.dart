@@ -12,59 +12,38 @@ class Publicite extends StatelessWidget {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
+
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Container(
-        margin: EdgeInsets.fromLTRB(15 * fem, 20 * fem, 15 * fem, 14 * fem),
-        padding: EdgeInsets.fromLTRB(3 * fem, 0 * fem, 0 * fem, 0 * fem),
+        padding: EdgeInsets.all(24 * fem),
         width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 30 * fem),
+              margin: EdgeInsets.only(bottom: 32 * fem),
               width: double.infinity,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: EdgeInsets.fromLTRB(
-                        0 * fem, 0 * fem, 0 * fem, 15 * fem),
-                    width: double.infinity,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: EdgeInsets.fromLTRB(
-                              0 * fem, 0 * fem, 0 * fem, 14 * fem),
-                          constraints: BoxConstraints(
-                            maxWidth: 304 * fem,
-                          ),
-                          child: Text(
-                            context.translate('boost_visibility'),
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 16 * ffem,
-                              fontWeight: FontWeight.w600,
-                              height: 1.3999999762 * ffem / fem,
-                              color: Color(0xff25313c),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          margin: EdgeInsets.fromLTRB(
-                              0 * fem, 0 * fem, 0 * fem, 15 * fem),
-                          child: Text(
-                            context.translate('advertisement_pack'),
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 16 * ffem,
-                              fontWeight: FontWeight.w600,
-                              height: 1.25 * ffem / fem,
-                              color: Color(0xfff49101),
-                            ),
-                          ),
-                        ),
-                      ],
+                    margin: EdgeInsets.only(bottom: 24 * fem),
+                    child: Text(
+                      context.translate('boost_visibility'),
+                      style: TextStyle(
+                        fontSize: 24 * ffem,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    context.translate('advertisement_pack'),
+                    style: TextStyle(
+                      fontSize: 18 * ffem,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).primaryColor,
                     ),
                   ),
                 ],
@@ -73,74 +52,63 @@ class Publicite extends StatelessWidget {
             PricingCard(
               type: 1,
               onCommand: () {
-                context.pushNamed('pricing_details', extra: 1); // Navigate with type 1
+                context.pushNamed('pricing_details', extra: 1);
               },
             ),
+            SizedBox(height: 16 * fem),
             PricingCard(
               type: 2,
               onCommand: () {
-                context.pushNamed('pricing_details', extra: 2); // Navigate with type 2
+                context.pushNamed('pricing_details', extra: 2);
               },
             ),
+            SizedBox(height: 16 * fem),
             PricingCard(
               type: 3,
               onCommand: () {
-                context.pushNamed('pricing_details', extra: 3); // Navigate with type 3
+                context.pushNamed('pricing_details', extra: 3);
               },
             ),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(7 * fem),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    margin: EdgeInsets.fromLTRB(
-                        0 * fem, 0 * fem, 0 * fem, 15 * fem),
+            SizedBox(height: 32 * fem),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.translate('active_pack'),
+                  style: TextStyle(
+                    fontSize: 18 * ffem,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+                SizedBox(height: 16 * fem),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 20 * fem),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12 * fem),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
                     child: Text(
-                      context.translate('active_pack'),
-                      style: SafeGoogleFont(
-                        'Montserrat',
+                      context.translate('no_active_pack'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
                         fontSize: 16 * ffem,
-                        fontWeight: FontWeight.w600,
-                        height: 1.25 * ffem / fem,
-                        color: Color(0xfff49101),
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black54,
                       ),
                     ),
                   ),
-                  Container(
-                    margin: EdgeInsets.fromLTRB(1 * fem, 0 * fem, 0 * fem, 0 * fem),
-                    width: 339 * fem,
-                    height: 50 * fem,
-                    decoration: BoxDecoration(
-                      color: Color(0xffffffff),
-                      borderRadius: BorderRadius.circular(7 * fem),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0x3f25313c),
-                          offset: Offset(0 * fem, 0 * fem),
-                          blurRadius: 2.1500000954 * fem,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        context.translate('no_active_pack'),
-                        textAlign: TextAlign.center,
-                        style: SafeGoogleFont(
-                          'Montserrat',
-                          fontSize: 12 * ffem,
-                          fontWeight: FontWeight.w500,
-                          height: 1.3333333333 * ffem / fem,
-                          letterSpacing: 0.400000006 * fem,
-                          color: Color(0xff25313c),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),

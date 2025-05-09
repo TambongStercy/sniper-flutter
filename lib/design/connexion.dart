@@ -286,228 +286,283 @@ class _ConnexionState extends State<Connexion> {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
+    final screenSize = MediaQuery.of(context).size;
+    // final double expandedAppBarHeight = screenSize.height * 0.30; // No longer needed
+    // final double collapsedAppBarHeight = kToolbarHeight + MediaQuery.of(context).padding.top; // No longer needed
+
     return Scaffold(
-      body: SafeArea(
-        child: ModalProgressHUD(
-          inAsyncCall: showSpinner,
-          child: SingleChildScrollView(
+      backgroundColor: Color(0xFFFFF8F0),
+      extendBodyBehindAppBar: true, // To allow gradient to go behind AppBar
+      appBar: AppBar(
+        // Simplified AppBar
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.grey[800]),
+          onPressed: () => context.pop(),
+        ),
+        backgroundColor: Colors.transparent, // Transparent AppBar
+        elevation: 0, // No shadow
+      ),
+      body: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: screenSize.height * 0.6,
             child: Container(
-              width: double.infinity,
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xffffffff),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      margin: EdgeInsets.fromLTRB(
-                        25 * fem,
-                        0 * fem,
-                        0 * fem,
-                        21.17 * fem,
-                      ),
-                      width: 771.27 * fem,
-                      height: 275.83 * fem,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 40.0),
-                          Container(
-                            margin: EdgeInsets.only(top: 46 * fem),
-                            child: Text(
-                              context.translate("sniper_business_center"),
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Mulish',
-                                fontSize: 30 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.255 * ffem / fem,
-                                color: Color(0xff000000),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                              showOtpScreen
-                                  ? context.translate("verify_login")
-                                  : context.translate("login"),
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 20 * ffem,
-                                fontWeight: FontWeight.w800,
-                                height: 1 * ffem / fem,
-                                color: Color(0xfff49101),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                              showOtpScreen
-                                  ? context.translate("enter_otp_for_email",
-                                      args: {'email': email})
-                                  : context.translate("create_account_msg"),
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 15 * ffem,
-                                fontWeight: FontWeight.w400,
-                                height: 1.4 * ffem / fem,
-                                color: Color(0xff797979),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.fromLTRB(
-                          25 * fem, 0 * fem, 25 * fem, 32.83 * fem),
-                      width: double.infinity,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // --- Conditional UI for Login / OTP ---
-                          if (!showOtpScreen)
-                            // --- Login Fields ---
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _fieldTitle(
-                                    fem, ffem, context.translate('email')),
-                                CustomTextField(
-                                  hintText: context.translate('example_email'),
-                                  fieldType: CustomFieldType.email,
-                                  value: email,
-                                  onChange: (val) {
-                                    email = val;
-                                  },
-                                  focusNode: emailFocusNode,
-                                ),
-                                SizedBox(height: 15 * fem),
-                                _fieldTitle(
-                                    fem, ffem, context.translate('password')),
-                                CustomTextField(
-                                  hintText: context.translate('password'),
-                                  fieldType: CustomFieldType.password,
-                                  value: password,
-                                  onChange: (val) {
-                                    password = val;
-                                  },
-                                  focusNode: passwordFocusNode,
-                                ),
-                                SizedBox(height: 10 * fem),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: () {
-                                      context.pushNamed(EmailOublie.id);
-                                    },
-                                    child: Text(
-                                      context.translate('forgot_password'),
-                                      style: SafeGoogleFont(
-                                        'Montserrat',
-                                        fontSize: 14 * ffem,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.4 * ffem / fem,
-                                        color: Color(0xfff49101),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            // --- OTP Field ---
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                _fieldTitle(
-                                    fem, ffem, context.translate('otp_code')),
-                                OtpTextField(
-                                  numberOfFields: 6,
-                                  borderColor:
-                                      Theme.of(context).colorScheme.primary,
-                                  fieldWidth: 40.0,
-                                  margin: EdgeInsets.only(right: 8.0),
-                                  showFieldAsBox: true,
-                                  keyboardType: TextInputType.text,
-                                  onSubmit: (String verificationCode) {
-                                    otp = verificationCode;
-                                    // Optionally trigger login immediately on submit
-                                    // _handleLogin();
-                                  },
-                                ),
-                                // Optionally add a resend OTP button if backend supports it for login
-                              ],
-                            ),
-                          SizedBox(height: 20 * fem),
-                          // --- Login/Verify Button ---
-                          ReusableButton(
-                            title: !showOtpScreen
-                                ? context.translate('connexion')
-                                : context.translate('verify'),
-                            lite: false,
-                            onPress:
-                                _handleLogin, // Always call the same handler
-                          ),
-                          SizedBox(height: 20 * fem),
-                          // --- Registration Link ---
-                          Center(
-                            child: TextButton(
-                              onPressed: () {
-                                context.pushNamed(Inscription.id,
-                                    queryParameters: {
-                                      'affiliationCode':
-                                          widget.affiliationCode ?? ''
-                                    });
-                              },
-                              style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero),
-                              child: Text(
-                                context.translate('no_account_register'),
-                                style: SafeGoogleFont(
-                                  'Montserrat',
-                                  fontSize: 16 * ffem,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.5 * ffem / fem,
-                                  color: Color(0xff25313c),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFFF8CE98), // User's manually updated color
+                    Color(0xFFFFF3E0).withOpacity(0.8),
                   ],
+                  stops: [0.0, 1.0], // User's manually updated stops
                 ),
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
+          ModalProgressHUD(
+            inAsyncCall: showSpinner,
+            // Replace CustomScrollView with SingleChildScrollView
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.only(
+                    top: kToolbarHeight +
+                        MediaQuery.of(context).padding.top +
+                        20, // Adjust as needed
+                    left: 24.0,
+                    right: 24.0,
+                    bottom: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Add logo here
+                    Padding(
+                      padding: const EdgeInsets.only(top: 20.0, bottom: 30.0),
+                      child: Center(
+                        child: Image.asset(
+                          'assets/design/images/logo-sbc-final-1-AdP.png', // Connexion logo path
+                          height:
+                              screenSize.height * 0.12, // Adjust size as needed
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    // Original content starts
+                    Text(
+                      context.translate('login'),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      context.translate('enter_credentials'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    if (!showOtpScreen) ...[
+                      // Email field
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Text(
+                          context.translate('email'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[750],
+                          ),
+                        ),
+                      ),
+                      CustomTextField(
+                        fieldType: CustomFieldType.email,
+                        hintText: context.translate('email_hint'),
+                        value: email,
+                        focusNode: emailFocusNode,
+                        onChange: (value) => setState(() => email = value),
+                      ),
+                      const SizedBox(height: 16),
 
-  Container _fieldTitle(double fem, double ffem, String title) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(49 * fem, 0 * fem, 49 * fem, 5 * fem),
-      child: Text(
-        title,
-        style: SafeGoogleFont(
-          'Montserrat',
-          fontSize: 14 * ffem,
-          fontWeight: FontWeight.w700,
-          height: 1.3333333333 * ffem / fem,
-          letterSpacing: 0.400000006 * fem,
-          color: Color(0xff6d7d8b),
-        ),
+                      // Password field
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Text(
+                          context.translate('password'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[750],
+                          ),
+                        ),
+                      ),
+                      CustomTextField(
+                        fieldType: CustomFieldType.password,
+                        hintText: context.translate('password'),
+                        value: password,
+                        focusNode: passwordFocusNode,
+                        onChange: (value) => setState(() => password = value),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Forgot password button
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            context.goNamed(EmailOublie.id);
+                          },
+                          child: Text(
+                            context.translate('forgot_password'),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Login button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _handleLogin,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16.0),
+                            child: Text(
+                              context.translate('login'),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Register button
+                      GestureDetector(
+                        onTap: () {
+                          if (widget.affiliationCode != null) {
+                            context.goNamed(
+                              Inscription.id,
+                              queryParameters: {
+                                'code': widget.affiliationCode!
+                              },
+                            );
+                          } else {
+                            context.goNamed(Inscription.id);
+                          }
+                        },
+                        child: Center(
+                          child: Text.rich(
+                            TextSpan(
+                              text: context.translate('no_account_signup'),
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      // OTP Verification UI
+                      Text(
+                        context.translate('verify_login'),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      Text(
+                        context
+                            .translate('enter_otp_for_email')
+                            .replaceAll('{email}', email),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // OTP input field
+                      OtpTextField(
+                        numberOfFields: 6,
+                        borderColor: Theme.of(context).colorScheme.primary,
+                        focusedBorderColor:
+                            Theme.of(context).colorScheme.primary,
+                        showFieldAsBox: true,
+                        onSubmit: (code) {
+                          setState(() {
+                            otp = code;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Verify button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _handleLogin,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16.0),
+                            child: Text(
+                              context.translate('verify'),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Back to login button
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            showOtpScreen = false;
+                            otp = '';
+                          });
+                        },
+                        child: Center(
+                          child: Text(
+                            context.translate('back_to_login'),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 32),
+                  ], // children of Column
+                ), // End of Column widget
+              ), // End of Padding
+            ), // End of SingleChildScrollView
+          ), // This closes ModalProgressHUD
+        ],
       ),
     );
   }

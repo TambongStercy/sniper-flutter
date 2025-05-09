@@ -11,8 +11,9 @@
 # --- User Credentials ---
 @test_email = tambongsterling@gmail.com
 @test_password = 123456
-@user_id = 65d2b0344a7e2b9efbf6205d
-@otp_code = CnqtZP
+# @user_id = 65d2b0344a7e2b9efbf6205d
+@user_id = {{loginUser.response.body.$.data.userId}}
+@otp_code = XHTs8e
 
 # --- Admin Credentials ---
 @admin_email = test1@example.com # Assuming this admin exists
@@ -21,11 +22,12 @@
 @admin_otp_code = # Set manually if needed for OTP verification
 
 # --- Tokens (Set by Login/Verify OTP requests) ---
-@auth_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NWQyYjAzNDRhN2UyYjllZmJmNjIwNWQiLCJpZCI6IjY1ZDJiMDM0NGE3ZTJiOWVmYmY2MjA1ZCIsImVtYWlsIjoidGFtYm9uZ3N0ZXJsaW5nQGdtYWlsLmNvbSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc0NTk0MTUyMCwiZXhwIjoxNzQ2MDI3OTIwfQ.HmxdrCN-6nGjs63QJx9tKp6-bkFwx0h6csvtrVhfm1c
+@auth_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NWQyYjAzNDRhN2UyYjllZmJmNjIwNWQiLCJpZCI6IjY1ZDJiMDM0NGE3ZTJiOWVmYmY2MjA1ZCIsImVtYWlsIjoidGFtYm9uZ3N0ZXJsaW5nQGdtYWlsLmNvbSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc0NjE4OTE3OCwiZXhwIjoxNzQ2Mjc1NTc4fQ.QW7vFz9X9GPZb0VenpYiO32C21pvG9eyJUdI6xlMzhU
+@auth_fabs = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2Nzg2NjBhODU1MDNkNjgzNDEzMGVhOGMiLCJpZCI6IjY3ODY2MGE4NTUwM2Q2ODM0MTMwZWE4YyIsImVtYWlsIjoidHNhZmFja2ZhYmlvbGEwMEBnbWFpbC5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc0NjA4NzA5MSwiZXhwIjoxNzQ2MTczNDkxfQ.63sibgFHOVn8wmVAJTHoUBKa_VCIoblm7aIjUL5KrZs
 @admin_auth_token = # Admin's JWT
 
 # --- Dynamic IDs (Set during flows) ---
-@product_id = # Set after creating a product
+@product_id = 6814cbb07c9ad3312608c050
 @rating_id = # Set after creating a rating
 @payment_session_id = # Set after initiating a payment intent
 @ad_pack_id = # (Advertising - Lower Priority)
@@ -48,7 +50,7 @@ Content-Type: application/json
   "name": "Test User Registration",
   "region": "Littoral", # Required field
   "country": "CM", # Derived from phoneNumber or explicit
-  "phoneNumber": "237690000000", 
+  "phoneNumber": "237690000{{$randomInt(100,999)}}", # Unique phone number
   "sex": "male",
   "birthDate": "1995-05-15",
   "language": ["fr", "en"],
@@ -93,6 +95,65 @@ Content-Type: application/json
 # Capture the final auth token after OTP verification
 # > {% client.global.set("auth_token", response.body.data?.token); %}
 
+### 1.3.1 Resend OTP (e.g., if verification fails or user didn't receive)
+# @name resendOtp
+# Hits: User Service via Gateway
+POST {{gateway_url}}/users/resend-otp
+Content-Type: application/json
+
+{
+  "email": "{{test_email}}",
+  "purpose": "login" # Or 'register', 'forgotPassword', 'changeEmail'
+}
+
+### 1.3.2 Request Password Reset OTP (Public)
+# @name requestPasswordResetOtp
+# Hits: User Service via Gateway
+POST {{gateway_url}}/users/request-password-reset
+Content-Type: application/json
+
+{
+  "email": "{{test_email}}" // Email of the user who forgot password
+}
+
+### 1.3.2.1 Reset Password using OTP (Public)
+# @name resetPassword
+# Hits: User Service via Gateway
+# Requires: email, otpCode from the password reset email, newPassword
+POST {{gateway_url}}/users/reset-password
+Content-Type: application/json
+
+{
+  "email": "{{test_email}}",
+  "otpCode": "{{otp_code}}", // Replace with OTP from email
+  "newPassword": "newStrongPassword123!"
+}
+
+### 1.3.3 Request Change Email OTP (Requires Auth)
+# @name requestChangeEmailOtp
+# Hits: User Service via Gateway
+# Requires: @auth_token
+POST {{gateway_url}}/users/request-change-email
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "newEmail": "new_{{test_email}}" // The NEW email address to verify
+}
+
+### 1.3.3.1 Confirm Change Email using OTP (Requires Auth)
+# @name confirmChangeEmail
+# Hits: User Service via Gateway
+# Requires: @auth_token, newEmail (same as requested), otpCode from the new email
+POST {{gateway_url}}/users/confirm-change-email
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "newEmail": "new_{{test_email}}",
+  "otpCode": "{{otp_code}}" // Replace with OTP from the *new* email address
+}
+
 ### 1.4 Get Logged-in User Profile
 # @name getUserProfile
 # Hits: User Service via Gateway
@@ -114,7 +175,7 @@ Content-Type: application/json
   "language": ["en","fr"],
   "interests": ["Business", "Technology"],
   "preferenceCategories": ["Football", "Music", "Politics"],
-  "shareContactInfo": true
+  "sex": "male"
 }
 
 ### 1.6 Login Admin (Similar flow as user, use separate variables)
@@ -253,225 +314,395 @@ Authorization: Bearer {{auth_token}}
 GET {{gateway_url}}/contacts/search?region=Littoral
 Authorization: Bearer {{auth_token}}
 
-### 3.3 Export Contacts (Requires CLASSIQUE or CIBLE Subscription)
+### 3.3 Export Contacts (Requires CLASSIQUE or CIBLE Subscription) as vcf file
 # @name exportContacts
 # Hits: User Service (Contacts) via Gateway
 # Requires: @auth_token, Active CLASSIQUE or CIBLE Subscription
 # Example: Export female contacts in Cameroon (CM), aged 25+, interested in Technology.
 # Note: CIBLE needed for complex filtering, CLASSIQUE might allow basic export.
-GET {{gateway_url}}/contacts/export?country=CM&sex=female&minAge=25&interests=Technology
+GET {{gateway_url}}/contacts/export?country=CM
 Authorization: Bearer {{auth_token}}
 
-### 3.4 Export Contacts (No Filters - Requires CLASSIQUE/CIBLE)
+### 3.4 Export Contacts (No Filters - Requires CLASSIQUE/CIBLE) as vcf file
 # @name exportContactsSimple
 # Hits: User Service (Contacts) via Gateway
 # Requires: @auth_token, Active CLASSIQUE or CIBLE Subscription
 GET {{gateway_url}}/contacts/export
 Authorization: Bearer {{auth_token}}
 
-### Export Contacts (Combined Filters)
-# Requires user login (@auth_token) and CIBLE subscription for multiple filters.
-# Example: Export female contacts in Cameroon (CM), aged 30+, interested in Business.
-# @name exportContactsCombined
-GET {{gateway_url}}/contacts/export?country=CM&sex=male&minAge=30&interests=Business
-Authorization: Bearer {{auth_token}}
 
 # =========================================
-# 6. PRODUCT FLOW
+# 4. PRODUCT MANAGEMENT FLOW (Product Service)
 # =========================================
 
-# --- Dynamic Product/Rating IDs ---
-@product_id = 6803ac2df6551228685aa71d
-@rating_id = 6803ac5cf6551228685aa726
-
-### Create Product
-# Requires user login (@auth_token)
+### 4.1 Create Product
 # @name createProduct
+# Hits: Product Service via Gateway
+# Requires: @auth_token
 POST {{gateway_url}}/products
 Authorization: Bearer {{auth_token}}
-Content-Type: application/json
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
 
-{
-  "name": "My Test Product",
-  "description": "This is a detailed description.",
-  "price": 5000,
-  "category": "Electronics",
-  "subcategory": "Smartphones",
-  "stock": 100,
-  "images": [
-    {"url": "https://via.placeholder.com/300?text=ProductImage1", "public_id": "img1"},
-    {"url": "https://via.placeholder.com/300?text=ProductImage2", "public_id": "img2"}
-  ],
-  "tags": ["test", "example"],
-  "specifications": {
-    "color": "Blue",
-    "size": "Large"
-  }
-}
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="name"
+
+Sample Widget 1
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+A high-quality sample widget for testing purposes.
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="price"
+
+15000
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="category"
+
+Widgets
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="subcategory"
+
+Sample Widgets
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="images"; filename="image1.jpg"
+Content-Type: image/jpeg
+
+< green.png
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="images"; filename="image2.png"
+Content-Type: image/png
+
+< blue.png
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
 
 # Capture the new product ID
 # > {% client.global.set("product_id", response.body.data._id); %}
 
-### Get User's Products
-# Requires user login (@auth_token)
+### 4.2 Get User's Own Products
 # @name getUserProducts
-GET {{gateway_url}}/products/user
+# Hits: Product Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/products/user?page=1&limit=10
 Authorization: Bearer {{auth_token}}
 
-### Search Products (Public)
-# Example: Search for products with 'Test' in name/desc
-# @name searchProducts
-GET {{gateway_url}}/products/search?search=Test&page=1&limit=10
+### 4.3 Search Products (Public)
+# @name searchProductsPublic
+# Hits: Product Service via Gateway
+# Example: Search for 'widget' in name/desc/category, filter by category
+GET {{gateway_url}}/products/search
 
-### Get Specific Product (Public)
-# Requires @product_id from 'Create Product' step
+### 4.4 Get Specific Product Details (Public)
 # @name getProductById
+# Hits: Product Service via Gateway
+# Requires: @product_id
 GET {{gateway_url}}/products/{{product_id}}
 
-### Update Product
-# Requires user login (@auth_token) and @product_id
+### 4.5 Update Product
 # @name updateProduct
+# Hits: Product Service via Gateway
+# Requires: @auth_token, @product_id (must be owner)
 PUT {{gateway_url}}/products/{{product_id}}
 Authorization: Bearer {{auth_token}}
-Content-Type: application/json
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gX
 
-{
-  "description": "Updated detailed description.",
-  "price": 5500,
-  "stock": 95
-}
+------WebKitFormBoundary7MA4YWxkTrZu0gX
+Content-Disposition: form-data; name="description"
 
-### Rate Product
-# Requires user login (@auth_token) and @product_id
+Updated description: Now even more widgety!
+------WebKitFormBoundary7MA4YWxkTrZu0gX
+Content-Disposition: form-data; name="price"
+
+16500
+# To ADD/REPLACE images, include the 'images' field again.
+# If you don't include the 'images' field, existing images will be kept.
+# Example: Replacing images with one new image
+------WebKitFormBoundary7MA4YWxkTrZu0gX
+Content-Disposition: form-data; name="images"; filename="new_image.webp"
+Content-Type: image/webp
+
+< green.png
+------WebKitFormBoundary7MA4YWxkTrZu0gX--
+
+### 4.6 Delete Product
+# @name deleteProduct
+# Hits: Product Service via Gateway
+# Requires: @auth_token, @product_id (must be owner)
+DELETE {{gateway_url}}/products/{{product_id}}
+Authorization: Bearer {{auth_token}}
+
+### 4.7 Rate a Product
 # @name rateProduct
+# Hits: Product Service (Ratings) via Gateway
+# Requires: @auth_token, @product_id
 POST {{gateway_url}}/products/{{product_id}}/ratings
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
 
 {
-  "rating": 5,
-  "review": "Excellent product!",
-  "helpful": true
+  "rating": 4,
+  "review": "This widget is quite good, but could be improved."
 }
 
 # Capture the new rating ID
 # > {% client.global.set("rating_id", response.body.data._id); %}
 
-### Get Product Ratings (Public)
-# Requires @product_id
+### 4.8 Get Ratings for a Specific Product (Public)
 # @name getProductRatings
-GET {{gateway_url}}/products/{{product_id}}/ratings
+# Hits: Product Service (Ratings) via Gateway
+# Requires: @product_id
+GET {{gateway_url}}/products/{{product_id}}/ratings?page=1&limit=10
 
-### Get User's Ratings
-# Requires user login (@auth_token)
+### 4.9 Get Ratings Given by the User
 # @name getUserRatings
-GET {{gateway_url}}/products/user/ratings
+# Hits: Product Service (Ratings) via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/products/user/ratings?page=1&limit=10
 Authorization: Bearer {{auth_token}}
 
-### Mark Rating as Helpful
-# Requires user login (@auth_token) and @rating_id
-# @name markRatingHelpful
-POST {{gateway_url}}/products/ratings/{{rating_id}}/helpful
-Authorization: Bearer {{auth_token}}
+# ### 4.10 Delete Own Rating (Optional)
+# # @name deleteRating
+# # Hits: Product Service (Ratings) via Gateway
+# # Requires: @auth_token, @rating_id (must be owner of rating)
+# DELETE {{gateway_url}}/products/ratings/{{rating_id}}
+# Authorization: Bearer {{auth_token}}
 
-### Delete Rating
-# Requires user login (@auth_token) and @rating_id
-# @name deleteRating
-DELETE {{gateway_url}}/products/ratings/{{rating_id}}
-Authorization: Bearer {{auth_token}}
-
-# ### Admin: Update Product Status
-# # Requires admin login (@admin_auth_token) and @product_id
+# ### 4.11 Admin: Update Product Status (Approve/Reject)
 # # @name adminUpdateProductStatus
-# PATCH {{gateway_url}}/products/{{product_id}}/status
+# # Hits: Product Service via Gateway
+# # Requires: @admin_auth_token, @product_id
+# PATCH {{gateway_url}}/products/admin/{{product_id}}/status # Assuming admin path prefix
 # Authorization: Bearer {{admin_auth_token}}
 # Content-Type: application/json
+#
+# # Example Approval
+# { "status": "approved" }
+#
+# # Example Rejection
+# # { "status": "rejected", "rejectionReason": "Image quality too low." }
 
-# {
-#   "status": "approved" 
-# }
 
-# {
-#   "status": "rejected",
-#   "rejectionReason": "This product is not approved."
-# }
+# =========================================
+# 4.X REFERRAL MANAGEMENT FLOW (User Service)
+# =========================================
 
-# {
-#   "status": "pending"
-# }
+### 4.X.1 Get Current User's Affiliator (Direct Referrer)
+# @name getMyAffiliator
+# Hits: User Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/users/affiliator
+Authorization: Bearer {{auth_fabs}}
 
-### Delete Product
-# Requires user login (@auth_token) and @product_id
-# @name deleteProduct
-DELETE {{gateway_url}}/products/{{product_id}}
+### 4.X.2 Get Users Referred by Current User (All Levels)
+# @name getMyReferredUsersAll
+# Hits: User Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/users/get-refered-users?page=1&limit=10
 Authorization: Bearer {{auth_token}}
 
+### 4.X.3 Get Users Referred by Current User (Level 1 Only)
+# @name getMyReferredUsersLevel1
+# Hits: User Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/users/get-refered-users?level=1&page=1&limit=10
+Authorization: Bearer {{auth_token}}
+
+### 4.X.3.1 Get Users Referred by Current User (Level 1, Filter by Name)
+# @name getMyReferredUsersLevel1Filtered
+# Hits: User Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/users/get-refered-users?level=1&page=1&limit=10&name=R
+Authorization: Bearer {{auth_token}}
+
+### 4.X.4 Get Current User's Referral Statistics
+# @name getMyReferralStats
+# Hits: User Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/users/get-referals
+Authorization: Bearer {{auth_token}}
+
+### 4.X.5 Get Public User Info by Referral Code (Public)
+# @name getUserByReferralCodePublic
+# Hits: User Service via Gateway
+# Requires: A valid referral code
+GET {{gateway_url}}/users/get-affiliation?referralCode=ster237
+
+### 4.X.6 Get Public User Info by Referral Code (Public)
+# @name getUserByReferralCodePublic
+# Hits: User Service via Gateway
+# Requires: A valid referral code
+GET {{gateway_url}}/users/get-affiliation?referralCode=ster234
+
 
 # =========================================
-# 7. FLASH SALE FLOW
+# Sections Below (Tombola, Advertising, Flash Sale) are Not Primary Focus
+# Keep them for completeness but review/update separately if needed.
 # =========================================
 
-# --- Dynamic Flash Sale ID ---
-@flash_sale_id = 6803cea7450bd22a23006266
+# ... (Tombola Flow - requests seem plausible but not reviewed in detail) ...
 
-### Create Flash Sale (Initiates Fee Payment)
-# Requires user login (@auth_token) and a valid @product_id
-# NOTE: The response contains feePaymentIntentId, but the sale is PENDING_PAYMENT.
-# Requires payment service confirmation (webhook) to become SCHEDULED/ACTIVE.
-# @name createFlashSale
-POST {{gateway_url}}/flash-sales
+# ... (Advertising Flow - requests seem plausible but not reviewed in detail, note missing admin endpoints) ...
+
+# ... (Flash Sale Flow - requests seem plausible but not reviewed in detail) ...
+
+# =========================================
+# 5. Payment Service - Transaction Flow (User)
+# =========================================
+# These requests interact with the endpoints defined in payment-service/src/api/routes/transaction.routes.ts
+# for authenticated users. I will add the HTTP requests for these endpoints below.
+@transaction_id = c463e5a7-e352-4226-860c-0cc97c98350c
+@pending_withdrawal_id = # Set after initiating a withdrawal
+@recipient_user_id = # Set after getting a user's ID
+
+### 5.1 Get User Transaction History
+# @name getUserTransactionHistory
+# Hits: Payment Service via Gateway
+# Requires: @auth_token
+# Optional Query Params: page, limit, type (DEPOSIT, WITHDRAWAL, PAYMENT, REFUND), status (PENDING, COMPLETED, FAILED, CANCELLED), startDate, endDate, sortBy, sortOrder
+GET {{gateway_url}}/transactions/history?page=1&limit=10&sortBy=createdAt&sortOrder=desc
+Authorization: Bearer {{auth_token}}
+
+### 5.2 Get User Transaction Statistics
+# @name getUserTransactionStats
+# Hits: Payment Service via Gateway
+# Requires: @auth_token
+GET {{gateway_url}}/transactions/stats
+Authorization: Bearer {{auth_token}}
+
+### 5.3 Get Specific Transaction by ID
+# @name getTransactionById
+# Hits: Payment Service via Gateway
+# Requires: @auth_token, @transaction_id (must belong to the user)
+# Note: Set the transaction_id variable first, e.g., from history or payment response.
+GET {{gateway_url}}/transactions/{{transaction_id}}
+Authorization: Bearer {{auth_token}}
+
+### 5.4 Initiate Deposit
+# @name initiateDeposit
+# Hits: Payment Service via Gateway
+# Requires: @auth_token
+POST {{gateway_url}}/transactions/deposit/initiate
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
 
 {
-  "productId": "{{product_id}}",
-  "discountedPrice": 4000,
-  "startTime": "2025-04-19T17:29:00Z",
-  "endTime": "2025-04-21T12:00:00Z"
+    "amount": 50.00,
+    "currency": "USD",
+    "paymentMethod": "credit_card"
 }
 
- # Example: Start tomorrow
- # Example: End day after tomorrow
+# Capture the deposit session info (e.g., paymentUrl) if needed for simulation
+# > {% client.global.set("deposit_session_id", response.body.depositSession.sessionId); %}
+# > {% client.global.set("deposit_payment_url", response.body.depositSession.paymentUrl); %}
 
-# Capture the new flash sale ID
-# > {% client.global.set("flash_sale_id", response.body.data._id); %}
-
-### Get User's Flash Sales
-# Requires user login (@auth_token)
-# @name getUserFlashSales
-GET {{gateway_url}}/flash-sales/my
-Authorization: Bearer {{auth_token}}
-
-### Get Active Flash Sales (Public)
-# @name getActiveFlashSales
-GET {{gateway_url}}/flash-sales
-
-### Update Flash Sale
-# Requires user login (@auth_token) and @flash_sale_id
-# Only possible if status is PENDING_PAYMENT or SCHEDULED
-# @name updateFlashSale
-PUT {{gateway_url}}/flash-sales/{{flash_sale_id}}
+### 5.5 Initiate Withdrawal
+# @name initiateWithdrawal
+# Hits: Payment Service via Gateway
+# Requires: @auth_token
+POST {{gateway_url}}/transactions/withdrawal/initiate
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
 
 {
-  "discountedPrice": 3800
+    "amount": 20.00,
+    "currency": "USD",
+    "method": "bank_transfer",
+    "accountInfo": {
+        "accountNumber": "123456789",
+        "routingNumber": "987654321",
+        "accountHolderName": "Jane Doe"
+    }
 }
 
-### Cancel Flash Sale
-# Requires user login (@auth_token) and @flash_sale_id
-# Only possible before it becomes ACTIVE
-# @name cancelFlashSale
-DELETE {{gateway_url}}/flash-sales/{{flash_sale_id}}
+# Capture the pending withdrawal ID for verification
+# > {% client.global.set("pending_withdrawal_id", response.body.withdrawal.pendingId); %}
+
+### 5.6 Verify Withdrawal
+# @name verifyWithdrawal
+# Hits: Payment Service via Gateway
+# Requires: @auth_token, @pending_withdrawal_id (from initiate withdrawal response)
+# Note: Requires a valid verification code (e.g., sent via email/SMS - use a placeholder here)
+POST {{gateway_url}}/transactions/withdrawal/verify
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "pendingId": "{{pending_withdrawal_id}}",
+    "verificationCode": "123456" # Placeholder code
+}
+
+# Capture the final transaction ID if successful
+# > {% client.global.set("withdrawal_transaction_id", response.body.transaction.transactionId); %}
+
+
+### 5.7 Process Payment to Another User
+# @name processPayment
+# Hits: Payment Service via Gateway
+# Requires: @auth_token, @recipient_user_id
+# Note: Set the recipient_user_id variable first.
+POST {{gateway_url}}/transactions/payment
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "recipientId": "{{recipient_user_id}}",
+    "amount": 10.50,
+    "currency": "USD",
+    "description": "Payment for shared dinner",
+    "metadata": {
+        "notes": "Split bill from last night"
+    }
+}
+
+# Capture the sender's transaction ID
+# > {% client.global.set("payment_transaction_id", response.body.payment.transactionId); %}
+
+# =========================================
+# End Payment Service - Transaction Flow (User)
+# =========================================
+
+# =========================================
+# 5. SETTINGS MANAGEMENT FLOW (Settings Service)
+# =========================================
+
+@fileId = 1ntZTn1K9mEPvnGhX7NlQc9JM0y6YIP4u
+
+### 5.1 Get Application Settings
+# @name getAppSettings
+# Hits: Settings Service via Gateway
+GET {{gateway_url}}/settings 
+
+### 5.2 Get File Content
+# @name getFileContent
+# Hits: Settings Service via Gateway
+# Requires: @auth_token (or @admin_auth_token might work)
+GET {{gateway_url}}/settings/files/{{fileId}}
 Authorization: Bearer {{auth_token}}
 
-### Track Flash Sale View
-# Public endpoint
-# @name trackFlashSaleView
-POST {{gateway_url}}/flash-sales/{{flash_sale_id}}/track-view
+### 5.3 Get File Thumbnail
+# @name getFileThumbnail
+# Hits: Settings Service via Gateway
+# Requires: @auth_token (or @admin_auth_token might work)
+GET {{gateway_url}}/settings/thumbnails/{{fileId}}
+Authorization: Bearer {{auth_token}}
 
-### Track Flash Sale WhatsApp Click
-# Public endpoint
-# @name trackFlashSaleWhatsappClick
-POST {{gateway_url}}/flash-sales/{{flash_sale_id}}/track-whatsapp-click
 
+
+# =========================================
+# X. PARTNER FLOW (User Service - Partner Endpoints)
+# =========================================
+# These requests assume the logged-in user is also a partner.
+
+### X.1 Get My Partner Details
+# @name getMyPartnerDetails
+# Hits: User Service (Partner Routes) via Gateway
+# Requires: @auth_token (user must be an active partner)
+GET {{gateway_url}}/partners/me
+Authorization: Bearer {{auth_token}}
+
+### X.2 Get My Partner Transactions (Commissions)
+# @name getMyPartnerTransactions
+# Hits: User Service (Partner Routes) via Gateway
+# Requires: @auth_token (user must be an active partner)
+# Optional query params: page, limit
+GET {{gateway_url}}/partners/me/transactions?page=1&limit=10
+Authorization: Bearer {{auth_token}}

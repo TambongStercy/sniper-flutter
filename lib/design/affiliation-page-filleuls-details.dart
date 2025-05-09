@@ -50,7 +50,6 @@ class _FilleulsState extends State<Filleuls> {
   @override
   void initState() {
     getReferedUersFunc();
-
     scrollController.addListener(_onScroll);
     super.initState();
   }
@@ -72,29 +71,27 @@ class _FilleulsState extends State<Filleuls> {
 
   Future<void>? getReferedUersFunc() async {
     if (isloading || !hasMore) return;
+
     setState(() {
       isloading = true;
     });
-    String msg = '';
 
     try {
       await initSharedPref();
 
       // Determine level based on mainType
-      final String level =
-          (mainType == 'direct') ? '1' : '2'; // Assuming indirect = level 2
+      final String level = (mainType == 'direct') ? '1' : '2';
 
       final filters = {
         'page': page.toString(),
-        'level': level, // Use 'level' parameter
+        'level': level,
         'limit': '10',
-        // Add name filter if search term exists
         if (currentSearchTerm.isNotEmpty) 'name': currentSearchTerm,
       };
 
       final response = await apiService.getReferredUsers(filters);
 
-      msg = response['message'] ?? '';
+      String msg = response['message'] ?? '';
       int? statusCode = response['statusCode'];
 
       if (statusCode != null && statusCode >= 200 && statusCode < 300) {
@@ -111,7 +108,7 @@ class _FilleulsState extends State<Filleuls> {
             totalPagesDirect = totalPages;
             directUsers.addAll(fetchedUsers);
           }
-          hasMore = page < totalPages; // Simplified hasMore logic
+          hasMore = page < totalPages;
           if (hasMore) page++;
         });
       } else {
@@ -136,10 +133,11 @@ class _FilleulsState extends State<Filleuls> {
         hasMore = false;
       });
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           isloading = false;
         });
+      }
     }
   }
 
@@ -160,10 +158,9 @@ class _FilleulsState extends State<Filleuls> {
       indirectUsers.clear();
       page = 1;
       hasMore = true;
-      // Keep currentSearchTerm, fetch will use it
     });
 
-    await getReferedUersFunc(); // Fetch using current search term and type
+    await getReferedUersFunc();
   }
 
   @override
@@ -180,153 +177,179 @@ class _FilleulsState extends State<Filleuls> {
     double ffem = fem * 0.97;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
         title: Text(
           context.translate('your_godchildren'),
-          style: SafeGoogleFont(
-            'Montserrat',
-            fontSize: 16 * ffem,
-            fontWeight: FontWeight.w500,
-            height: 1.6666666667 * ffem / fem,
-            color: Theme.of(context).colorScheme.onSurface,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
           ),
         ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: Container(
-        width: double.infinity,
-        color: Color(0xffffffff),
-        child: Column(
-          children: [
-            Padding(
-              padding:
-                  EdgeInsets.fromLTRB(25 * fem, 15 * fem, 25 * fem, 10 * fem),
-              child: CustomTextField(
-                value: currentSearchTerm,
-                hintText: context.translate('search_by_name'),
-                searchMode: true,
-                onChange: (val) {
-                  searchController.text = val;
-                },
-                onSearch: () {
-                  setState(() {
-                    currentSearchTerm = searchController.text;
-                  });
-                  refresh();
-                },
-              ),
+      body: Column(
+        children: [
+          // Search field
+          Padding(
+            padding: EdgeInsets.all(16 * fem),
+            child: CustomTextField(
+              value: currentSearchTerm,
+              hintText: context.translate('search_by_name'),
+              searchMode: true,
+              onChange: (val) {
+                searchController.text = val;
+              },
+              onSearch: () {
+                setState(() {
+                  currentSearchTerm = searchController.text;
+                });
+                refresh();
+              },
             ),
-            Container(
-              margin: EdgeInsets.fromLTRB(25 * fem, 0 * fem, 25 * fem, 0 * fem),
+          ),
+
+          // Tab selector
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16 * fem),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8 * fem),
+              ),
               child: Row(
                 children: [
-                  _topButton(fem, context.translate('direct'), 'direct'),
-                  _topButton(fem, context.translate('indirect'), 'indirect'),
+                  _buildTab(
+                    text: context.translate('direct'),
+                    isSelected: mainType == 'direct',
+                    onTap: () async {
+                      setState(() {
+                        mainType = 'direct';
+                        searchController.clear();
+                        currentSearchTerm = '';
+                      });
+                      await refresh();
+                    },
+                    fem: fem,
+                    ffem: ffem,
+                  ),
+                  _buildTab(
+                    text: context.translate('indirect'),
+                    isSelected: mainType == 'indirect',
+                    onTap: () async {
+                      setState(() {
+                        mainType = 'indirect';
+                        searchController.clear();
+                        currentSearchTerm = '';
+                      });
+                      await refresh();
+                    },
+                    fem: fem,
+                    ffem: ffem,
+                  ),
                 ],
               ),
             ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: refresh,
-                child: ListView.builder(
-                  controller: scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding:
-                      EdgeInsets.fromLTRB(25 * fem, 8 * fem, 25 * fem, 8 * fem),
-                  itemCount: (mainType == 'direct'
-                          ? directUsers.length
-                          : indirectUsers.length) +
-                      (hasMore ? 1 : 0),
-                  itemBuilder: ((context, index) {
-                    final usersUsed =
-                        mainType == 'direct' ? directUsers : indirectUsers;
-                    final itemCount = usersUsed.length;
+          ),
 
-                    if (index < itemCount) {
-                      final user = usersUsed[index]
-                          as Map<String, dynamic>; // Ensure type safety
-                      // Extract available data
-                      final name = user['name'] as String? ?? 'N/A';
-                      final email = user['email'] as String? ?? 'N/A';
-                      final phone = user['phoneNumber'] as String? ?? 'N/A';
-                      // Determine subscription TYPE from the list
-                      final List<dynamic> subscriptions =
-                          user['activeSubscriptions'] as List<dynamic>? ?? [];
-                      String? subscriptionType = null;
-                      if (subscriptions.isNotEmpty) {
-                        // Prioritize 'cible' if present, otherwise take the first one (e.g., 'classique')
-                        // Convert to lowercase for case-insensitive comparison
-                        if (subscriptions.any(
-                            (s) => s.toString().toLowerCase() == 'cible')) {
-                          subscriptionType = 'cible';
-                        } else if (subscriptions.any(
-                            (s) => s.toString().toLowerCase() == 'classique')) {
-                          subscriptionType = 'classique';
-                        } // Add more checks for other types if needed
+          // List of users
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: refresh,
+              child: ListView.builder(
+                controller: scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(16 * fem),
+                itemCount: (mainType == 'direct'
+                        ? directUsers.length
+                        : indirectUsers.length) +
+                    (hasMore ? 1 : 0),
+                itemBuilder: ((context, index) {
+                  final usersUsed =
+                      mainType == 'direct' ? directUsers : indirectUsers;
+                  final itemCount = usersUsed.length;
+
+                  if (index < itemCount) {
+                    final user = usersUsed[index] as Map<String, dynamic>;
+
+                    final name = user['name'] as String? ?? 'N/A';
+                    final email = user['email'] as String? ?? 'N/A';
+                    final phone = user['phoneNumber'] as String? ?? 'N/A';
+
+                    final List<dynamic> subscriptions =
+                        user['activeSubscriptions'] as List<dynamic>? ?? [];
+                    String? subscriptionType = null;
+
+                    if (subscriptions.isNotEmpty) {
+                      if (subscriptions
+                          .any((s) => s.toString().toLowerCase() == 'cible')) {
+                        subscriptionType = 'cible';
+                      } else if (subscriptions.any(
+                          (s) => s.toString().toLowerCase() == 'classique')) {
+                        subscriptionType = 'classique';
                       }
-                      // url (avatar) is still not available from this endpoint
+                    }
 
-                      return FilleulsCard(
-                        // Pass the determined type string (or null)
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: 12 * fem),
+                      child: FilleulsCard(
                         subscriptionType: subscriptionType,
-                        // url: user['url'], // Still removed
                         name: name,
                         email: phone,
-                      );
-                    } else if (hasMore) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16 * fem),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    } else {
-                      return SizedBox.shrink();
-                    }
-                  }),
-                ),
+                      ),
+                    );
+                  } else if (hasMore) {
+                    return Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16 * fem),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  } else {
+                    return SizedBox.shrink();
+                  }
+                }),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Expanded _topButton(double fem, String type, String val) {
-    final capsType = type.length > 2
-        ? type.substring(0, 1).toUpperCase() + type.substring(1)
-        : type;
-
+  Widget _buildTab({
+    required String text,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required double fem,
+    required double ffem,
+  }) {
     return Expanded(
-      child: InkWell(
-        onTap: () async {
-          setState(() {
-            mainType = val;
-            searchController.clear();
-            currentSearchTerm = '';
-          });
-          await refresh();
-        },
+      child: GestureDetector(
+        onTap: onTap,
         child: Container(
           padding: EdgeInsets.symmetric(
-            vertical: 10 * fem,
-            horizontal: 30 * fem,
+            vertical: 12 * fem,
+            horizontal: 16 * fem,
           ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(10 * fem)),
-            color: mainType == val
-                ? Theme.of(context).colorScheme.primary
-                : Colors.grey[200],
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8 * fem),
           ),
           child: Text(
-            capsType,
+            text,
             textAlign: TextAlign.center,
-            style: SafeGoogleFont(
-              'Mulish',
-              height: 1.255,
-              color: mainType == val ? Color(0xffffffff) : Color(0xff000000),
+            style: TextStyle(
+              fontSize: 14 * ffem,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected ? Colors.white : Colors.black54,
             ),
           ),
         ),

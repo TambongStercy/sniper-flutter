@@ -14,6 +14,7 @@ import 'package:snipper_frontend/utils.dart';
 // import 'package:http/http.dart' as http; // Remove http import
 import 'package:snipper_frontend/localization_extension.dart'; // For localization
 import 'package:snipper_frontend/api_service.dart'; // Import ApiService
+import 'package:snipper_frontend/theme.dart';
 
 class ModifyEmail extends StatefulWidget {
   static const id = 'modifyEmail';
@@ -65,7 +66,7 @@ class _ModifyEmailState extends State<ModifyEmail> {
       // However, if your `$modEmail` endpoint *does* require the new email when requesting OTP,
       // we'd need to adjust ApiService.requestEmailChangeOtp to accept it.
       // For now, assuming it only needs the token:
-      final response = await apiService.requestEmailChangeOtp();
+      final response = await apiService.requestEmailChangeOtp(email.trim());
       final msg = response['message'] ?? '';
 
       if (response['statusCode'] != null &&
@@ -119,181 +120,104 @@ class _ModifyEmailState extends State<ModifyEmail> {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
     return Scaffold(
-      body: SafeArea(
-        child: ModalProgressHUD(
-          inAsyncCall: showSpinner,
-          child: SingleChildScrollView(
-            child: Container(
-              width: double.infinity,
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xffffffff),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Image.asset(
+            'assets/design/images/logo.png',
+            height: 50,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+      ),
+      body: ModalProgressHUD(
+        inAsyncCall: showSpinner,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.translate('modify_email'),
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      margin: EdgeInsets.fromLTRB(
-                        25 * fem,
-                        0 * fem,
-                        0 * fem,
-                        21.17 * fem,
-                      ),
-                      width: 771.27 * fem,
-                      height: 275.83 * fem,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(
-                            height: 40.0,
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 46 * fem),
-                            child: Text(
-                              'Sniper Business Center',
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Mulish',
-                                fontSize: 30 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.255 * ffem / fem,
-                                color: Color(0xff000000),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                              context.translate(
-                                  'modify_email'), // 'Modifiez votre e-mail'
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 20 * ffem,
-                                fontWeight: FontWeight.w800,
-                                height: 1 * ffem / fem,
-                                color: Color(0xfff49101),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                              context.translate(
-                                  'enter_new_email'), // 'Entrez la nouvelle adresse e-mail'
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 15 * ffem,
-                                fontWeight: FontWeight.w400,
-                                height: 1.4 * ffem / fem,
-                                color: Color(0xff797979),
-                              ),
-                            ),
-                          ),
-                        ],
+                const SizedBox(height: 8),
+                Text(
+                  context.translate('enter_new_email'),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Email field
+                CustomTextField(
+                  fieldType: CustomFieldType.email,
+                  hintText: 'Ex: Jeanpierre@gmail.com',
+                  value: email,
+                  onChange: (val) {
+                    setState(() {
+                      email = val;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 32),
+
+                // Send OTP button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: requestEmailModificationOtp,
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).primaryColor,
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    Container(
-                      width: double.infinity,
-                      height: 500 * fem,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _fieldTitle(
-                              fem, ffem, context.translate('email')), // 'Email'
-                          CustomTextField(
-                            hintText: 'Ex: Jeanpierre@gmail.com',
-                            fieldType: CustomFieldType.email,
-                            value: email,
-                            onChange: (val) {
-                              email = val;
-                            },
-                          ),
-                          SizedBox(height: 20 * fem),
-                          _fieldTitle(fem, ffem,
-                              context.translate('otp_code')), // 'Code OTP'
-                          OtpTextField(
-                            numberOfFields: 6,
-                            borderColor: Color(0xFF512DA8),
-                            fieldWidth: 40.0,
-                            margin: EdgeInsets.only(right: 8.0),
-                            showFieldAsBox: true,
-                            keyboardType: TextInputType.text,
-                            onCodeChanged: (String code) {
-                              // Handle code change
-                            },
-                            onSubmit: (String verificationCode) {
-                              otp = verificationCode;
-                            },
-                          ),
-                          SizedBox(height: 20 * fem),
-                          ReusableButton(
-                            title: context.translate(
-                                'send_otp_code'), // 'Envoyer le code OTP'
-                            lite: false,
-                            onPress: () async {
-                              try {
-                                // No need for manual spinner handling here if done in the function
-                                await requestEmailModificationOtp();
-                              } catch (e) {
-                                String msg = e.toString();
-                                String title = context.translate('error');
-                                showPopupMessage(context, title, msg);
-                                print(e);
-                                // Ensure spinner stops if error happens before function handles it
-                                if (mounted)
-                                  setState(() {
-                                    showSpinner = false;
-                                  });
-                              }
-                            },
-                          ),
-                          SizedBox(height: 20 * fem),
-                          Center(
-                            child: TextButton(
-                              onPressed: () async {
-                                try {
-                                  // No need for manual spinner handling here
-                                  await resendOTP();
-                                } catch (e) {
-                                  String msg = e.toString();
-                                  String title = context.translate('error');
-                                  showPopupMessage(context, title, msg);
-                                  print(e);
-                                  // Ensure spinner stops
-                                  if (mounted)
-                                    setState(() {
-                                      showSpinner = false;
-                                    });
-                                }
-                              },
-                              style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero),
-                              child: Text(
-                                context.translate('resend_otp'),
-                                style: SafeGoogleFont(
-                                  'Montserrat',
-                                  fontSize: 16 * ffem,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.5 * ffem / fem,
-                                  color:
-                                      Theme.of(context).colorScheme.secondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 20 * fem),
-                        ],
+                    child: Text(
+                      context.translate('send_otp_code'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 24),
+
+                // Resend OTP button
+                Center(
+                  child: TextButton(
+                    onPressed: resendOTP,
+                    child: Text(
+                      context.translate('resend_otp'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -301,21 +225,43 @@ class _ModifyEmailState extends State<ModifyEmail> {
     );
   }
 
-  Container _fieldTitle(double fem, double ffem, String title) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(49 * fem, 0 * fem, 49 * fem, 5 * fem),
-      child: Text(
-        title,
-        style: SafeGoogleFont(
-          'Montserrat',
-          fontSize: 12 * ffem,
-          fontWeight: FontWeight.w500,
-          height: 1.3333333333 * ffem / fem,
-          letterSpacing: 0.400000006 * fem,
-          color: Color(0xff6d7d8b),
-        ),
-      ),
-    );
+  bool isValidEmailDomain(String email) {
+    // Split the email at @ and check the domain part
+    final parts = email.split('@');
+    if (parts.length != 2) return false; // Not a valid email format
+
+    final domain = parts[1].toLowerCase();
+
+    // List of common email domains to accept
+    final validDomains = [
+      'gmail.com',
+      'yahoo.com',
+      'hotmail.com',
+      'outlook.com',
+      'live.com',
+      'aol.com',
+      'icloud.com',
+      'mail.ru',
+      'protonmail.com',
+      'pm.me',
+      'yandex.ru',
+      'zoho.com',
+      'gmx.com',
+      'gmx.net',
+      'tutanota.com',
+      'msn.com',
+      'comcast.net',
+      'verizon.net',
+      'sbcglobal.net',
+    ];
+
+    return validDomains.any((valid) => domain.contains(valid)) ||
+        domain.endsWith('.edu') ||
+        domain.endsWith('.gov') ||
+        domain.endsWith('.org') ||
+        domain.endsWith('.net') ||
+        domain.endsWith('.co') ||
+        domain.endsWith('.io');
   }
 
   void popUntilAndPush(BuildContext context) {

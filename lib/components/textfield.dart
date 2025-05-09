@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl_phone_field/countries.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:snipper_frontend/utils.dart';
@@ -89,6 +90,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
   final TextEditingController _dateController = TextEditingController();
   // State for MultiSelect display
   String _multiSelectButtonText = '';
+  // Track last reported value to prevent unnecessary updates
+  String? _lastReportedTextValue;
 
   @override
   void initState() {
@@ -105,21 +108,15 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   void didUpdateWidget(CustomTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Update controller if the initial value changes externally
+    // Only update controller if value changed from outside, not from our own callbacks
     if (widget.value != oldWidget.value &&
+        widget.value != _lastReportedTextValue &&
         (widget.fieldType == CustomFieldType.text ||
             widget.fieldType == CustomFieldType.password ||
             widget.fieldType == CustomFieldType.email ||
             widget.fieldType == CustomFieldType.number ||
             widget.fieldType == CustomFieldType.multiline)) {
-      // Avoid cursor jumping if controller already exists
-      Future.delayed(Duration.zero, () {
-        if (mounted) {
-          _textFieldController.text = widget.value ?? '';
-          // Optionally move cursor to end:
-          // _textFieldController.selection = TextSelection.fromPosition(TextPosition(offset: _textFieldController.text.length));
-        }
-      });
+      _textFieldController.text = widget.value ?? '';
     }
     // Update display texts for Date and MultiSelect if their state changes
     if (widget.currentDateValue != oldWidget.currentDateValue) {
@@ -133,6 +130,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   void _initializeController() {
     passwordVisible = widget.fieldType == CustomFieldType.password;
     _textFieldController = TextEditingController(text: widget.value ?? '');
+    _lastReportedTextValue = widget.value;
   }
 
   void _updateDisplayFields() {
@@ -271,8 +269,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
               margin: EdgeInsets.only(bottom: 8 * fem),
               child: Text(
                 label!,
-              style: SafeGoogleFont(
-                'Montserrat',
+                style: SafeGoogleFont(
+                  'Montserrat',
                   fontSize: 12 * ffem,
                   fontWeight: FontWeight.w500,
                   color: Color(0xff6d7d8b),
@@ -305,7 +303,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
       inputFormatters: fieldType == CustomFieldType.number
           ? [FilteringTextInputFormatter.digitsOnly]
           : null,
-      onChanged: onChange,
+      onChanged: (value) {
+        _lastReportedTextValue = value;
+        if (onChange != null) onChange!(value);
+      },
       onSubmitted: (value) {
         if (widget.searchMode == true && widget.onSearch != null) {
           widget.onSearch!();
@@ -319,12 +320,13 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 icon: Icon(Icons.close, size: 20, color: Colors.grey[600]),
                 onPressed: () {
                   _textFieldController.clear();
+                  _lastReportedTextValue = '';
                   if (onChange != null) onChange!('');
                 },
               )
             : null,
         prefixIcon: widget.searchMode == true
-                    ? IconButton(
+            ? IconButton(
                 icon: Icon(Icons.search, color: Colors.grey[600]),
                 onPressed: widget.onSearch,
               )
@@ -341,19 +343,22 @@ class _CustomTextFieldState extends State<CustomTextField> {
       obscureText: !passwordVisible, // Use negated state
       readOnly: readOnly,
       focusNode: widget.focusNode,
-      onChanged: onChange,
+      onChanged: (value) {
+        _lastReportedTextValue = value;
+        if (onChange != null) onChange!(value);
+      },
       style: SafeGoogleFont('Montserrat',
           fontSize: 14 * ffem, color: Color(0xff25313c)),
       decoration: decoration.copyWith(
         suffixIcon: IconButton(
-                        icon: Icon(
+          icon: Icon(
             passwordVisible ? Icons.visibility_off : Icons.visibility,
             size: 20,
             color: Colors.grey[600],
-                        ),
-                        onPressed: () {
+          ),
+          onPressed: () {
             setState(() {
-                              passwordVisible = !passwordVisible;
+              passwordVisible = !passwordVisible;
             });
           },
         ),
@@ -362,51 +367,93 @@ class _CustomTextFieldState extends State<CustomTextField> {
   }
 
   Widget _buildPhoneField(double fem) {
-    // Note: IntlPhoneField handles its own decoration internally to some extent.
-    // We might need to customize it further if needed.
-    return IntlPhoneField(
-      initialValue: widget.value, // Pass initial value if any
-      initialCountryCode: widget.initialCountryCode ?? 'CM',
-      focusNode: widget.focusNode,
-      readOnly: readOnly,
-      decoration: InputDecoration(
-        // Apply some base decoration
-        hintText: hintText,
-        border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(13 * fem)),
-        contentPadding:
-            EdgeInsets.symmetric(horizontal: 10 * fem, vertical: 15 * fem),
-        filled: true,
-        fillColor: Colors.white,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(13 * fem),
-          borderSide: BorderSide(color: Colors.grey.shade400, width: 1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(13 * fem),
-          borderSide: BorderSide(
-              color: Theme.of(context).colorScheme.primary, width: 1.5),
-        ),
-        // Add other border states if necessary
+    return Container(
+      margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 10 * fem),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(13 * fem),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: Offset(0, 1), // changes position of shadow
+          ),
+        ],
       ),
-      languageCode: "en", // Or use locale
-      onChanged: (phone) {
-        if (onChange != null) onChange!(phone.completeNumber);
-        if (widget.getCountryDialCode != null)
-          widget.getCountryDialCode!(phone.countryCode.replaceAll('+', ''));
-        if (widget.getCountryCode != null) {
-          // Find country ISO code from dial code (might need a lookup map or use package features)
-          final country = countries.firstWhere(
+      child: IntlPhoneField(
+        focusNode: widget.focusNode,
+        initialValue: widget.value,
+        readOnly: readOnly,
+        decoration: InputDecoration(
+          hintText: hintText,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13 * fem),
+            borderSide: BorderSide.none, // Remove border from inner text field
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13 * fem),
+            borderSide: BorderSide.none, // Ensure no border when enabled
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13 * fem),
+            borderSide: BorderSide.none, // Ensure no border when focused
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding:
+              EdgeInsets.symmetric(horizontal: 10 * fem, vertical: 15 * fem),
+          hintStyle: SafeGoogleFont(
+            'Montserrat',
+            fontSize: 14 * (fem * 0.97), // ffem equivalent
+            color: Colors.grey[500],
+          ),
+        ),
+        languageCode: "fr", // Default or make dynamic
+        initialCountryCode: widget.initialCountryCode ?? 'CM',
+        onChanged: (phone) {
+          if (onChange != null) {
+            onChange!(phone.number); // Pass only the number part
+          }
+          if (widget.getCountryDialCode != null) {
+            widget.getCountryDialCode!(
+                phone.countryCode); // Pass country dial code
+          }
+          if (widget.getCountryCode != null) {
+            // Find the country object to get its code (e.g., 'US', 'CM')
+            final country = countries.firstWhere(
               (c) => c.dialCode == phone.countryCode.replaceAll('+', ''),
-              orElse: () => countries.firstWhere((c) => c.code == 'CM'));
-          widget.getCountryCode!(country.code);
-        }
-      },
-      onCountryChanged: (country) {
-        if (widget.getCountryDialCode != null)
-          widget.getCountryDialCode!(country.dialCode);
-        if (widget.getCountryCode != null) widget.getCountryCode!(country.code);
-      },
+              // Provide all required fields for the Country constructor in orElse
+              orElse: () => Country(
+                name: '',
+                flag: '',
+                code: '',
+                dialCode: '',
+                minLength: 0,
+                maxLength: 0,
+                nameTranslations: {}, // Added missing required parameter
+              ),
+            );
+            widget.getCountryCode!(country.code); // Pass country code (ISO2)
+          }
+        },
+        disableLengthCheck: true, // Allow any length for the phone number
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly, // Allow only digits
+        ],
+        keyboardType: TextInputType.phone,
+        dropdownIconPosition: IconPosition.leading,
+        dropdownTextStyle: SafeGoogleFont(
+          'Montserrat',
+          fontSize: 14 * (fem * 0.97),
+          color: Colors.black87,
+        ),
+        style: SafeGoogleFont(
+          'Montserrat',
+          fontSize: 14 * (fem * 0.97),
+          color: Colors.black87,
+        ),
+      ),
     );
   }
 
@@ -455,7 +502,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       items: widget.items?.map((item) {
             return DropdownMenuItem<String?>(
               value: item['value'],
-              child: Text(item['display']!,
+              child: Text(item['display'] ?? item['label'] ?? '',
                   style: SafeGoogleFont('Montserrat',
                       fontSize: 14 * ffem, color: Color(0xff25313c))),
             );
@@ -615,7 +662,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 TextButton(
                   child: Text(context.translate('cancel')),
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    context.pop();
                   },
                 ),
                 TextButton(
@@ -628,7 +675,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     onSave(tempSelectedOptions); // Use ValueChanged callback
                     // Update local display text immediately after saving
                     // setState(() { _updateMultiSelectDisplay(); }); // This won't work as expected here
-                    Navigator.of(context).pop();
+                    context.pop();
                   },
                 ),
               ],

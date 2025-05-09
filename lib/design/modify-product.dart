@@ -6,6 +6,7 @@ import 'package:dotted_border/dotted_border.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/dropdown.dart';
@@ -202,135 +203,217 @@ class _ModifyProductState extends State<ModifyProduct> {
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
 
-    return SimpleScaffold(
-      title: context.translate('modify_product'), // 'Modifier le produit'
-      inAsyncCall: showSpinner,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 0 * fem),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Color(0xffffffff),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          context.translate('modify_product'),
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              height: 245 * fem,
-              color: Colors.grey.shade200,
-              padding: EdgeInsets.symmetric(vertical: 10 * fem),
-              alignment: Alignment.center,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                shrinkWrap: true,
-                children: [
-                  ...imageDisplay(fem),
-                  if (images.length + existingImages.length < 5) addImage(fem),
-                ],
-              ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: ModalProgressHUD(
+        inAsyncCall: showSpinner,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Image gallery
+                Container(
+                  height: 245 * fem,
+                  color: Colors.grey.shade100,
+                  padding: EdgeInsets.symmetric(vertical: 10 * fem),
+                  alignment: Alignment.center,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    shrinkWrap: true,
+                    children: [
+                      ...imageDisplay(fem),
+                      if (images.length + existingImages.length < 5)
+                        addImage(fem),
+                    ],
+                  ),
+                ),
+
+                Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Product name field
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.translate('product_name'),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          CustomTextField(
+                            hintText: prdtName,
+                            onChange: (val) {
+                              prdtName = val;
+                            },
+                            margin: 0,
+                            value: prdtName,
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 20),
+
+                      // Category field
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.translate('category'),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          CustomDropdown(
+                            items: categories,
+                            value: category,
+                            ffem: ffem,
+                            onChange: onChangeCategory,
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 20),
+
+                      // Subcategory field
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.translate('subcategory'),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          CustomDropdown(
+                            items: subcategories,
+                            value: subcategory,
+                            ffem: ffem,
+                            onChange: onChangeSubCategory,
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 20),
+
+                      // Price field
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.translate('price'),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          CustomTextField(
+                            hintText: price,
+                            value: price,
+                            onChange: (val) {
+                              price = val;
+                            },
+                            margin: 0,
+                            fieldType: CustomFieldType.number,
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 20),
+
+                      // Description field
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.translate('description'),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          CustomTextField(
+                            hintText: description,
+                            value: description,
+                            onChange: (val) {
+                              description = val;
+                            },
+                            margin: 0,
+                            fieldType: CustomFieldType.multiline,
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 32),
+
+                      // Submit button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              await modifyProduct(context);
+                            } catch (e) {
+                              showPopupMessage(context,
+                                  context.translate('error'), e.toString());
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Theme.of(context).primaryColor,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            context.translate('modify'),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 15 * fem),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 28.0, vertical: 10.0),
-              child: Column(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(
-                          fem,
-                          ffem,
-                          context.translate(
-                              'product_name')), // 'Nom du produit/service'
-                      CustomTextField(
-                        hintText: prdtName,
-                        onChange: (val) {
-                          prdtName = val;
-                        },
-                        margin: 0,
-                        value: prdtName,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 15 * fem),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(fem, ffem,
-                          context.translate('category')), // 'Catégorie'
-                      CustomDropdown(
-                        items: categories,
-                        value: category,
-                        ffem: ffem,
-                        onChange: onChangeCategory,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 15 * fem),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(fem, ffem,
-                          context.translate('subcategory')), // 'Sous-catégorie'
-                      CustomDropdown(
-                        items: subcategories,
-                        value: subcategory,
-                        ffem: ffem,
-                        onChange: onChangeSubCategory,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 15 * fem),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(fem, ffem,
-                          context.translate('price')), // 'Prix(FCFA)'
-                      CustomTextField(
-                        hintText: price,
-                        value: price,
-                        onChange: (val) {
-                          price = val;
-                        },
-                        margin: 0,
-                        fieldType: CustomFieldType.number,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 15 * fem),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(fem, ffem,
-                          context.translate('description')), // 'Déscription'
-                      CustomTextField(
-                        hintText: description,
-                        value: description,
-                        onChange: (val) {
-                          description = val;
-                        },
-                        margin: 0,
-                        fieldType: CustomFieldType.multiline,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 15 * fem),
-                ],
-              ),
-            ),
-            SizedBox(height: 15 * fem),
-            ReusableButton(
-              title: context.translate('modify'), // 'Modifier'
-              lite: false,
-              onPress: () async {
-                try {
-                  await modifyProduct(context);
-                } catch (e) {
-                  showPopupMessage(
-                      context, context.translate('error'), e.toString());
-                }
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );

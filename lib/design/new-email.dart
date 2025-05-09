@@ -12,17 +12,18 @@ import 'package:snipper_frontend/utils.dart';
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 import 'package:snipper_frontend/api_service.dart'; // Import ApiService
+import 'package:snipper_frontend/theme.dart';
 
 // ignore: must_be_immutable
 class NewEmail extends StatefulWidget {
   static const id = 'NewEmail';
 
-  NewEmail({
+  const NewEmail({
     super.key,
     required this.email,
   });
 
-  String email;
+  final String email;
 
   @override
   State<NewEmail> createState() => _NewEmailState();
@@ -50,13 +51,13 @@ class _NewEmailState extends State<NewEmail> {
       return;
     }
 
-      // Add email domain validation
-      if (!isValidEmailDomain(email.trim())) {
-        String title = context.translate('invalid_email_domain');
-        String message = context.translate('use_valid_email_provider');
-        showPopupMessage(context, title, message);
-        return;
-      }
+    // Add email domain validation
+    if (!isValidEmailDomain(email.trim())) {
+      String title = context.translate('invalid_email_domain');
+      String message = context.translate('use_valid_email_provider');
+      showPopupMessage(context, title, message);
+      return;
+    }
 
     setState(() {
       showSpinner = true;
@@ -72,19 +73,11 @@ class _NewEmailState extends State<NewEmail> {
           response['statusCode'] >= 200 &&
           response['statusCode'] < 300) {
         // Email change successful on backend.
-        // The API might return updated user data. Assuming it does:
-        final user =
-            response['data']?['user'] ?? response['data']; // Adjust key
+        final user = response['data']?['user'] ?? response['data'];
 
         if (user != null) {
-          // Update local prefs with new email and potentially other updated info
+          // Update local prefs with new email
           prefs.setString('email', email.trim());
-
-          // Optionally update other fields if returned by API
-          // Example:
-          // final name = user['name'];
-          // if (name != null) prefs.setString('name', name);
-          // ... etc ...
 
           showPopupMessage(
               context,
@@ -94,14 +87,10 @@ class _NewEmailState extends State<NewEmail> {
                   : context.translate('email_updated_successfully'));
           context.go('/'); // Navigate back after success
         } else {
-          // Handle case where API succeeded but didn't return expected data
           print(
               "Email verify API success, but no user data returned: $response");
-          showPopupMessage(
-              context,
-              context.translate('success'),
-              context.translate(
-                  'email_updated_partially')); // Indicate success but maybe data didn't sync
+          showPopupMessage(context, context.translate('success'),
+              context.translate('email_updated_partially'));
           context.go('/'); // Still navigate back
         }
       } else {
@@ -132,8 +121,8 @@ class _NewEmailState extends State<NewEmail> {
     });
 
     try {
-      // Call ApiService to request email change OTP
-      final response = await apiService.requestEmailChangeOtp();
+      // Call ApiService to resend OTP using email and purpose
+      final response = await apiService.resendOtpByEmail(email, 'changeEmail');
       final msg = response['message'] ?? '';
 
       if (response['statusCode'] != null &&
@@ -164,9 +153,7 @@ class _NewEmailState extends State<NewEmail> {
     () async {
       await initSharedPref();
       if (mounted) {
-        setState(() {
-          // Update your UI with the desired changes.
-        });
+        setState(() {});
       }
     }();
   }
@@ -179,166 +166,143 @@ class _NewEmailState extends State<NewEmail> {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
     return Scaffold(
-      body: SafeArea(
-        child: ModalProgressHUD(
-          inAsyncCall: showSpinner,
-          child: SingleChildScrollView(
-            child: Container(
-              width: double.infinity,
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xffffffff),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      margin: EdgeInsets.fromLTRB(
-                          25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
-                      width: 771.27 * fem,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 40.0),
-                          Container(
-                            margin: EdgeInsets.only(top: 46 * fem),
-                            child: Text(
-                              'Sniper Business Center',
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Mulish',
-                                fontSize: 30 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.255 * ffem / fem,
-                                color: Color(0xff000000),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                              context.translate(
-                                  'validate_email'), // 'Valider l\'adresse e-mail'
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 20 * ffem,
-                                fontWeight: FontWeight.w800,
-                                height: 1 * ffem / fem,
-                                color: Color(0xfff49101),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                              context.translate('enter_otp_for_email', args: {
-                                'email': email
-                              }), // 'Entrez le code OTP envoyé à $email'
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 15 * ffem,
-                                fontWeight: FontWeight.w400,
-                                height: 1.4 * ffem / fem,
-                                color: Color(0xff797979),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: double.infinity,
-                      height: 500 * fem,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _fieldTitle(fem, ffem,
-                              context.translate('otp_code')), // 'Code OTP'
-                          OtpTextField(
-                            numberOfFields: 6,
-                            borderColor: Color(0xFF512DA8),
-                            fieldWidth: 40.0,
-                            margin: EdgeInsets.only(right: 8.0),
-                            showFieldAsBox: true,
-                            keyboardType: TextInputType.text,
-                            onCodeChanged: (String code) {
-                              // Handle code change
-                            },
-                            onSubmit: (String verificationCode) {
-                              otp = verificationCode;
-                            },
-                          ),
-                          SizedBox(height: 20 * fem),
-                          ReusableButton(
-                            title: context.translate('validate'), // 'Valider'
-                            lite: false,
-                            onPress: () async {
-                              try {
-                                await changeAndValidate();
-                              } catch (e) {
-                                showPopupMessage(context,
-                                    context.translate('error'), e.toString());
-                              }
-                            },
-                          ),
-                          SizedBox(height: 20 * fem),
-                          Center(
-                            child: TextButton(
-                              onPressed: () async {
-                                try {
-                                  await modifyEmailOTP();
-                                } catch (e) {
-                                  showPopupMessage(context,
-                                      context.translate('error'), e.toString());
-                                }
-                              },
-                              style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero),
-                              child: Text(
-                                context.translate(
-                                    'resend_otp'), // 'Renvoyer le code OTP'
-                                style: SafeGoogleFont(
-                                  'Montserrat',
-                                  fontSize: 16 * ffem,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.5 * ffem / fem,
-                                  color:
-                                      Theme.of(context).colorScheme.secondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Image.asset(
+            'assets/design/images/logo.png',
+            height: 50,
           ),
         ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
-    );
-  }
+      body: ModalProgressHUD(
+        inAsyncCall: showSpinner,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.translate('validate_email'),
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context
+                      .translate('enter_otp_for_email', args: {'email': email}),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 32),
 
-  Container _fieldTitle(double fem, double ffem, String title) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(49 * fem, 0 * fem, 49 * fem, 5 * fem),
-      child: Text(
-        title,
-        style: SafeGoogleFont(
-          'Montserrat',
-          fontSize: 14 * ffem,
-          fontWeight: FontWeight.w700,
-          height: 1.3333333333 * ffem / fem,
-          letterSpacing: 0.400000006 * fem,
-          color: Color(0xff6d7d8b),
+                // OTP input field
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.translate('otp_code'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OtpTextField(
+                        numberOfFields: 6,
+                        borderColor: AppTheme.primaryBlue,
+                        focusedBorderColor: AppTheme.primaryBlue,
+                        showFieldAsBox: true,
+                        borderWidth: 1.0,
+                        fieldWidth: 45.0,
+                        autoFocus: true,
+                        keyboardType: TextInputType.number,
+                        onSubmit: (String verificationCode) {
+                          setState(() {
+                            otp = verificationCode;
+                          });
+                        },
+                        onCodeChanged: (String code) {
+                          setState(() {
+                            otp = code;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Validate button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        await changeAndValidate();
+                      } catch (e) {
+                        showPopupMessage(
+                            context, context.translate('error'), e.toString());
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Text(
+                        context.translate('validate'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Resend OTP button
+                Center(
+                  child: TextButton(
+                    onPressed: () async {
+                      try {
+                        await modifyEmailOTP();
+                      } catch (e) {
+                        showPopupMessage(
+                            context, context.translate('error'), e.toString());
+                      }
+                    },
+                    child: Text(
+                      context.translate('resend_otp'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

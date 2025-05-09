@@ -29,28 +29,30 @@ class HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
+    // double baseWidth = 390; // fem and ffem are not strictly necessary if we use fixed sizes or Theme-based sizes
+    // double fem = MediaQuery.of(context).size.width / baseWidth;
+    // double ffem = fem * 0.97;
 
-    Color color;
-    String action;
+    Color amountColor;
+    String titleText;
+    IconData iconData;
 
-    if (deposit) {
-      color = Color(0xff00bf4c);
-      action = context.translate('deposit_action');
+    if (pending == true) {
+      amountColor = Color(0xfff59e0b); // Orange for pending
+      titleText = context.translate('pending');
+      iconData = Icons.hourglass_empty_rounded; // Icon for pending
+    } else if (deposit) {
+      amountColor = Colors.green; // Green for deposit
+      titleText = context.translate('deposit');
+      iconData = Icons.arrow_upward_rounded; // Icon for deposit
     } else {
-      color = Color(0xffed445d);
-      action = context.translate('withdraw_action');
-    } 
-
-    if (pending != null && pending == true) {
-      color = Color(0xfff59e0b);
-      action = context.translate('pending');
+      amountColor = Colors.red; // Red for withdrawal
+      titleText = context.translate('withdrawal');
+      iconData = Icons.arrow_downward_rounded; // Icon for withdrawal
     }
 
-    // Format the DateTime object
-    String formattedDateTime = formatDateTime(dateTime);
+    String formattedDate =
+        DateFormat('dd/MM/yyyy').format(dateTime); // Simplified date format
 
     return InkWell(
       onTap: () {
@@ -59,58 +61,61 @@ class HistoryCard extends StatelessWidget {
         }
       },
       child: Container(
-      padding: EdgeInsets.fromLTRB(24 * fem, 9 * fem, 24 * fem, 9 * fem),
-      margin: EdgeInsets.symmetric(vertical: 10 * fem),
-      width: double.infinity,
-      height: 63 * fem,
-      decoration: BoxDecoration(
-        color: Color(0xfff9f9f9),
-        borderRadius: BorderRadius.circular(13 * fem),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 0 * fem),
-            height: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${action} ${context.translate('money')}',
-                  style: SafeGoogleFont(
-                    'Montserrat',
-                    fontSize: 14 * ffem,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4285714286 * ffem / fem,
-                    color: Color(0xff25313c),
-                  ),
-                ),
-                Text(
-                    formattedDateTime,
-                  style: SafeGoogleFont(
-                    'Montserrat',
-                    fontSize: 10 * ffem,
-                    fontWeight: FontWeight.w500,
-                    height: 2 * ffem / fem,
-                    color: Color(0xff6d7d8b),
-                  ),
-                ),
-              ],
+        margin: const EdgeInsets.symmetric(
+            horizontal: 16.0,
+            vertical: 6.0), // Similar to TransactionRecord's outer padding
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16.0,
+            vertical: 12.0), // Similar to TransactionRecord's inner padding
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.0), // Consistent border radius
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: Offset(0, 2),
             ),
-          ),
-          Text(
-            '$amount XFA',
-            style: SafeGoogleFont(
-              'Montserrat',
-              fontSize: 14 * ffem,
-              fontWeight: FontWeight.w500,
-              height: 1.4285714286 * ffem / fem,
-              color: color,
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(iconData, color: amountColor, size: 28), // Added Icon
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    titleText,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                      color: Color(0xff25313c), // Consistent text color
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    formattedDate, // Use simplified date
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600], // Consistent subtitle color
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            Text(
+              '${deposit || pending == true ? "+" : "-"}${NumberFormat("#,##0", "fr_FR").format(amount)} FCFA', // Formatted amount with currency and sign
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold, // Bold amount
+                color: amountColor,
+              ),
+            ),
+          ],
         ),
       ),
     );

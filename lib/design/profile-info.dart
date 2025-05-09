@@ -5,18 +5,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:snipper_frontend/components/button.dart';
-import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/affiliation-page.dart';
 import 'package:snipper_frontend/design/contact-update.dart';
+import 'package:snipper_frontend/design/espace-partenaire.dart';
 import 'package:snipper_frontend/design/profile-modify.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/main.dart';
+import 'package:snipper_frontend/theme.dart';
 import 'package:snipper_frontend/utils.dart';
 // import 'package:http/http.dart' as http; // Remove http import
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:snipper_frontend/api_service.dart'; // Import ApiService
+import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart'; // Added import for ModalProgressHUD
 
 import 'package:path_provider/path_provider.dart';
 import 'package:contacts_service/contacts_service.dart';
@@ -50,6 +51,7 @@ class _ProfileState extends State<Profile> {
 
     token = prefs.getString('token');
     email = prefs.getString('email');
+    partnerPack = prefs.getString('partnerPack');
     name = prefs.getString('name');
     region = prefs.getString('region');
     phone = prefs.getString('phone');
@@ -137,16 +139,16 @@ class _ProfileState extends State<Profile> {
       if (response['statusCode'] != null &&
           response['statusCode'] >= 200 &&
           response['statusCode'] < 300) {
-    await deleteFile(avatar ?? '');
+        await deleteFile(avatar ?? '');
         await prefs.clear(); // Clear all prefs on successful logout
-    await deleteNotifications();
-    await deleteAllKindTransactions();
+        await deleteNotifications();
+        await deleteAllKindTransactions();
 
         String msg =
             response['message'] ?? context.translate('logged_out_successfully');
         String title = context.translate('logout');
         // Show message *before* navigation might be better UX
-    showPopupMessage(context, title, msg);
+        showPopupMessage(context, title, msg);
         if (mounted) context.go('/');
       } else {
         String errorMsg = response['message'] ??
@@ -175,16 +177,69 @@ class _ProfileState extends State<Profile> {
   String? token;
   String avatar = '';
   bool isSubscribed = false;
+  String? partnerPack;
   String downloadUrl = '';
   String downloadUpdateUrl = '';
 
   Future<String?> downloadVCF(BuildContext context) async {
-      if (kIsWeb) {
-      showPopupMessage(context, context.translate('error'),
-          context.translate('feature_not_available_web'));
-        return null;
-      }
+    if (kIsWeb) {
+      // Web-specific download logic, similar to contact-update.dart
+      if (!mounted) return null;
+      setState(() {
+        showSpinner = true;
+      });
+      try {
+        final response = await apiService.exportContacts({}); // No filters
+        final statusCode = response['statusCode'];
+        final vcfData = response['data'];
 
+        if (statusCode != null &&
+            statusCode >= 200 &&
+            statusCode < 300 &&
+            vcfData is String &&
+            vcfData.isNotEmpty) {
+          final timestamp = formatDateString(
+            DateTime.now().toString(),
+            pattern: 'yyyyMMdd_HHmmss',
+          );
+          final fileName = 'sbc_contacts_profile_$timestamp.vcf';
+          downloadFileWeb(vcfData,
+              fileName); // Assumes downloadFileWeb is globally accessible or in utils
+          if (mounted) {
+            showPopupMessage(context, context.translate('success'),
+                context.translate('download_started'));
+          }
+        } else {
+          String errorMsg = response['message'] ??
+              response['error'] ??
+              context.translate('vcf_download_failed');
+          if (vcfData == null || (vcfData is String && vcfData.isEmpty)) {
+            errorMsg = context.translate('vcf_data_empty');
+          }
+          if (mounted) {
+            showPopupMessage(context, context.translate('error'), errorMsg);
+          }
+          print(
+              'API Error downloadVCF (Web - Profile): ${response['statusCode']} - $errorMsg');
+        }
+      } catch (e) {
+        print('Exception in downloadVCF (Web - Profile): $e');
+        if (mounted) {
+          showPopupMessage(context, context.translate('error'),
+              context.translate('error_occurred'));
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            showSpinner = false;
+          });
+        }
+      }
+      return null; // No local path for web downloads
+    }
+
+    // Existing mobile download logic starts here
+    if (!mounted) return null; // Check mounted for mobile path too
     setState(() {
       showSpinner = true;
     });
@@ -285,430 +340,368 @@ class _ProfileState extends State<Profile> {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
-
-    var onTap = () async {
-      try {
-        if (isSubscribed) {
-          refreshPageWait();
-          if (kIsWeb) {
-            final otp = await createContactsOTP(context);
-            launchURL('$downloadUrl&otp=$otp');
-            refreshPageRemove();
-          } else {
-            final path = await downloadVCF(context);
-
-            print(path);
-
-            refreshPageRemove();
-            if (path == null) {
-              return print('Error somewhere');
-            }
-
-            final contacts = await readVcfFile(path);
-            await saveContacts(contacts);
-          }
-        } else {
-          String msg = context
-              .translate('not_subscribed'); // 'Vous n\'êtes pas abonné😔'
-          String title = context.translate('error'); // 'Erreur'
-          showPopupMessage(context, title, msg);
-        }
-      } catch (e) {
-        String msg =
-            context.translate('error_occurred'); // 'An Error occured😥'
-        String title = context.translate('error'); // 'Error'
-        showPopupMessage(context, title, msg);
-        print(e);
-        refreshPageRemove();
-      }
-    };
-    return SimpleScaffold(
-      actions: [
-        IconButton(
-          icon: Row(
-            children: [
-              Icon(Icons.language),
-              Text(
-                Localizations.localeOf(context).languageCode.toUpperCase(),
-                style: SafeGoogleFont(
-                  'Montserrat',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  height: 1.5,
-                ),
-              ),
-              SizedBox(width: 5),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          context.translate('profile'),
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
           ),
-          onPressed: () {
-            // Toggle between English and French
-            Locale newLocale =
-                Localizations.localeOf(context).languageCode == 'en'
-                    ? Locale('fr')
-                    : Locale('en');
-            MyApp.setLocale(context, newLocale);
-          },
         ),
-      ],
-      title: context.translate('profile'), // 'Profile'
-      inAsyncCall: showSpinner,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(0 * fem, 15 * fem, 0 * fem, 0 * fem),
-        width: double.infinity,
-        child: downloadUrl != '' && downloadUpdateUrl != ''
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          Container(
-                            width: 102 * fem,
-                            height: 102 * fem,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(61 * fem),
-                              color: Color(0xffc4c4c4),
-                              image: DecorationImage(
-                                fit: BoxFit.cover,
-                                image: profileImage(avatar),
-                              ),
-                            ),
-                          ),
-                          if (isSubscribed)
-                            Align(
-                              alignment: Alignment.bottomRight,
-                              child: Image.asset(
-                                'assets/assets/images/Certified - ${isCibleSubscribed ? 'Orange' : 'Blue'}.png',
-                                width: 40,
-                                height: 40,
-                              ),
-                            ),
-                        ],
-                      ),
-                      SizedBox(width: 20),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            capitalizeWords(name),
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              letterSpacing: 0.0 * fem,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                              height: 1.4,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          Text(
-                            '${isSubscribed ? (isCibleSubscribed ? context.translate('cible_subscriber') : context.translate('classique_subscriber')) : context.translate('user')} SBC',
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              height: 1.4,
-                              color: Color(0xff25313c),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                      SizedBox(width: 50),
-                    ],
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: Row(
+              children: [
+                Icon(Icons.language, color: Colors.black),
+                Text(
+                  Localizations.localeOf(context).languageCode.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
                   ),
-                  SizedBox(
-                    height: 25.0,
-                  ),
-                  SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
+                ),
+                SizedBox(width: 5),
+              ],
+            ),
+            onPressed: () {
+              // Toggle between English and French
+              Locale newLocale =
+                  Localizations.localeOf(context).languageCode == 'en'
+                      ? Locale('fr')
+                      : Locale('en');
+              MyApp.setLocale(context, newLocale);
+            },
+          ),
+        ],
+      ),
+      body: ModalProgressHUD(
+        inAsyncCall: showSpinner,
+        child: SafeArea(
+          child: downloadUrl != '' && downloadUpdateUrl != ''
+              ? SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20.0, vertical: 16.0),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 5.0, horizontal: 40.0),
-                          leading: Icon(Icons.person),
-                          title: Text(
-                            context.translate(
-                                'modify_profile'), // 'Modifier profil'
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xff212121),
-                            ),
+                        // Profile Header
+                        Center(
+                          child: Column(
+                            children: [
+                              Stack(
+                                clipBehavior: Clip.none,
+                                alignment: Alignment.bottomRight,
+                                children: [
+                                  Container(
+                                    width: 120,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(60),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 10,
+                                          spreadRadius: 0,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                      image: DecorationImage(
+                                        fit: BoxFit.cover,
+                                        image: profileImage(
+                                          prefs.getString('avatarId'),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSubscribed)
+                                    Positioned(
+                                      bottom: 0,
+                                      right: 0,
+                                      child: Image.asset(
+                                        'assets/assets/images/Certified - ${isCibleSubscribed ? 'Orange' : 'Blue'}.png',
+                                        width: 40,
+                                        height: 40,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                capitalizeWords(name ?? ''),
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${isSubscribed ? (isCibleSubscribed ? context.translate('cible_subscriber') : context.translate('classique_subscriber')) : context.translate('user')} SBC',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
-                          onTap: () {
-                            context
-                                .pushNamed(ProfileMod.id)
-                                .then((value) => refreshPage());
-                          },
                         ),
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 5.0, horizontal: 40.0),
-                          leading: Icon(Icons.people_rounded),
-                          title: Text(
-                            context.translate('affiliation'), // 'Affiliation'
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xff212121),
-                            ),
+
+                        const SizedBox(height: 32),
+
+                        // Profile Menu Items
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                spreadRadius: 0,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          onTap: () {
-                            context.pushNamed(Affiliation.id);
-                          },
+                          child: Column(
+                            children: [
+                              _buildMenuItem(
+                                context,
+                                Icons.person,
+                                context.translate('modify_profile'),
+                                () {
+                                  context
+                                      .pushNamed(ProfileMod.id)
+                                      .then((value) => refreshPage());
+                                },
+                              ),
+                              const Divider(height: 1),
+                              _buildMenuItem(
+                                context,
+                                Icons.people_rounded,
+                                context.translate('affiliation'),
+                                () {
+                                  context.pushNamed(Affiliation.id);
+                                },
+                              ),
+                              const Divider(height: 1),
+                              _buildMenuItem(
+                                context,
+                                Icons.person_pin_rounded,
+                                context.translate('sponsor_info_title'),
+                                () {
+                                  context.pushNamed(SponsorInfoPage.id);
+                                },
+                              ),
+                              const Divider(height: 1),
+                              _buildMenuItem(
+                                context,
+                                Icons.phone_rounded,
+                                context.translate('contacts'),
+                                () async {
+                                  if (!isSubscribed) {
+                                    showPopupMessage(
+                                        context,
+                                        context.translate('error'),
+                                        context.translate('not_subscribed'));
+                                    return;
+                                  }
+                                  await downloadVCF(context);
+                                },
+                              ),
+                              const Divider(height: 1),
+                              _buildMenuItem(
+                                context,
+                                Icons.person_pin_rounded,
+                                context.translate('partner_space'),
+                                () {
+                                  if (!isSubscribed && partnerPack != null) {
+                                    context.pushNamed(EspacePartenaire.id);
+                                  } else {
+                                    showPopupMessage(
+                                        context,
+                                        context.translate('error'),
+                                        context.translate('not_subscribed'));
+                                  }
+                                },
+                              ),
+                              const Divider(height: 1),
+                              _buildMenuItem(
+                                context,
+                                Icons.settings_phone_rounded,
+                                context.translate('update_contacts'),
+                                () {
+                                  if (isSubscribed) {
+                                    context.pushNamed(ContactUpdate.id);
+                                  } else {
+                                    showPopupMessage(
+                                        context,
+                                        context.translate('error'),
+                                        context.translate('not_subscribed'));
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ),
-                        // Re-add the Sponsor Info tile without the if condition
-                        _buildListTile(
-                          context,
-                          fem,
-                          ffem,
-                          Icons.person_pin_rounded, // Icon for sponsor
-                          context.translate(
-                              'sponsor_info_title'), // Use existing translation
-                          () {
-                            context.pushNamed(SponsorInfoPage.id);
-                          },
+
+                        const SizedBox(height: 24),
+
+                        // Social Media Links
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                spreadRadius: 0,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              _buildSocialMenuItem(
+                                context,
+                                'assets/assets/images/Whatsapp.png',
+                                context.translate('join_sbc_community'),
+                                () {
+                                  if (isSubscribed) {
+                                    final urlToLaunch =
+                                        dynamicWhatsappUrl ?? whatsappLink;
+                                    if (urlToLaunch != null &&
+                                        urlToLaunch.isNotEmpty) {
+                                      launchURL(urlToLaunch);
+                                    } else {
+                                      showPopupMessage(
+                                          context,
+                                          context.translate('error'),
+                                          context
+                                              .translate('link_not_available'));
+                                    }
+                                  } else {
+                                    showPopupMessage(
+                                        context,
+                                        context.translate('error'),
+                                        context.translate('not_subscribed'));
+                                  }
+                                },
+                              ),
+                              const Divider(height: 1),
+                              _buildSocialMenuItem(
+                                context,
+                                'assets/assets/images/telegram.png',
+                                context.translate('join_trading_training'),
+                                () {
+                                  if (isSubscribed) {
+                                    final urlToLaunch =
+                                        dynamicTelegramUrl ?? telegramLink;
+                                    if (urlToLaunch != null &&
+                                        urlToLaunch.isNotEmpty) {
+                                      launchURL(urlToLaunch);
+                                    } else {
+                                      showPopupMessage(
+                                          context,
+                                          context.translate('error'),
+                                          context
+                                              .translate('link_not_available'));
+                                    }
+                                  } else {
+                                    showPopupMessage(
+                                        context,
+                                        context.translate('error'),
+                                        context.translate('not_subscribed'));
+                                  }
+                                },
+                              ),
+                              const Divider(height: 1),
+                              _buildSocialMenuItem(
+                                context,
+                                'assets/assets/images/telegram.png',
+                                context.translate('marketing_360'),
+                                () {
+                                  if (isSubscribed) {
+                                    launchURL('https://t.me/+BLBOGqPGjSwwNmE0');
+                                  } else {
+                                    showPopupMessage(
+                                        context,
+                                        context.translate('error'),
+                                        context.translate('not_subscribed'));
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ),
-                        // ListTile(
-                        //   contentPadding: EdgeInsets.symmetric(
-                        //       vertical: 5.0, horizontal: 40.0),
-                        //   leading: Icon(Icons.phone_rounded),
-                        //   title: Text(
-                        //     context.translate('contacts'), // 'Contacts'
-                        //     style: SafeGoogleFont(
-                        //       'Montserrat',
-                        //       fontSize: 15,
-                        //       fontWeight: FontWeight.w400,
-                        //       color: Color(0xff212121),
-                        //     ),
-                        //   ),
-                        //   onTap: onTap,
-                        // ),
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 5.0, horizontal: 40.0),
-                          leading: Icon(Icons.settings_phone_rounded),
-                          title: Text(
-                            context.translate(
-                                'update_contacts'), // 'Mise a jour contacts'
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xff212121),
-                            ),
-                          ),
-                          onTap: () {
-                            if (isSubscribed) {
-                              context.pushNamed(ContactUpdate.id);
-                            } else {
-                              String msg = context.translate(
-                                  'not_subscribed'); // 'Vous n\'êtes pas abonné😔'
-                              String title =
-                                  context.translate('error'); // 'Erreur'
-                              showPopupMessage(context, title, msg);
-                            }
-                          },
-                        ),
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 5.0, horizontal: 40.0),
-                          leading: Image.asset(
-                            'assets/assets/images/Whatsapp.png',
-                            width: 23,
-                            height: 23,
-                          ),
-                          title: Text(
-                            context.translate(
-                                'join_sbc_community'), // 'Rejoindre la Communauté SBC'
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xff212121),
-                            ),
-                          ),
-                          onTap: () {
-                            if (isSubscribed) {
-                              final urlToLaunch = dynamicWhatsappUrl ??
-                                  whatsappLink; // Use dynamic URL first
-                              if (urlToLaunch != null &&
-                                  urlToLaunch.isNotEmpty) {
-                                launchURL(urlToLaunch);
-                              } else {
+
+                        const SizedBox(height: 32),
+
+                        // Logout Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              try {
+                                setState(() {
+                                  showSpinner = true;
+                                });
+                                await logoutUser();
+                              } catch (e) {
+                                setState(() {
+                                  showSpinner = false;
+                                });
                                 showPopupMessage(
                                     context,
                                     context.translate('error'),
-                                    context.translate(
-                                        'link_not_available')); // Add translation
+                                    context.translate('error_occurred'));
+                                print(e);
                               }
-                            } else {
-                              String msg = context.translate(
-                                  'not_subscribed'); // 'Vous n'etes pas abonné😔'
-                              String title =
-                                  context.translate('error'); // 'Erreur'
-                              showPopupMessage(context, title, msg);
-                            }
-                          },
-                        ),
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 5.0, horizontal: 40.0),
-                          leading: Image.asset(
-                            'assets/assets/images/telegram.png',
-                            width: 23,
-                            height: 23,
-                          ),
-                          title: Text(
-                            context.translate(
-                                'join_trading_training'), // 'Rejoindre la Formation en Trading'
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xff212121),
+                            },
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor: Colors.redAccent,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              context.translate('logout'),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                          onTap: () {
-                            if (isSubscribed) {
-                              final urlToLaunch = dynamicTelegramUrl ??
-                                  telegramLink; // Use dynamic URL first
-                              if (urlToLaunch != null &&
-                                  urlToLaunch.isNotEmpty) {
-                                launchURL(urlToLaunch);
-                              } else {
-                                showPopupMessage(
-                                    context,
-                                    context.translate('error'),
-                                    context.translate(
-                                        'link_not_available')); // Add translation
-                              }
-                            } else {
-                              String msg = context.translate(
-                                  'not_subscribed'); // 'Vous n'etes pas abonné😔'
-                              String title =
-                                  context.translate('error'); // 'Erreur'
-                              showPopupMessage(context, title, msg);
-                            }
-                          },
-                        ),
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 5.0, horizontal: 40.0),
-                          leading: Image.asset(
-                            'assets/assets/images/telegram.png',
-                            width: 23,
-                            height: 23,
-                          ),
-                          title: Text(
-                            context
-                                .translate('marketing_360'), // 'MARKETING 360°'
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xff212121),
-                            ),
-                          ),
-                          onTap: () {
-                            if (isSubscribed) {
-                              launchURL('https://t.me/+BLBOGqPGjSwwNmE0');
-                            } else {
-                              String msg = context.translate(
-                                  'not_subscribed'); // 'Vous n'etes pas abonné😔'
-                              String title =
-                                  context.translate('error'); // 'Erreur'
-                              showPopupMessage(context, title, msg);
-                            }
-                          },
                         ),
 
-                        Divider(),
+                        const SizedBox(height: 24),
+
+                        // Footer
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              context.translate('developed_by_simbtech'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  SizedBox(
-                    height: 15.0 * fem,
-                  ),
-                  ReusableButton(
-                    title: context.translate('logout'), // 'Deconnexion'
-                    onPress: () async {
-                      try {
-                        setState(() {
-                          showSpinner = true;
-                        });
-
-                        await logoutUser();
-
-                        setState(() {
-                          showSpinner = false;
-                        });
-
-                        String msg = context.translate(
-                            'logged_out_successfully'); // 'You were successfully logged out'
-                        String title = context.translate('logout'); // 'Logout'
-                        showPopupMessage(context, title, msg);
-                      } catch (e) {
-                        setState(() {
-                          showSpinner = false;
-                        });
-                        String msg = context.translate(
-                            'error_occurred'); // 'An Error has occurred please try again'
-                        String title = context.translate('error'); // 'Error'
-                        showPopupMessage(context, title, msg);
-                        print(e);
-                      }
-                    },
-                  ),
-                  SizedBox(
-                    height: 40,
-                  ),
-                  Container(
-                    margin:
-                        EdgeInsets.fromLTRB(1 * fem, 0 * fem, 0 * fem, 0 * fem),
-                    width: 339 * fem,
-                    height: 50 * fem,
-                    decoration: BoxDecoration(
-                      color: Color(0xffffffff),
-                      borderRadius: BorderRadius.circular(7 * fem),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0x3f25313c),
-                          offset: Offset(0 * fem, 0 * fem),
-                          blurRadius: 2.1500000954 * fem,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        context.translate(
-                            'developed_by_simbtech'), // 'Developpé par Simbtech\n copyright ©'
-                        textAlign: TextAlign.center,
-                        style: SafeGoogleFont(
-                          'Montserrat',
-                          fontSize: 12 * fem,
-                          fontWeight: FontWeight.w500,
-                          height: 1.3333333333 * fem / fem,
-                          letterSpacing: 0.400000006 * fem,
-                          color: Color(0xff25313c),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : const SizedBox(),
+                )
+              : const Center(child: CircularProgressIndicator()),
+        ),
       ),
     );
   }
@@ -846,20 +839,38 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-  Widget _buildListTile(BuildContext context, double fem, double ffem,
-      IconData icon, String title, VoidCallback onTap) {
+  Widget _buildMenuItem(
+      BuildContext context, IconData icon, String title, VoidCallback onTap) {
     return ListTile(
-      contentPadding: EdgeInsets.symmetric(vertical: 5.0, horizontal: 40.0),
-      leading: Icon(icon),
+      leading: Icon(icon, color: AppTheme.primaryBlue),
       title: Text(
         title,
-        style: SafeGoogleFont(
-          'Montserrat',
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-          color: Color(0xff212121),
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
         ),
       ),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildSocialMenuItem(
+      BuildContext context, String iconPath, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Image.asset(
+        iconPath,
+        width: 24,
+        height: 24,
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
   }

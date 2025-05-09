@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:snipper_frontend/localization_extension.dart'; // Import your localization extension
+import 'package:snipper_frontend/localization_extension.dart';
 
 class Scene extends StatelessWidget {
   @override
@@ -8,584 +8,238 @@ class Scene extends StatelessWidget {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
-    
-    return Container(
-      width: double.infinity,
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Color(0xffffffff),
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Image.asset(
+          'assets/design/images/logo.png',
+          height: 50,
         ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.account_balance_wallet, color: Colors.black87),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: Icon(Icons.notifications, color: Colors.black87),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: Icon(Icons.person, color: Colors.black87),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 13 * fem),
-              padding: EdgeInsets.fromLTRB(0 * fem, 6 * fem, 0 * fem, 1 * fem),
+              padding:
+                  EdgeInsets.fromLTRB(24 * fem, 24 * fem, 24 * fem, 24 * fem),
               width: double.infinity,
-              height: 105 * fem,
-              decoration: BoxDecoration(
-                color: Color(0xff25313c),
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .secondary
-                        .withOpacity(0.25),
-                    offset: Offset(0 * fem, 2 * fem),
-                    blurRadius: 5 * fem,
-                  ),
-                ],
-              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     margin: EdgeInsets.fromLTRB(
-                        55 * fem, 0 * fem, 26.7 * fem, 0 * fem),
-                    width: double.infinity,
+                        0 * fem, 0 * fem, 0 * fem, 20 * fem),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          margin: EdgeInsets.fromLTRB(
-                              0 * fem, 0 * fem, 75.3 * fem, 9 * fem),
-                          width: 6 * fem,
-                          height: 6 * fem,
-                          child: Image.asset(
-                            'assets/design/images/mic-cam-6QH.png',
-                            width: 6 * fem,
-                            height: 6 * fem,
+                        Text(
+                          context.translate('past_events'),
+                          style: TextStyle(
+                            fontSize: 18 * ffem,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).primaryColor,
                           ),
                         ),
-                        Container(
-                          width: double.infinity,
-                          height: 17 * fem,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Center(
-                                child: Container(
-                                  margin: EdgeInsets.fromLTRB(
-                                      0 * fem, 0 * fem, 194 * fem, 0 * fem),
-                                  child: Text(
-                                    '09:41',
-                                    textAlign: TextAlign.center,
-                                    style: SafeGoogleFont(
-                                      'SF Pro Text',
-                                      fontSize: 17 * ffem,
-                                      fontWeight: FontWeight.w600,
-                                      height: 1 * ffem / fem,
-                                      letterSpacing: -0.5 * fem,
-                                      color: Color(0xffffffff),
-                                    ),
-                                  ),
+                        SizedBox(height: 16 * fem),
+                        GestureDetector(
+                          onTap: () {},
+                          child: Container(
+                            width: double.infinity,
+                            height: 240 * fem,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16 * fem),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
                                 ),
-                              ),
-                              Container(
-                                margin: EdgeInsets.fromLTRB(
-                                    0 * fem, 2 * fem, 0 * fem, 2 * fem),
-                                height: double.infinity,
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      margin: EdgeInsets.fromLTRB(
-                                          0 * fem, 0 * fem, 6 * fem, 0 * fem),
-                                      width: 19.97 * fem,
-                                      height: 12 * fem,
-                                      child: Image.asset(
-                                        'assets/design/images/elements-signal-wwP.png',
-                                        width: 19.97 * fem,
-                                        height: 12 * fem,
-                                      ),
-                                    ),
-                                    Container(
-                                      margin: EdgeInsets.fromLTRB(
-                                          0 * fem, 0 * fem, 6 * fem, 0 * fem),
-                                      width: 17 * fem,
-                                      height: 12.5 * fem,
-                                      child: Image.asset(
-                                        'assets/design/images/elements-connection-ANm.png',
-                                        width: 17 * fem,
-                                        height: 12.5 * fem,
-                                      ),
-                                    ),
-                                    Container(
-                                      width: 27.33 * fem,
-                                      height: 13 * fem,
-                                      child: Image.asset(
-                                        'assets/design/images/elements-battery-moP.png',
-                                        width: 27.33 * fem,
-                                        height: 13 * fem,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.fromLTRB(
-                        16 * fem, 11.5 * fem, 20.88 * fem, 11.5 * fem),
-                    width: double.infinity,
-                    height: 56 * fem,
-                    decoration: BoxDecoration(
-                      color: Color(0xff25313c),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          margin: EdgeInsets.fromLTRB(
-                              0 * fem, 0 * fem, 168 * fem, 0 * fem),
-                          height: double.infinity,
-                          child: Center(
-                            child: SizedBox(
-                              width: 83 * fem,
-                              height: 33 * fem,
-                              child: Image.asset(
-                                'assets/design/images/logo-sbc-final-1-6ch.png',
+                              ],
+                              image: DecorationImage(
+                                image: AssetImage(
+                                    'assets/design/images/rectangle-2771-54d.png'),
                                 fit: BoxFit.cover,
                               ),
                             ),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    margin: EdgeInsets.only(top: 20 * fem),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.translate('upcoming_events'),
+                          style: TextStyle(
+                            fontSize: 18 * ffem,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        SizedBox(height: 16 * fem),
                         Container(
-                          margin: EdgeInsets.fromLTRB(
-                              0 * fem, 4.5 * fem, 0 * fem, 4.5 * fem),
-                          height: double.infinity,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                margin: EdgeInsets.fromLTRB(
-                                    0 * fem, 0 * fem, 15 * fem, 0 * fem),
-                                child: TextButton(
-                                  onPressed: () {},
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                  child: Container(
-                                    width: 24 * fem,
-                                    height: 24 * fem,
-                                    child: Image.asset(
-                                      'assets/design/images/wallet-LDP.png',
-                                      width: 24 * fem,
-                                      height: 24 * fem,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                margin: EdgeInsets.fromLTRB(
-                                    0 * fem, 0 * fem, 15 * fem, 0 * fem),
-                                child: TextButton(
-                                  onPressed: () {},
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                  child: Container(
-                                    width: 24.12 * fem,
-                                    height: 24 * fem,
-                                    child: Image.asset(
-                                      'assets/design/images/trailing-icon-1-QzD.png',
-                                      width: 24.12 * fem,
-                                      height: 24 * fem,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {},
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                ),
-                                child: Container(
-                                  width: 24 * fem,
-                                  height: 24 * fem,
-                                  child: Image.asset(
-                                    'assets/design/images/supervisedusercircle-WCR.png',
-                                    width: 24 * fem,
-                                    height: 24 * fem,
-                                  ),
-                                ),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16 * fem),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              margin: EdgeInsets.fromLTRB(24 * fem, 0 * fem, 25 * fem, 6 * fem),
-              width: double.infinity,
-              height: 639 * fem,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    margin: EdgeInsets.fromLTRB(
-                        0 * fem, 0 * fem, 1 * fem, 20 * fem),
-                    width: 340 * fem,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: EdgeInsets.fromLTRB(
-                              0 * fem, 0 * fem, 0 * fem, 15 * fem),
-                          child: Text(
-                            context
-                                .translate('past_events'), // Translated string
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 16 * ffem,
-                              fontWeight: FontWeight.w600,
-                              height: 1.25 * ffem / fem,
-                              color: Color(0xfff49101),
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {},
-                          style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                          child: Container(
-                            width: double.infinity,
-                            child: Center(
-                              child: SizedBox(
-                                width: 340 * fem,
-                                height: 240 * fem,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(24 * fem),
-                                  child: Image.asset(
-                                    'assets/design/images/rectangle-2771-54d.png',
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    margin:
-                        EdgeInsets.fromLTRB(1 * fem, 0 * fem, 0 * fem, 0 * fem),
-                    width: 340 * fem,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: EdgeInsets.fromLTRB(
-                              6 * fem, 0 * fem, 0 * fem, 15 * fem),
-                          child: Text(
-                            context.translate(
-                                'upcoming_events'), // Translated string
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 16 * ffem,
-                              fontWeight: FontWeight.w600,
-                              height: 1.25 * ffem / fem,
-                              color: Color(0xfff49101),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: double.infinity,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 340 * fem,
-                                height: 240 * fem,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(24 * fem),
-                                  child: Image.asset(
-                                    'assets/design/images/rectangle-2771-cNm.png',
-                                    fit: BoxFit.cover,
-                                  ),
+                              ClipRRect(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(16 * fem),
+                                ),
+                                child: Image.asset(
+                                  'assets/design/images/rectangle-2771-cNm.png',
+                                  width: double.infinity,
+                                  height: 240 * fem,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
-                              SizedBox(height: 10 * fem),
-                              Text(
-                                context.translate(
-                                    'visit_waza_park'), // Translated string
-                                style: SafeGoogleFont(
-                                  'Montserrat',
-                                  fontSize: 16 * ffem,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.25 * ffem / fem,
-                                  color: Color(0xff25313c),
-                                ),
-                              ),
-                              SizedBox(height: 10 * fem),
-                              Container(
-                                width: double.infinity,
-                                height: 40 * fem,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(66 * fem),
-                                ),
-                                child: Center(
-                                  child: Center(
-                                    child: Text(
-                                      context.translate(
-                                          'book_now'), // Translated string
-                                      textAlign: TextAlign.center,
-                                      style: SafeGoogleFont(
-                                        'Montserrat',
-                                        fontSize: 15 * ffem,
-                                        fontWeight: FontWeight.w600,
-                                        height: 1.6 * ffem / fem,
-                                        color: Color(0xffffffff),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 391 * fem,
-              height: 94 * fem,
-              decoration: BoxDecoration(
-                color: Color(0xfff1f5fb),
-              ),
-              child: Container(
-                width: double.infinity,
-                height: double.infinity,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: () {},
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                      child: Container(
-                        padding: EdgeInsets.fromLTRB(
-                            7.1 * fem, 21 * fem, 7.1 * fem, 19 * fem),
-                        height: double.infinity,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              margin: EdgeInsets.fromLTRB(
-                                  0 * fem, 0 * fem, 0 * fem, 6 * fem),
-                              width: 64 * fem,
-                              height: 32 * fem,
-                              child: Image.asset(
-                                'assets/design/images/icon-DY5.png',
-                                width: 64 * fem,
-                                height: 32 * fem,
-                              ),
-                            ),
-                            Container(
-                              margin: EdgeInsets.fromLTRB(
-                                  0 * fem, 0 * fem, 0 * fem, 0 * fem),
-                              child: Text(
-                                context.translate('home'), // Translated string
-                                textAlign: TextAlign.center,
-                                style: SafeGoogleFont(
-                                  'Montserrat',
-                                  fontSize: 10 * ffem,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.6 * ffem / fem,
-                                  letterSpacing: 0.4 * fem,
-                                  color: Color(0xff141b2c),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                      child: Container(
-                        padding: EdgeInsets.fromLTRB(
-                            19.1 * fem, 28.96 * fem, 19.1 * fem, 21 * fem),
-                        height: double.infinity,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              margin: EdgeInsets.fromLTRB(
-                                  0 * fem, 0 * fem, 0.01 * fem, 12.27 * fem),
-                              width: 27.57 * fem,
-                              height: 15.77 * fem,
-                              child: Image.asset(
-                                'assets/design/images/shareplay-Hww.png',
-                                width: 27.57 * fem,
-                                height: 15.77 * fem,
-                              ),
-                            ),
-                            Text(
-                              context.translate('publish'), // Translated string
-                              textAlign: TextAlign.center,
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 10 * ffem,
-                                fontWeight: FontWeight.w500,
-                                height: 1.6 * ffem / fem,
-                                letterSpacing: 0.4 * fem,
-                                color: Color(0xff444746),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: 156.4 * fem,
-                      height: double.infinity,
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            left: 0 * fem,
-                            top: 0 * fem,
-                            child: TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero),
-                              child: Container(
-                                padding: EdgeInsets.fromLTRB(
-                                    3.6 * fem, 21 * fem, 3.6 * fem, 19 * fem),
-                                width: 78.2 * fem,
-                                height: 94 * fem,
+                              Padding(
+                                padding: EdgeInsets.all(16 * fem),
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      margin: EdgeInsets.fromLTRB(
-                                          0 * fem, 0 * fem, 0 * fem, 6 * fem),
-                                      width: 64 * fem,
-                                      height: 32 * fem,
-                                      child: Image.asset(
-                                        'assets/design/images/icon-d9B.png',
-                                        width: 64 * fem,
-                                        height: 32 * fem,
+                                    Text(
+                                      context.translate('visit_waza_park'),
+                                      style: TextStyle(
+                                        fontSize: 18 * ffem,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
                                       ),
                                     ),
-                                    Text(
-                                      context.translate(
-                                          'marketplace'), // Translated string
-                                      textAlign: TextAlign.center,
-                                      style: SafeGoogleFont(
-                                        'Montserrat',
-                                        fontSize: 10 * ffem,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.6 * ffem / fem,
-                                        letterSpacing: 0.4 * fem,
-                                        color: Color(0xff444746),
+                                    SizedBox(height: 16 * fem),
+                                    ElevatedButton(
+                                      onPressed: () {},
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            Theme.of(context).primaryColor,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(30 * fem),
+                                        ),
+                                        minimumSize:
+                                            Size(double.infinity, 50 * fem),
+                                      ),
+                                      child: Text(
+                                        context.translate('book_now'),
+                                        style: TextStyle(
+                                          fontSize: 16 * ffem,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                          Positioned(
-                            left: 78.1999511719 * fem,
-                            top: 0 * fem,
-                            child: Container(
-                              padding: EdgeInsets.fromLTRB(
-                                  0 * fem, 17 * fem, 0 * fem, 15 * fem),
-                              width: 78.2 * fem,
-                              height: 94 * fem,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    margin: EdgeInsets.fromLTRB(
-                                        0 * fem, 0 * fem, 0 * fem, 6 * fem),
-                                    width: 104 * fem,
-                                    height: 40 * fem,
-                                    child: Image.asset(
-                                      'assets/design/images/icon-Zvh.png',
-                                      width: 104 * fem,
-                                      height: 40 * fem,
-                                    ),
-                                  ),
-                                  Text(
-                                    context.translate(
-                                        'entertainment_tourism'), // Translated string
-                                    textAlign: TextAlign.center,
-                                    style: SafeGoogleFont(
-                                      'Montserrat',
-                                      fontSize: 10 * ffem,
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.6 * ffem / fem,
-                                      letterSpacing: 0.4 * fem,
-                                      color: Color(0xff444746),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                      child: Container(
-                        padding: EdgeInsets.fromLTRB(
-                            0 * fem, 21 * fem, 0 * fem, 19 * fem),
-                        width: 78.2 * fem,
-                        height: double.infinity,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              margin: EdgeInsets.fromLTRB(
-                                  0 * fem, 0 * fem, 0 * fem, 6 * fem),
-                              width: 64 * fem,
-                              height: 32 * fem,
-                              child: Image.asset(
-                                'assets/design/images/icon-JKb.png',
-                                width: 64 * fem,
-                                height: 32 * fem,
-                              ),
-                            ),
-                            Text(
-                              context
-                                  .translate('investment'), // Translated string
-                              textAlign: TextAlign.center,
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 10 * ffem,
-                                fontWeight: FontWeight.w500,
-                                height: 1.6 * ffem / fem,
-                                letterSpacing: 0.4 * fem,
-                                color: Color(0xff444746),
-                              ),
-                            ),
-                          ],
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: Container(
+        height: 80 * fem,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _bottomNavItem(
+                context, fem, ffem, Icons.home, context.translate('home')),
+            _bottomNavItem(
+                context, fem, ffem, Icons.add, context.translate('publish')),
+            _bottomNavItem(context, fem, ffem, Icons.shopping_bag,
+                context.translate('marketplace')),
+            _bottomNavItem(
+              context,
+              fem,
+              ffem,
+              Icons.nightlife,
+              context.translate('entertainment_tourism'),
+              isSelected: true,
+            ),
+            _bottomNavItem(context, fem, ffem, Icons.trending_up,
+                context.translate('investment')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bottomNavItem(BuildContext context, double fem, double ffem,
+      IconData icon, String label,
+      {bool isSelected = false}) {
+    return InkWell(
+      onTap: () {},
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? Theme.of(context).primaryColor : Colors.grey,
+            size: 28 * fem,
+          ),
+          SizedBox(height: 4 * fem),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12 * ffem,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected ? Theme.of(context).primaryColor : Colors.grey,
+            ),
+          ),
+        ],
       ),
     );
   }

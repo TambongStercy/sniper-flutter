@@ -1,6 +1,3 @@
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
@@ -8,8 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/pricingcard.dart';
-import 'package:snipper_frontend/config.dart';
-import 'package:snipper_frontend/design/accueil.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 
@@ -86,7 +81,7 @@ class _SubscritionState extends State<Subscrition> {
               'benefit', totalBenefits); // Save totalBenefits as benefit
         if (momo != null) prefs.setString('momo', momo);
         if (momoCorrespondent != null)
-            prefs.setString('momoCorrespondent', momoCorrespondent);
+          prefs.setString('momoCorrespondent', momoCorrespondent);
         if (fetchedAvatar != null) prefs.setString('avatar', fetchedAvatar);
         prefs.setBool('isSubscribed', this.isSubscribed);
         prefs.setStringList('activeSubscriptions',
@@ -180,7 +175,7 @@ class _SubscritionState extends State<Subscrition> {
         // Check if sessionId is valid String before proceeding
         if (rawSessionId is String && rawSessionId.isNotEmpty) {
           final String sessionId = rawSessionId; // Cast to String
-        final paymentLink = responseData?['paymentDetails']?['paymentLink'] ??
+          final paymentLink = responseData?['paymentDetails']?['paymentLink'] ??
               responseData?['paymentLink']; // Existing logic for paymentLink
 
           // Now it's safe to generate the URL
@@ -231,13 +226,13 @@ class _SubscritionState extends State<Subscrition> {
       if (response['statusCode'] != null &&
           response['statusCode'] >= 200 &&
           response['statusCode'] < 300) {
-    await deleteFile(avatar ?? '');
+        await deleteFile(avatar ?? '');
         await prefs.clear();
 
         String msg =
             response['message'] ?? context.translate('logged_out_successfully');
         String title = context.translate('logout');
-    showPopupMessage(context, title, msg);
+        showPopupMessage(context, title, msg);
 
         if (mounted) context.go('/');
       } else {
@@ -267,116 +262,132 @@ class _SubscritionState extends State<Subscrition> {
     double ffem = fem * 0.97;
 
     return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Image.asset(
+          'assets/design/images/logo.png',
+          height: 50,
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: getInfos,
         child: SafeArea(
           child: ModalProgressHUD(
             inAsyncCall: showSpinner,
-            child: Container(
-              margin:
-                  EdgeInsets.fromLTRB(15 * fem, 20 * fem, 15 * fem, 14 * fem),
-              padding: EdgeInsets.fromLTRB(3 * fem, 0 * fem, 0 * fem, 0 * fem),
-              width: double.infinity,
-              child: ListView(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(24, 16, 24, 24),
+              physics: AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 771.27 * fem,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(
-                          height: 40.0,
-                        ),
-                        Container(
-                          margin: EdgeInsets.only(top: 46 * fem),
-                          child: Text(
-                            'Sniper Business Center',
-                            textAlign: TextAlign.left,
-                            style: SafeGoogleFont(
-                              'Mulish',
-                              fontSize: 30 * ffem,
-                              fontWeight: FontWeight.w700,
-                              height: 1.255 * ffem / fem,
-                              color: Color(0xff000000),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          margin: EdgeInsets.only(top: 34 * fem),
-                          child: Text(
-                            context.translate('subscription'),
-                            textAlign: TextAlign.left,
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 20 * ffem,
-                              fontWeight: FontWeight.w800,
-                              height: 1 * ffem / fem,
-                              color: Color(0xfff49101),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          margin: EdgeInsets.only(top: 34 * fem),
-                          child: Text(
-                            context.translate('choose_subscription_plan'),
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15 * ffem,
-                              fontWeight: FontWeight.w400,
-                              height: 1.4 * ffem / fem,
-                              color: Color(0xff797979),
-                            ),
-                          ),
-                        ),
-                      ],
+                  SizedBox(height: 24),
+
+                  // Header
+                  Text(
+                    'Sniper Business Center',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(
-                    height: 50.0,
+
+                  SizedBox(height: 24),
+
+                  Text(
+                    context.translate('subscription'),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xfff49101),
+                    ),
                   ),
+
+                  SizedBox(height: 12),
+
+                  Text(
+                    context.translate('choose_subscription_plan'),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+
+                  SizedBox(height: 40),
+
+                  // Subscription plans
                   PricingCard(
                     type: 10,
                     onCommand: () {
                       subscribe(10, '2070');
                     },
                   ),
+
+                  SizedBox(height: 16),
+
                   PricingCard(
                     type: 11,
                     onCommand: () {
                       subscribe(11, '5000');
                     },
                   ),
+
+                  SizedBox(height: 40),
+
+                  // Logout button
                   SizedBox(
-                    height: 20 * fem,
-                  ),
-                  ReusableButton(
-                    title: context.translate('logout'),
-                    onPress: () async {
-                      try {
-                        setState(() {
-                          showSpinner = true;
-                        });
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          setState(() {
+                            showSpinner = true;
+                          });
 
-                        await logoutUser();
+                          await logoutUser();
 
-                        setState(() {
-                          showSpinner = false;
-                        });
+                          setState(() {
+                            showSpinner = false;
+                          });
 
-                        String msg =
-                            context.translate('logged_out_successfully');
-                        String title = context.translate('logout');
-                        showPopupMessage(context, title, msg);
-                      } catch (e) {
-                        setState(() {
-                          showSpinner = false;
-                        });
-                        String msg = context.translate('error_occurred');
-                        String title = context.translate('error');
-                        showPopupMessage(context, title, msg);
-                        print(e);
-                      }
-                    },
+                          String msg =
+                              context.translate('logged_out_successfully');
+                          String title = context.translate('logout');
+                          showPopupMessage(context, title, msg);
+                        } catch (e) {
+                          setState(() {
+                            showSpinner = false;
+                          });
+                          String msg = context.translate('error_occurred');
+                          String title = context.translate('error');
+                          showPopupMessage(context, title, msg);
+                          print(e);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.redAccent,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        context.translate('logout'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

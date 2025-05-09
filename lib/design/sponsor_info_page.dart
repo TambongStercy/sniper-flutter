@@ -4,7 +4,6 @@ import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart';
-import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 
 class SponsorInfoPage extends StatefulWidget {
   static const String id = 'sponsor_info_page';
@@ -114,7 +113,7 @@ class _SponsorInfoPageState extends State<SponsorInfoPage> {
     }
 
     final sponsorName = sponsorData!['name'] as String? ?? 'N/A';
-    final sponsorAvatar = sponsorData!['avatar'] as String? ?? '';
+    final sponsorAvatar = sponsorData!['avatarId'] as String? ?? '';
     final sponsorPhone = sponsorData!['phoneNumber']
         as String?; // Assuming phoneNumber is available
     final sponsorRegion = sponsorData!['region'] as String?;

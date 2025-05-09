@@ -1,17 +1,15 @@
-import 'dart:ui';
+const frontEnd = 'https://sniperbuisnesscenter.com/';
 
-const host = 'http://217.65.144.32:3000/'; //your hotspot
+const host = frontEnd; //your vps
 
-// const host = 'http://127.0.0.1:5000/';//local host
+// const host = 'http://127.0.0.1:3000/';//local host
 // const host = 'http://192.168.225.234:5000/';// slade tech
 // const host = 'http://192.168.43.191:3000/'; //your hotspot
 // const host = 'http://192.168.1.103:5000/'; //wifi MTN BOX
 // const host = 'https://sniper-xvs9.onrender.com/'; //online
 
-const frontEnd = 'https://sniperbuisnesscenter.com/';
-
-const url = '${host}api';
-const paymentUrl = '${host}pay/';
+const url = '${host}api/';
+const paymentUrl = '${host}payment/';
 
 const registration = "${url}register";
 const login = '${url}login';

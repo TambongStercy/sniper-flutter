@@ -25,6 +25,7 @@ import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
 import 'package:intl/intl.dart'; // For DateFormat if needed later
 import 'package:flutter/gestures.dart'; // Needed for multi-select
+import 'package:snipper_frontend/theme.dart'; // Import AppTheme
 
 // Define lists for profession and interests (populate from new.txt)
 // TODO: Add translations for these if needed
@@ -168,6 +169,7 @@ class _AccueilState extends State<Accueil> {
   String? country;
   String? profession;
   List<String> interests = []; // Store as list of strings
+  String? region; // Added region state variable
 
   String countryCode = '237';
   String? momoNumber; // Renamed from 'momo', made nullable
@@ -203,42 +205,56 @@ class _AccueilState extends State<Accueil> {
       const Investissement(),
     ];
 
-    () async {
-      try {
-        await getInfos(); // This now also checks for mandatory info
+    _initializeAndLoadData();
+  }
 
-        // If info is needed, the dialog will show. If not, proceed.
-        if (!mandatoryInfoNeeded) {
-          if (prdtId != null && sellerId != '') {
-            final prdtAndUser = await getProductOnline(sellerId, prdtId);
-            if (prdtAndUser != null && mounted) {
-              context.pushNamed(
-                ProduitPage.id,
-                extra: prdtAndUser,
-              );
-            }
+  Future<void> _initializeAndLoadData() async {
+    try {
+      // Initialize SharedPreferences instance here
+      prefs = await SharedPreferences.getInstance();
+
+      // Now call getInfos, which will use the initialized prefs
+      await getInfos();
+
+      // If info is needed, the dialog will show. If not, proceed.
+      if (!mandatoryInfoNeeded) {
+        if (prdtId != null && sellerId != null && sellerId!.isNotEmpty) {
+          // Added null check for sellerId
+          final prdtAndUser = await getProductOnline(
+              sellerId!, prdtId!); // Added null assertion
+          if (prdtAndUser != null && mounted) {
+            context.pushNamed(
+              ProduitPage.id,
+              extra: prdtAndUser,
+            );
           }
-          // Comment out the call to the apology popup
-          // showOneTimeApologyPopup();
         }
-
-        showSpinner = false;
-        refreshPage();
-      } catch (e) {
-        print(e);
-        showSpinner = false;
-        refreshPage();
+        // Comment out the call to the apology popup
+        // showOneTimeApologyPopup();
       }
-    }();
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
+      // refreshPage(); // refreshPage is often called within getInfos or when data changes
+    } catch (e) {
+      print(e);
+      if (mounted) {
+        setState(() {
+          showSpinner = false;
+        });
+      }
+      // refreshPage();
+    }
   }
 
   void showOneTimeApologyPopup() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showOneTimePopup(
         context,
-        context.translate('apology_title') ?? 'We Apologize',
-        context.translate('apology_message') ??
-            'We sincerely apologize for the app being down for so long. We have resolved the issues and are committed to providing you with better service moving forward. Thank you for your patience and understanding.',
+        context.translate('apology_title'),
+        context.translate('apology_message'),
         'apology_popup_shown_v1', // Unique key for this popup
       );
     });
@@ -264,7 +280,7 @@ class _AccueilState extends State<Accueil> {
   }
 
   Future<void> initSharedPref() async {
-    prefs = await SharedPreferences.getInstance();
+    // prefs = await SharedPreferences.getInstance(); // REMOVE THIS LINE, prefs is initialized in _initializeAndLoadData
 
     id = prefs.getString('id') ?? '';
     email = prefs.getString('email') ?? '';
@@ -280,6 +296,7 @@ class _AccueilState extends State<Accueil> {
     country = prefs.getString('country');
     profession = prefs.getString('profession');
     interests = prefs.getStringList('interests') ?? [];
+    region = prefs.getString('region'); // Load region
 
     // Load App Settings from Prefs (they might be loaded later by getInfos/getAppSettings)
     appLogoUrl = prefs.getString('appSettings_logoUrl'); // Store full URL now
@@ -308,7 +325,7 @@ class _AccueilState extends State<Accueil> {
 
   Future<void>? getInfos() async {
     String msg = '';
-    String error = '';
+    // String error = '';
     try {
       await initSharedPref();
 
@@ -329,7 +346,8 @@ class _AccueilState extends State<Accueil> {
         if (responseData != null) {
           // --- Extract fields directly from responseData ---
           final fetchedName = responseData['name'] as String?;
-          final region = responseData['region'] as String?;
+          final fetchedRegion =
+              responseData['region'] as String?; // Extract region
           final country = responseData['country'] as String?;
           final phone = responseData['phoneNumber']?.toString();
           final fetchedMomoNumber = responseData['momoNumber']?.toString();
@@ -339,6 +357,7 @@ class _AccueilState extends State<Accueil> {
           final fetchedAvatar = responseData['avatar'] as String?;
           final avatarId = responseData['avatarId'] as String?;
           final userRole = responseData['role'] as String?;
+          final partnerPack = responseData['partnerPack'] as String?;
           final userCode =
               responseData['referralCode'] as String?; // Use referralCode
           final balance = (responseData['balance'] as num?)?.toDouble();
@@ -371,6 +390,7 @@ class _AccueilState extends State<Accueil> {
           profession = fetchedProfession ?? profession;
           interests =
               fetchedInterests.isNotEmpty ? fetchedInterests : interests;
+          region = fetchedRegion ?? region; // Update region state
 
           // *** Update state assignment for renamed variables ***
           momoNumber = fetchedMomoNumber ?? momoNumber; // Update state
@@ -379,7 +399,7 @@ class _AccueilState extends State<Accueil> {
 
           // --- Save all fields to SharedPreferences ---
           prefs.setString('name', name);
-          if (region != null) prefs.setString('region', region);
+          if (region != null) prefs.setString('region', region ?? '');
           if (country != null) prefs.setString('country', country);
           if (phone != null) prefs.setString('phone', phone);
           prefs.setString(
@@ -393,6 +413,7 @@ class _AccueilState extends State<Accueil> {
           if (userRole != null) prefs.setString('role', userRole);
           if (userCode != null) prefs.setString('code', userCode);
           if (balance != null) prefs.setDouble('balance', balance);
+          if (partnerPack != null) prefs.setString('partnerPack', partnerPack);
           if (totalBenefits != null)
             prefs.setDouble(
                 'benefit', totalBenefits); // Save totalBenefits as benefit
@@ -412,11 +433,16 @@ class _AccueilState extends State<Accueil> {
           bool isInterestsMissing = interests.isEmpty;
           bool isDobMissing = dob == null || dob!.isEmpty;
           bool isProfessionMissing = profession == null || profession!.isEmpty;
+          bool isSexMissing = sex == null || sex!.isEmpty; // Check for sex
+          bool isRegionMissing =
+              region == null || region!.isEmpty; // Check for region
 
           mandatoryInfoNeeded = isLanguageMissing ||
               isInterestsMissing ||
               isDobMissing ||
-              isProfessionMissing;
+              isProfessionMissing ||
+              isSexMissing || // Add sex to check
+              isRegionMissing; // Add region to check
 
           if (mandatoryInfoNeeded) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -497,15 +523,19 @@ class _AccueilState extends State<Accueil> {
     List<String> currentInterests = List.from(interests);
     List<String> currentLanguages = List.from(language);
     String? currentDob = dob; // Keep as string YYYY-MM-DD
+    String currentSex = sex ?? ''; // Initialize for sex
+    String currentRegion = region ?? ''; // Initialize for region
     DateTime? _selectedDate; // For the DatePicker
     final TextEditingController _dobController = TextEditingController();
+    final TextEditingController _regionController =
+        TextEditingController(text: currentRegion); // Controller for region
 
     // Initialize date picker state if dob exists
     if (currentDob != null && currentDob.isNotEmpty) {
       try {
         _selectedDate = DateFormat('yyyy-MM-dd').parse(currentDob);
         _dobController.text =
-            DateFormat.yMMMd().format(_selectedDate!); // Format for display
+            DateFormat.yMMMd().format(_selectedDate); // Format for display
       } catch (e) {
         print("Error parsing initial DOB for dialog: $e");
         _dobController.text = context.translate('invalid_date_format');
@@ -520,40 +550,16 @@ class _AccueilState extends State<Accueil> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(context
-                  .translate('complete_your_profile')), // Add translation
+              title: Text(context.translate(
+                  'complete_your_profile')), // Add translation and fallback
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(context
-                        .translate('please_provide_info')), // Add translation
+                    Text(context.translate(
+                        'please_provide_info')), // Add translation and fallback
                     SizedBox(height: 20),
-
-                    // --- Profession --- (Dropdown)
-                    _buildDialogFieldLabel(context.translate('profession')),
-                    DropdownButtonFormField<String>(
-                      value: currentProfession.isNotEmpty &&
-                              allProfessions.contains(currentProfession)
-                          ? currentProfession
-                          : null,
-                      hint: Text(context.translate('select_profession')),
-                      items: allProfessions.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setDialogState(() {
-                          currentProfession = newValue ?? '';
-                        });
-                      },
-                      isExpanded: true,
-                      decoration: _dialogInputDecoration(),
-                    ),
-                    SizedBox(height: 15),
 
                     // --- Date of Birth --- (DatePicker)
                     _buildDialogFieldLabel(context.translate('date_of_birth')),
@@ -581,6 +587,76 @@ class _AccueilState extends State<Accueil> {
                           });
                         }
                       },
+                    ),
+                    SizedBox(height: 15),
+
+                    // --- Sex --- (Dropdown)
+                    _buildDialogFieldLabel(context.translate('sex')),
+                    DropdownButtonFormField<String>(
+                      value: currentSex.isNotEmpty &&
+                              ['Male', 'Female', 'Other'].contains(currentSex)
+                          ? currentSex
+                          : null,
+                      hint: Text(context.translate('select_sex')),
+                      items: ['Male', 'Female', 'Other'].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(context.translate(
+                              value.toLowerCase())), // Translate options
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setDialogState(() {
+                          currentSex = newValue ?? '';
+                        });
+                      },
+                      isExpanded: true,
+                      decoration: _dialogInputDecoration(),
+                    ),
+                    SizedBox(height: 15),
+
+                    // --- Region --- (Text Field)
+                    _buildDialogFieldLabel(context.translate('region')),
+                    TextFormField(
+                      controller: _regionController,
+                      decoration: _dialogInputDecoration().copyWith(
+                        hintText: context.translate('enter_region'),
+                      ),
+                      onChanged: (value) {
+                        currentRegion = value;
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return context
+                              .translate('region_required'); // Add translation
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 15),
+
+                    // --- Profession --- (Dropdown)
+                    _buildDialogFieldLabel(context.translate('profession')),
+                    DropdownButtonFormField<String>(
+                      value: currentProfession.isNotEmpty &&
+                              allProfessions.contains(currentProfession)
+                          ? currentProfession
+                          : null,
+                      hint: Text(context.translate('select_profession')),
+                      items: allProfessions.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(context.translate(
+                              value.toLowerCase())), // Translate options
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setDialogState(() {
+                          currentProfession = newValue ?? '';
+                        });
+                      },
+                      isExpanded: true,
+                      decoration: _dialogInputDecoration(),
                     ),
                     SizedBox(height: 15),
 
@@ -624,7 +700,7 @@ class _AccueilState extends State<Accueil> {
               ),
               actions: <Widget>[
                 TextButton(
-                  child: Text(context.translate('save')), // Add translation
+                  child: Text(context.translate('save')),
                   style: TextButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -635,19 +711,25 @@ class _AccueilState extends State<Accueil> {
                         currentDob == null ||
                         currentDob!.isEmpty ||
                         currentLanguages.isEmpty ||
-                        currentInterests.isEmpty) {
+                        currentInterests.isEmpty ||
+                        currentSex.isEmpty || // Validate sex
+                        currentRegion.isEmpty) {
                       showPopupMessage(
                           context,
                           context.translate('error'),
                           context.translate(
-                              'fill_all_required_fields_dialog') // Use a specific message
-                          );
+                              'fill_all_required_fields_dialog')); // Use a specific message
                       return;
                     }
                     Navigator.of(context).pop(); // Close the dialog
                     // Call save with all collected data
-                    _saveMandatoryInfo(currentProfession, currentInterests,
-                        currentLanguages, currentDob! // Pass DOB string
+                    _saveMandatoryInfo(
+                        currentProfession,
+                        currentInterests,
+                        currentLanguages,
+                        currentDob!, // Pass DOB string
+                        currentSex,
+                        currentRegion // Pass sex and region
                         );
                   },
                 ),
@@ -720,7 +802,9 @@ class _AccueilState extends State<Accueil> {
       String newProfession,
       List<String> newInterests,
       List<String> newLanguages, // Added
-      String newDob // Added (YYYY-MM-DD format)
+      String newDob, // Added (YYYY-MM-DD format)
+      String newSex, // Added
+      String newRegion // Added
       ) async {
     setState(() {
       showSpinner = true; // Show spinner while saving
@@ -732,12 +816,16 @@ class _AccueilState extends State<Accueil> {
       await prefs.setStringList('interests', newInterests);
       await prefs.setStringList('language', newLanguages); // Save languages
       await prefs.setString('dob', newDob); // Save DOB
+      await prefs.setString('sex', newSex); // Save sex
+      await prefs.setString('region', newRegion); // Save region
 
       // Update local state optimistically
       profession = newProfession;
       interests = newInterests;
       language = newLanguages;
       dob = newDob;
+      sex = newSex; // Update local sex
+      region = newRegion; // Update local region
       mandatoryInfoNeeded = false; // Mark as complete locally
 
       // Call backend endpoint to update user profile using ApiService
@@ -746,6 +834,8 @@ class _AccueilState extends State<Accueil> {
         'interests': newInterests,
         'language': newLanguages, // Send languages
         'birthDate': newDob, // Send DOB (assuming API expects 'birthDate')
+        'sex': newSex, // Send sex
+        'region': newRegion, // Send region
       };
 
       final response = await _apiService.updateUserProfile(updateBody);
@@ -1247,24 +1337,23 @@ class _AccueilState extends State<Accueil> {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
-
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Color(0xffffffff),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         automaticallyImplyLeading: false,
-        title: SizedBox(
-          width: 83 * fem,
-          height: 33 * fem,
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
           child: appLogoUrl != null && appLogoUrl!.isNotEmpty
               ? Image.network(
                   appLogoUrl!,
+                  height: 50,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) => Image.asset(
-                    'assets/design/images/logo-sbc-final-1-tnu.png',
-                    fit: BoxFit.cover,
+                    'assets/design/images/logo.png',
+                    height: 50,
+                    fit: BoxFit.contain,
                   ),
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
@@ -1279,21 +1368,19 @@ class _AccueilState extends State<Accueil> {
                   },
                 )
               : Image.asset(
-                  'assets/design/images/logo-sbc-final-1-tnu.png',
-                  fit: BoxFit.cover,
+                  'assets/design/images/logo.png',
+                  height: 50,
+                  fit: BoxFit.contain,
                 ),
         ),
         actions: [
           if (kIsWeb)
             IconButton(
-              icon: Icon(Icons.download_rounded),
-              color: Theme.of(context).colorScheme.onSurface,
+              icon: Icon(Icons.download_rounded, color: Colors.black87),
               onPressed: () {},
             ),
           IconButton(
-            icon: Icon(Icons.wallet),
-            color: Theme.of(context).colorScheme.onSurface,
-            iconSize: 24,
+            icon: Icon(Icons.wallet, color: Colors.black87),
             onPressed: () {
               context.pushNamed(Wallet.id).then((value) {
                 if (mounted) {
@@ -1307,29 +1394,29 @@ class _AccueilState extends State<Accueil> {
           IconButton(
             icon: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(25 * fem),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: isPartner
-                        ? Theme.of(context).colorScheme.tertiary
-                        : Theme.of(context).colorScheme.primary,
-                    width: 2.0),
+                  color: isPartner
+                      ? AppTheme.tertiaryOrange
+                      : AppTheme.primaryBlue,
+                  width: 2.0,
+                ),
               ),
-              child: Container(
-                width: 35 * fem,
-                height: 35 * fem,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(25 * fem),
-                  border: Border.all(color: Colors.white),
-                  color: Color(0xffc4c4c4),
-                  image: DecorationImage(
-                    fit: BoxFit.cover,
-                    image: profileImage(prefs.getString('avatarId')),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    image: DecorationImage(
+                      fit: BoxFit.cover,
+                      image: profileImage(prefs.getString('avatarId')),
+                    ),
                   ),
                 ),
               ),
             ),
-            color: Theme.of(context).colorScheme.onSurface,
-            iconSize: 24,
             onPressed: () {
               context.pushNamed(Profile.id).then((value) {
                 if (mounted) {
@@ -1340,7 +1427,7 @@ class _AccueilState extends State<Accueil> {
               });
             },
           ),
-          SizedBox(width: 20.0),
+          SizedBox(width: 16),
         ],
       ),
       body: ModalProgressHUD(
@@ -1352,79 +1439,100 @@ class _AccueilState extends State<Accueil> {
               animatedIcon: AnimatedIcons.menu_close,
               animatedIconTheme:
                   const IconThemeData(size: 22.0, color: Colors.white),
-              overlayColor: Theme.of(context).colorScheme.scrim,
+              overlayColor: Colors.black54,
               overlayOpacity: 0.4,
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: AppTheme.primaryBlue,
               children: [
                 SpeedDialChild(
                   onTap: () {
                     context.pushNamed(AjouterProduit.id);
                   },
-                  child: Icon(Icons.add,
-                      color: Theme.of(context).colorScheme.onSurface, size: 30),
+                  backgroundColor: Colors.white,
+                  child: Icon(Icons.add, color: Colors.black87, size: 30),
+                  label: context.translate('add_product'),
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                  labelBackgroundColor: Colors.white,
                 ),
                 SpeedDialChild(
                   onTap: () {
                     context.pushNamed(YourProducts.id);
                   },
-                  child: Icon(Icons.edit,
-                      color: Theme.of(context).colorScheme.onSurface, size: 30),
+                  backgroundColor: Colors.white,
+                  child: Icon(Icons.edit, color: Colors.black87, size: 30),
+                  label: context.translate('my_products'),
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                  labelBackgroundColor: Colors.white,
                 ),
               ],
             )
           : null,
       bottomNavigationBar: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 20.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 16.0),
         child: GNav(
           selectedIndex: _selectedIndex,
           onTabChange: onItemTapped,
           backgroundColor: Colors.white,
           color: Colors.black87,
           activeColor: Colors.white,
-          tabBackgroundColor: Theme.of(context).colorScheme.tertiary,
-          padding: const EdgeInsets.all(10.0),
-          gap: 5,
+          tabBackgroundColor: AppTheme.primaryBlue,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          gap: 8,
           tabs: [
             GButton(
               icon: Icons.remove_red_eye_sharp,
               text: context.translate('advertising'),
-              textStyle: SafeGoogleFont('Montserrat',
-                  fontWeight: FontWeight.w600,
-                  height: 1 * fem,
-                  color: Theme.of(context).colorScheme.onTertiary),
+              textStyle: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
             GButton(
               icon: Icons.hail_rounded,
               text: context.translate('entertainment'),
-              textStyle: SafeGoogleFont('Montserrat',
-                  fontWeight: FontWeight.w600,
-                  height: 1 * fem,
-                  color: Theme.of(context).colorScheme.onTertiary),
+              textStyle: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
             GButton(
               icon: Icons.home,
               text: context.translate('home'),
-              textStyle: SafeGoogleFont('Montserrat',
-                  fontWeight: FontWeight.w600,
-                  height: 1 * fem,
-                  color: Theme.of(context).colorScheme.onTertiary),
+              textStyle: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
             GButton(
               icon: Icons.shopping_cart,
               text: context.translate('marketplace'),
-              textStyle: SafeGoogleFont('Montserrat',
-                  fontWeight: FontWeight.w600,
-                  height: 1 * fem,
-                  color: Theme.of(context).colorScheme.onTertiary),
+              textStyle: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
             GButton(
               icon: Icons.monetization_on,
               text: context.translate('investment'),
-              textStyle: SafeGoogleFont('Montserrat',
-                  fontWeight: FontWeight.w600,
-                  height: 1 * fem,
-                  color: Theme.of(context).colorScheme.onTertiary),
+              textStyle: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
           ],
         ),

@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/components/textfield.dart';
+import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart';
@@ -383,164 +383,203 @@ class _RetraitState extends State<Retrait> {
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
 
-    return SimpleScaffold(
-      title: context.translate('withdrawal'),
-      inAsyncCall: showSpinner,
-      child: Container(
-        margin: EdgeInsets.fromLTRB(25 * fem, 20 * fem, 25 * fem, 14 * fem),
-        width: double.infinity,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (email != '')
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    margin: EdgeInsets.fromLTRB(
-                        0 * fem, 0 * fem, 0 * fem, 20 * fem),
-                    child: Text(
-                      context.translate('withdrawal_info'),
-                      style: SafeGoogleFont(
-                        'Montserrat',
-                        fontSize: 20 * ffem,
-                        fontWeight: FontWeight.w500,
-                        height: 1 * ffem / fem,
-                        color: Color(0xfff49101),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 15 * fem),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: EdgeInsets.fromLTRB(
-                            0 * fem, 0 * fem, 0 * fem, 10 * fem),
-                        child: Text(
-                          context.translate('amount', args: {
-                            'currency': selectedCurrency,
-                            'momo': '${momoNumber} ${dropdownValue}',
-                            'conversion':
-                                '${selectedCurrency != 'XAF' ? '(${amountInXAF > 0 ? amountInXAF.toStringAsFixed(2) : '...'} XAF)' : ''}',
-                          }),
-                          style: SafeGoogleFont(
-                            'Montserrat',
-                            fontSize: 14 * ffem,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4285714286 * ffem / fem,
-                            color: Color(0xff25313c),
-                          ),
-                        ),
-                      ),
-                      CustomTextField(
-                        hintText: '',
-                        value: amount,
-                        onChange: (val) {
-                          amount = val;
-                          _updateConversionRate(val);
-                        },
-                        margin: 0,
-                        fieldType: CustomFieldType.number,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 15 * fem),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: EdgeInsets.fromLTRB(
-                            0 * fem, 0 * fem, 0 * fem, 10 * fem),
-                        child: Text(
-                          context.translate('password'),
-                          style: SafeGoogleFont(
-                            'Montserrat',
-                            fontSize: 14 * ffem,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4285714286 * ffem / fem,
-                            color: Color(0xff25313c),
-                          ),
-                        ),
-                      ),
-                      CustomTextField(
-                        hintText: '',
-                        fieldType: CustomFieldType.password,
-                        value: password,
-                        onChange: (val) {
-                          password = val;
-                        },
-                      ),
-                    ],
-                  ),
-                  if (otpRequested) ...[
-                    SizedBox(height: 15 * fem),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: EdgeInsets.fromLTRB(
-                              0 * fem, 0 * fem, 0 * fem, 10 * fem),
-                          child: Text(
-                            context.translate('enter_otp_for_withdrawal'),
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 14 * ffem,
-                              fontWeight: FontWeight.w500,
-                              height: 1.4285714286 * ffem / fem,
-                              color: Color(0xff25313c),
-                            ),
-                          ),
-                        ),
-                        OtpTextField(
-                          numberOfFields: 6,
-                          borderColor: Color(0xFF512DA8),
-                          fieldWidth: 40.0,
-                          margin: EdgeInsets.only(right: 8.0),
-                          showFieldAsBox: true,
-                          keyboardType: TextInputType.text,
-                          onCodeChanged: (String code) {},
-                          onSubmit: (String verificationCode) {
-                            otp = verificationCode;
-                          },
-                        ),
-                        SizedBox(height: 10 * fem),
-                        Center(
-                          child: TextButton(
-                            onPressed: requestWithdrawalOTP,
-                            style:
-                                TextButton.styleFrom(padding: EdgeInsets.zero),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          context.translate('withdrawal'),
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: ModalProgressHUD(
+        inAsyncCall: showSpinner,
+        child: SafeArea(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (email != '')
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            margin: EdgeInsets.only(bottom: 24.0),
                             child: Text(
-                              context.translate('resend_otp'),
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 16 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5 * ffem / fem,
-                                color: Theme.of(context).colorScheme.secondary,
+                              context.translate('withdrawal_info'),
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xfff49101),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+
+                          // Amount field
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: EdgeInsets.only(bottom: 8.0),
+                                child: Text(
+                                  context.translate('amount', args: {
+                                    'currency': selectedCurrency,
+                                    'momo': '${momoNumber} ${dropdownValue}',
+                                    'conversion':
+                                        '${selectedCurrency != 'XAF' ? '(${amountInXAF > 0 ? amountInXAF.toStringAsFixed(2) : '...'} XAF)' : ''}',
+                                  }),
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                              CustomTextField(
+                                hintText: '',
+                                value: amount,
+                                onChange: (val) {
+                                  amount = val;
+                                  _updateConversionRate(val);
+                                },
+                                margin: 0,
+                                fieldType: CustomFieldType.number,
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 20.0),
+
+                          // Password field
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: EdgeInsets.only(bottom: 8.0),
+                                child: Text(
+                                  context.translate('password'),
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                              CustomTextField(
+                                hintText: '',
+                                fieldType: CustomFieldType.password,
+                                value: password,
+                                onChange: (val) {
+                                  password = val;
+                                },
+                              ),
+                            ],
+                          ),
+
+                          // OTP field if requested
+                          if (otpRequested) ...[
+                            SizedBox(height: 24.0),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  margin: EdgeInsets.only(bottom: 12.0),
+                                  child: Text(
+                                    context
+                                        .translate('enter_otp_for_withdrawal'),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                OtpTextField(
+                                  numberOfFields: 6,
+                                  borderColor: Theme.of(context).primaryColor,
+                                  fieldWidth: 40.0,
+                                  margin: EdgeInsets.only(right: 8.0),
+                                  showFieldAsBox: true,
+                                  keyboardType: TextInputType.text,
+                                  onCodeChanged: (String code) {},
+                                  onSubmit: (String verificationCode) {
+                                    otp = verificationCode;
+                                  },
+                                ),
+                                SizedBox(height: 16.0),
+                                Center(
+                                  child: TextButton(
+                                    onPressed: requestWithdrawalOTP,
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    child: Text(
+                                      context.translate('resend_otp'),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Theme.of(context).primaryColor,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+
+                          SizedBox(height: 32.0),
+
+                          // Action button
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (!otpRequested) {
+                                  await requestWithdrawalOTP();
+                                } else {
+                                  await withdrawal();
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                backgroundColor: Theme.of(context).primaryColor,
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                !otpRequested
+                                    ? context.translate('request_otp')
+                                    : context.translate('confirm_withdrawal'),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                  SizedBox(height: 15 * fem),
-                  ReusableButton(
-                    title: !otpRequested
-                        ? context.translate('request_otp')
-                        : context.translate('confirm_withdrawal'),
-                    onPress: () async {
-                      if (!otpRequested) {
-                        await requestWithdrawalOTP();
-                      } else {
-                        await withdrawal();
-                      }
-                    },
                   ),
-                ],
-              ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

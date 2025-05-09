@@ -78,38 +78,38 @@ class _InscriptionState extends State<Inscription> {
     String msg = '';
 
     try {
-        if (!isValidEmailDomain(email.trim())) {
-          String title = context.translate('invalid_email_domain');
-          String message = context.translate('use_valid_email_provider');
-          showPopupMessage(context, title, message);
+      if (!isValidEmailDomain(email.trim())) {
+        String title = context.translate('invalid_email_domain');
+        String message = context.translate('use_valid_email_provider');
+        showPopupMessage(context, title, message);
         setState(() => showSpinner = false); // Stop spinner
-          return;
-        }
+        return;
+      }
 
-        final regBody = {
-          'name': name,
-          'email': email.trim(),
-          'password': pw,
-          'phoneNumber': (countryCode + whatsapp),
+      final regBody = {
+        'name': name,
+        'email': email.trim(),
+        'password': pw,
+        'phoneNumber': (countryCode + whatsapp),
         'city': city,
         'region': region,
         if (code.isNotEmpty) 'referrerCode': code.trim(),
         'birthDate': DateFormat('yyyy-MM-dd').format(dob!),
-          'sex': sex,
+        'sex': sex,
         'language': language,
-          'country': country,
+        'country': country,
         'profession': profession,
         'interests': interests,
-        };
+      };
 
-        final response = await _apiService.registerUser(regBody);
+      final response = await _apiService.registerUser(regBody);
 
       msg = response['message'] ??
           response['error'] ??
           'Unknown registration error';
 
       if (response['success'] == true) {
-          final responseData = response['data'];
+        final responseData = response['data'];
         final userId = responseData?['userId'];
 
         if (userId != null) {
@@ -120,11 +120,11 @@ class _InscriptionState extends State<Inscription> {
           // prefs.setString('pending_verification_email', email.trim());
           // Pass email and userId directly via 'extra'
           context.goNamed(
-                VerifyRegistration.id,
-                extra: {
-                  'email': email.trim(),
-                  'userId': userId,
-                },
+            VerifyRegistration.id,
+            extra: {
+              'email': email.trim(),
+              'userId': userId,
+            },
           ); // Go to verification page
 
           // Optionally show a success message before navigating
@@ -267,476 +267,605 @@ class _InscriptionState extends State<Inscription> {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
+    final screenSize = MediaQuery.of(context).size;
+    // final double expandedAppBarHeight = screenSize.height * 0.30; // No longer needed
+    // final double collapsedAppBarHeight = kToolbarHeight + MediaQuery.of(context).padding.top; // No longer needed
+
     return Scaffold(
-      body: SafeArea(
-        child: ModalProgressHUD(
-          inAsyncCall: showSpinner,
-          child: SingleChildScrollView(
+      backgroundColor:
+          Color(0xFFFFF8F0), // Light cream/off-white background for the page
+      extendBodyBehindAppBar: true, // To allow gradient to go behind AppBar
+      appBar: AppBar(
+        // Simplified AppBar
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.grey[800]),
+          onPressed: () => Navigator.pop(context),
+        ),
+        backgroundColor: Colors.transparent, // Transparent AppBar
+        elevation: 0, // No shadow
+      ),
+      body: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: screenSize.height * 0.6,
             child: Container(
-                width: double.infinity,
-                color: const Color(0xffffffff),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+
+                  colors: [
+                    Color(
+                        0xFFF8CE98), // Start color (matching inscription)#F8CE98
+                    Color(0xFFFFF3E0).withOpacity(0.8),
+                  ],
+                  stops: [0.0, 1.0], // Control fade points
+                ),
+              ),
+            ),
+          ),
+          ModalProgressHUD(
+            inAsyncCall: showSpinner,
+            child: SingleChildScrollView(
+              // Reverted to SingleChildScrollView
+              child: Padding(
+                padding: EdgeInsets.only(
+                    top: kToolbarHeight +
+                        MediaQuery.of(context).padding.top +
+                        20, // Initial top padding
+                    left: 24.0,
+                    right: 24.0,
+                    bottom: 16.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      margin: EdgeInsets.fromLTRB(
-                          25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
-                      width: 771.27 * fem,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 40.0),
-                          Container(
-                            margin: EdgeInsets.only(top: 46 * fem),
-                            child: Text(
-                              'Sniper Business Center',
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Mulish',
-                                fontSize: 30 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.255 * ffem / fem,
-                                color: const Color(0xff000000),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                            context.translate('registration'), // 'Inscription'
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 20 * ffem,
-                                fontWeight: FontWeight.w800,
-                                height: 1 * ffem / fem,
-                                color: const Color(0xfff49101),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                              context.translate(
-                                  'create_account_msg'), // 'Créez un compte pour développez votre réseau...'
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 15 * ffem,
-                                fontWeight: FontWeight.w400,
-                                height: 1.4 * ffem / fem,
-                                color: const Color(0xff797979),
-                              ),
-                            ),
-                          ),
-                        ],
+                    // Logo at the top of the content body
+                    Padding(
+                      padding: const EdgeInsets.only(
+                          top: 20.0, bottom: 30.0), // Adjust spacing as needed
+                      child: Center(
+                        child: Image.asset(
+                          'assets/assets/images/logo-sbc-final-1-14d.png',
+                          height: screenSize.height * 0.12, // Adjust logo size
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
-                    Container(
-                      width: double.infinity,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              CustomTextField(
-                              label: context.translate('full_name'),
-                              hintText: context.translate('example_name'),
-                                value: name,
-                              onChange: (val) => name = val,
-                              fieldType: CustomFieldType.text,
-                              ),
-                              CustomTextField(
-                              label: 'Email',
-                              hintText: context.translate('example_email'),
-                                value: email,
-                              onChange: (val) => email = val,
-                              fieldType: CustomFieldType.email,
-                              ),
-                              CustomTextField(
-                              label: context.translate('password'),
-                              hintText: context.translate('password'),
-                                value: pw,
-                              onChange: (val) => pw = val,
-                              fieldType: CustomFieldType.password,
-                              ),
-                              CustomTextField(
-                              label: context.translate('confirm_password'),
-                              hintText: context.translate('confirm_password'),
-                                value: pwconfirm,
-                              onChange: (val) => pwconfirm = val,
-                              fieldType: CustomFieldType.password,
-                              ),
-                              CustomTextField(
-                              label: context.translate('whatsapp_number'),
-                              hintText: context.translate('example_whatsapp'),
-                                value: whatsapp,
-                              onChange: (val) => whatsapp = val,
-                              getCountryDialCode: (code) => countryCode = code,
-                              fieldType: CustomFieldType.phone,
-                            ),
-                            SizedBox(height: 8 * fem),
-                              CustomTextField(
-                              label: context.translate('city'),
-                              hintText: context.translate('example_city'),
-                                value: city,
-                              onChange: (val) => city = val,
-                              fieldType: CustomFieldType.text,
-                            ),
-                            SizedBox(height: 8 * fem),
-                            CustomTextField(
-                              label: context.translate('region'),
-                              hintText: context.translate('example_region'),
-                              value: region,
-                              onChange: (val) => region = val,
-                              fieldType: CustomFieldType.text,
-                            ),
-                            SizedBox(height: 8 * fem),
-                            CustomTextField(
-                              label: context.translate('date_of_birth'),
-                              hintText:
-                                  context.translate('select_date_of_birth'),
-                              fieldType: CustomFieldType.date,
-                              currentDateValue: dob,
-                              onDateSelected: (date) =>
-                                  setState(() => dob = date),
-                            ),
-                            SizedBox(height: 15 * fem),
-                            CustomTextField(
-                              label: context.translate('sex'),
-                              hintText: context.translate('select_sex'),
-                              fieldType: CustomFieldType.dropdown,
-                              items: sexOptions
-                                  .map((s) => {
-                                        'value': s,
-                                        'display':
-                                            context.translate(s.toLowerCase())
-                                      })
-                                  .toList(),
-                              selectedDropdownValue: sex,
-                              onDropdownChanged: (newValue) =>
-                                  setState(() => sex = newValue),
-                              ),
-                              SizedBox(height: 15 * fem),
-                            CustomTextField(
-                              label: context.translate('language'),
-                              hintText: context.translate(
-                                  'tap_to_select'), // Or similar hint
-                              fieldType: CustomFieldType.multiSelect,
-                              allOptions:
-                                  allLanguages.map((l) => l['code']!).toList(),
-                              selectedOptions: language,
-                              onSaveMultiSelect: (selected) =>
-                                  setState(() => language = selected),
-                              displayMap: Map.fromIterables(
-                                  allLanguages.map((l) => l['code']!),
-                                  allLanguages.map((l) => l['name']!)),
-                            ),
-                            SizedBox(height: 15 * fem),
-                            CustomTextField(
-                              label: context.translate('country'),
-                              hintText: context.translate('select_country'),
-                              fieldType: CustomFieldType.dropdown,
-                              items: africanCountries
-                                  .map((c) =>
-                                      {'value': c.code, 'display': c.name})
-                                  .toList(),
-                              selectedDropdownValue: country,
-                              onDropdownChanged: (newValue) =>
-                                  setState(() => country = newValue),
-                              ),
-                              SizedBox(height: 15 * fem),
-                            CustomTextField(
-                              label: context.translate('profession'),
-                              hintText: context.translate('select_profession'),
-                              fieldType: CustomFieldType.dropdown,
-                              items: allProfessions
-                                  .map((p) => {'value': p, 'display': p})
-                                  .toList(),
-                              selectedDropdownValue: profession,
-                              onDropdownChanged: (newValue) =>
-                                  setState(() => profession = newValue),
-                              ),
-                              SizedBox(height: 15 * fem),
-                            CustomTextField(
-                              label: context.translate('interests'),
-                              hintText: context.translate(
-                                  'tap_to_select'), // Or similar hint
-                              fieldType: CustomFieldType.multiSelect,
-                              allOptions: allInterests,
-                              selectedOptions: interests,
-                              onSaveMultiSelect: (selected) =>
-                                  setState(() => interests = selected),
-                              ),
-                              SizedBox(height: 15 * fem),
-                              CustomTextField(
-                              label: context.translate('sponsor_code'),
-                                hintText: 'EX: eG7iOp3',
-                              value: code, // Use code directly
-                                readOnly: affiliationCode != null &&
-                                  affiliationCode!.isNotEmpty &&
-                                    !isChanged,
-                                onChange: (val) {
-                                final currentCode = val.trim();
-                                code =
-                                    currentCode; // Update the local code variable immediately
-                                isChanged = affiliationCode == null ||
-                                    affiliationCode!.isEmpty ||
-                                    currentCode != affiliationCode;
 
-                                // Clear previous timer if it exists
-                                _debounceTimer?.cancel();
+                    Text(
+                      context.translate('create_account'),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      context.translate('create_account_msg'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    // const SizedBox(height: 32), // Original spacing
+                    // const SizedBox(height: 32), // Increased spacing before form
 
-                                // Clear name and hide indicator immediately if changed
-                                if (isChanged && affiliationName != null) {
-                                  setState(() {
-                                    affiliationName = null;
-                                    isFetchingAffiliation = false;
-                                  });
-                                }
+                    // All form fields and buttons remain here
+                    // Name field
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('full_name'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.text,
+                      hintText: context.translate('example_name'),
+                      value: name,
+                      onChange: (value) => setState(() => name = value),
+                    ),
+                    const SizedBox(height: 16),
 
-                                // If code is empty or hasn't changed from initial, don't fetch
-                                if (currentCode.isEmpty || !isChanged) {
-                                  return;
-                                }
+                    // Email field
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('email'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.email,
+                      hintText: context.translate('example_email'),
+                      value: email,
+                      onChange: (value) => setState(() => email = value),
+                    ),
+                    const SizedBox(height: 16),
 
-                                // Start a new timer
-                                _debounceTimer =
-                                    Timer(const Duration(seconds: 3), () {
-                                  // Check mounted again inside timer callback
-                                  if (mounted) {
-                                    fetchAffiliationName(currentCode);
-                                  }
-                                });
-                              },
-                              fieldType: CustomFieldType.text,
-                            ),
-                            if (isFetchingAffiliation)
-                              Padding(
-                                padding: EdgeInsets.only(
-                                    top: 4.0 * fem, left: 5.0 * fem),
-                                child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2)),
-                              )
-                            else if (affiliationName != null)
-                              Padding(
-                                padding: EdgeInsets.only(
-                                    top: 4.0 * fem, left: 5.0 * fem),
-                                child: Text(
-                                  affiliationName!,
-                                  style: TextStyle(
-                                    color: affiliationName ==
-                                                context.translate(
-                                                    'code_not_found') ||
-                                            affiliationName ==
-                                                context.translate('code_error')
-                                        ? Colors.red
-                                        : Colors.green,
-                                    fontSize: 12 * ffem,
+                    // Password field
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('password'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.password,
+                      hintText: context.translate('password'),
+                      value: pw,
+                      onChange: (value) => setState(() => pw = value),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Confirm Password field
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('confirm_password'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.password,
+                      hintText: context.translate('confirm_password'),
+                      value: pwconfirm,
+                      onChange: (value) => setState(() => pwconfirm = value),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Phone field
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('whatsapp_number'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.phone,
+                      hintText: context.translate('example_whatsapp'),
+                      initialCountryCode: countryCode,
+                      value: whatsapp,
+                      onChange: (value) => setState(() => whatsapp = value),
+                      getCountryCode: (code) =>
+                          setState(() => countryCode = code),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // City field
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('city'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.text,
+                      hintText: context.translate('example_city'),
+                      value: city,
+                      onChange: (value) => setState(() => city = value),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Region field
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('region'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.text,
+                      hintText: context.translate('enter_region'),
+                      value: region,
+                      onChange: (value) => setState(() => region = value),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Date of Birth
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('date_of_birth'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.date,
+                      hintText: context.translate('select_date_of_birth'),
+                      currentDateValue: dob,
+                      onDateSelected: (selectedDate) =>
+                          setState(() => dob = selectedDate),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Sex selection
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('sex'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.dropdown,
+                      hintText: context.translate('select_sex'),
+                      items: sexOptions
+                          .map((s) => {
+                                'value': s,
+                                'label': context.translate(s.toLowerCase())
+                              })
+                          .toList(),
+                      selectedDropdownValue: sex,
+                      onDropdownChanged: (value) => setState(() => sex = value),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Country selection
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('country'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.dropdown,
+                      hintText: context.translate('select_country'),
+                      items: africanCountries
+                          .map((c) => {'value': c.code, 'label': c.name})
+                          .toList(),
+                      selectedDropdownValue: country,
+                      onDropdownChanged: (value) =>
+                          setState(() => country = value),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Profession selection
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('profession'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.dropdown,
+                      hintText: context.translate('select_profession'),
+                      items: allProfessions
+                          .map((p) => {'value': p, 'label': p})
+                          .toList(),
+                      selectedDropdownValue: profession,
+                      onDropdownChanged: (value) =>
+                          setState(() => profession = value),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Language multi-select
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('language'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.multiSelect,
+                      hintText: context.translate('all_languages'),
+                      allOptions: allLanguages.map((l) => l['code']!).toList(),
+                      selectedOptions: language,
+                      displayMap: Map.fromEntries(allLanguages
+                          .map((l) => MapEntry(l['code']!, l['name']!))),
+                      onSaveMultiSelect: (selected) =>
+                          setState(() => language = selected),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Interests multi-select
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('interests'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.multiSelect,
+                      hintText: context.translate('all_interests'),
+                      allOptions: allInterests.map((i) => i).toList(),
+                      selectedOptions: interests,
+                      displayMap: null,
+                      onSaveMultiSelect: (selected) =>
+                          setState(() => interests = selected),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Sponsor code field
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        context.translate('sponsor_code'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[750],
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      fieldType: CustomFieldType.text,
+                      hintText: context.translate('sponsor_code'),
+                      value: code,
+                      onChange: (value) {
+                        final newValue = value.trim();
+                        if (newValue != code) {
+                          setState(() {
+                            code = newValue;
+                            affiliationName = null; // Clear previous name
+                          });
+                          // Debounce for affiliation code
+                          if (_debounceTimer?.isActive ?? false) {
+                            _debounceTimer!.cancel();
+                          }
+                          _debounceTimer =
+                              Timer(Duration(milliseconds: 800), () {
+                            if (newValue.isNotEmpty) {
+                              fetchAffiliationName(newValue);
+                            }
+                          });
+                        }
+                      },
+                    ),
+
+                    // Show affiliate name if available
+                    if (affiliationName != null)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            left: 16.0, top: 8.0, bottom: 16.0),
+                        child: Text(
+                          '${context.translate('sponsor')}: $affiliationName',
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+
+                    // Terms and conditions
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: termsAccepted,
+                          activeColor: Theme.of(context).colorScheme.primary,
+                          onChanged: (value) {
+                            setState(() {
+                              termsAccepted = value ?? false;
+                            });
+                          },
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                termsAccepted = !termsAccepted;
+                              });
+                            },
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    context
+                                        .translate('accept_terms_conditions'),
+                                    style: TextStyle(fontSize: 14),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          Container(
-                            padding: EdgeInsets.fromLTRB(
-                                10 * fem, 20 * fem, 0 * fem, 0 * fem),
-                            width: double.infinity,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
                                 TextButton(
                                   onPressed: downloadPolicies,
-                                  child: Container(
-                                    margin: EdgeInsets.fromLTRB(
-                                        20 * fem, 0 * fem, 10 * fem, 20 * fem),
-                                    width: double.infinity,
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          margin: EdgeInsets.fromLTRB(0 * fem,
-                                              0 * fem, 17 * fem, 0 * fem),
-                                          width: 20 * fem,
-                                          height: 20 * fem,
-                                          child: Image.asset(
-                                            'assets/design/images/pictureaspdf.png',
-                                            width: 20 * fem,
-                                            height: 20 * fem,
-                                          ),
-                                        ),
-                                        Text(
-                                          context.translate(
-                                              'terms_conditions'), // 'Conditions generales d'utilisations'
-                                          style: SafeGoogleFont(
-                                            'Montserrat',
-                                            fontSize: 16 * ffem,
-                                            fontWeight: FontWeight.w500,
-                                            height: 1.5 * ffem / fem,
-                                            color: const Color(0xff6d7d8b),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                    termsAccepted = !termsAccepted;
-                                    });
-                                  },
-                                  child: Container(
-                                    margin: EdgeInsets.fromLTRB(
-                                        20 * fem, 0 * fem, 20 * fem, 0 * fem),
-                                    width: double.infinity,
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          margin: EdgeInsets.fromLTRB(0 * fem,
-                                              0 * fem, 10 * fem, 0 * fem),
-                                          width: 24 * fem,
-                                          height: 24 * fem,
-                                          child: Checkbox(
-                                          value: termsAccepted,
-                                          onChanged: (bool? value) {
-                                              setState(() {
-                                              termsAccepted = value ?? false;
-                                              });
-                                            },
-                                          ),
-                                        ),
-                                        Text(
-                                          context.translate(
-                                              'accept_terms_conditions'), // 'J'accepte les termes et conditions'
-                                          style: SafeGoogleFont(
-                                            'Montserrat',
-                                            fontSize: 16 * ffem,
-                                            fontWeight: FontWeight.w500,
-                                            height: 1.5 * ffem / fem,
-                                            color: const Color(0xff6d7d8b),
-                                          ),
-                                        ),
-                                      ],
+                                  child: Text(
+                                    context.translate('terms_conditions'),
+                                    style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          SizedBox(height: 20 * fem),
-                          ReusableButton(
-                          clickable: termsAccepted,
-                          title: context.translate('sign_up'), // 'Inscription'
-                            lite: false,
-                            onPress: () async {
-                            String? validationError = _validateInputs();
-                            if (validationError != null) {
-                              String title = validationError ==
-                                      context.translate(
-                                          'password_confirmation_error')
-                                  ? context.translate('false_confirmation')
-                                  : context.translate('information_incomplete');
-                              showPopupMessage(context, title, validationError);
-                            } else if (!termsAccepted) {
-                              showPopupMessage(
-                                  context,
-                                  context.translate('error'),
-                                  context.translate(
-                                      'accept_terms_conditions')); // Add translation key
-                            } else if (code.isNotEmpty &&
-                                (affiliationName ==
-                                        context.translate('code_not_found') ||
-                                    affiliationName ==
-                                        context.translate('code_error'))) {
-                              showPopupMessage(
-                                  context,
-                                  context.translate('error'),
-                                  context.translate(
-                                      'invalid_sponsor_code')); // Add translation key
-                            } else {
-                                await registerUser();
-                              }
-                            },
-                          ),
-                          SizedBox(height: 20 * fem),
-                          Center(
-                            child: TextButton(
-                              onPressed: () {
-                                context.goNamed(Connexion.id);
-                              },
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                              ),
-                              child: Text(
-                                context.translate(
-                                    'already_have_account_login'), // 'Un compte ? Connexion'
-                                style: SafeGoogleFont(
-                                  'Montserrat',
-                                  fontSize: 16 * ffem,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.5 * ffem / fem,
-                                  color: const Color(0xff25313c),
-                                ),
-                              ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Register button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (name.isEmpty ||
+                              email.isEmpty ||
+                              pw.isEmpty ||
+                              pwconfirm.isEmpty ||
+                              whatsapp.isEmpty ||
+                              city.isEmpty ||
+                              region.isEmpty ||
+                              dob == null ||
+                              sex == null ||
+                              country == null ||
+                              profession == null ||
+                              language.isEmpty ||
+                              interests.isEmpty) {
+                            showPopupMessage(
+                              context,
+                              context.translate('information_incomplete'),
+                              context
+                                  .translate('fill_all_required_fields_dialog'),
+                            );
+                            return;
+                          }
+
+                          if (pw != pwconfirm) {
+                            String errorTitle =
+                                context.translate('false_confirmation');
+                            String errorMessage = context
+                                .translate('password_confirmation_error');
+                            showPopupMessage(context, errorTitle, errorMessage);
+                            return;
+                          }
+
+                          if (!termsAccepted) {
+                            showPopupMessage(
+                              context,
+                              context.translate('information_incomplete'),
+                              context.translate('accept_terms_conditions'),
+                            );
+                            return;
+                          }
+
+                          registerUser();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: Text(
+                            context.translate('sign_up'),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ],
+
+                    const SizedBox(height: 16),
+
+                    // Login button
+                    GestureDetector(
+                      onTap: () => context.goNamed(Connexion.id),
+                      child: Center(
+                        child: Text.rich(
+                          TextSpan(
+                            text:
+                                context.translate('already_have_account_login'),
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+                  ], // This closes the children of the inner Column
                 ),
               ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  // --- Validation Logic ---
-  String? _validateInputs() {
-    if (name == null ||
-            name!.isEmpty ||
-            email == null ||
-            email!.isEmpty ||
-            pw == null ||
-            pw!.isEmpty ||
-            pwconfirm == null ||
-            pwconfirm!.isEmpty ||
-            whatsapp == null ||
-            whatsapp!.isEmpty ||
-            city == null ||
-            city!.isEmpty ||
-            region == null ||
-            region!.isEmpty ||
-            dob == null ||
-            sex == null ||
-            language.isEmpty ||
-            country == null ||
-            country!.isEmpty ||
-            profession == null ||
-            profession!.isEmpty ||
-            interests.isEmpty
-        // Sponsor code (code) is optional for initial validation, but checked later if provided
-        ) {
-      return context.translate('fill_all_information');
-    }
-    if (pw != pwconfirm) {
-      return context.translate('password_confirmation_error');
-    }
-    if (!isValidEmailDomain(email!)) {
-      return context.translate('use_valid_email_provider');
-    }
-    // Add more specific validation if needed (e.g., phone number format)
-    return null; // No errors
+  bool isValidEmailDomain(String email) {
+    // Split the email at @ and check the domain part
+    final parts = email.split('@');
+    if (parts.length != 2) return false; // Not a valid email format
+
+    final domain = parts[1].toLowerCase();
+
+    // List of common email domains to accept
+    final validDomains = [
+      'gmail.com',
+      'yahoo.com',
+      'hotmail.com',
+      'outlook.com',
+      'live.com',
+      'aol.com',
+      'icloud.com',
+      'mail.ru',
+      'protonmail.com',
+      'pm.me',
+      'yandex.ru',
+      'zoho.com',
+      'gmx.com',
+      'gmx.net',
+      'tutanota.com',
+      'msn.com',
+      'comcast.net',
+      'verizon.net',
+      'sbcglobal.net',
+      // Add other domains as needed
+    ];
+
+    return validDomains.any((valid) => domain.contains(valid)) ||
+        domain.endsWith('.edu') ||
+        domain.endsWith('.gov') ||
+        domain.endsWith('.org') ||
+        domain.endsWith('.net') ||
+        domain.endsWith('.co') ||
+        domain.endsWith('.io');
   }
 }

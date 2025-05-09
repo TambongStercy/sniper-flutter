@@ -13,6 +13,8 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/produit-page.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart';
+import 'package:snipper_frontend/theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Market extends StatefulWidget {
   Market({super.key, this.page});
@@ -287,65 +289,163 @@ class _MarketState extends State<Market> {
       subCategories.addAll(subProducts);
     } else {
       // If category is empty ('all'), include both product and service subcategories
-      // Optionally add an 'all' button explicitly if needed, but for now, empty means no subcategory filter
-      // subCategories.add(''); // Representing 'All' subcategories if needed
     }
 
-    return Container(
-      width: double.infinity,
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.fromLTRB(0 * fem, 10 * fem, 0 * fem, 0 * fem),
-            color: Colors.grey[200],
-            child: Column(
-              children: [
-                CustomTextField(
-                  hintText: context.translate('search_product_or_service'),
-                  onChange: (val) {
-                    search = val;
-                  },
-                  onSearch: () async {
-                    // Set currentSearchTerm here before calling refresh
-                    // This ensures the refresh uses the latest search term from the field
-                    currentSearchTerm = search;
-                    await refresh();
-                  },
-                  searchMode: true,
+    return Column(
+      children: [
+        // Search and filter section
+        Container(
+          padding: EdgeInsets.fromLTRB(16 * fem, 16 * fem, 16 * fem, 0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Search field with modern styling
+              CustomTextField(
+                hintText: context.translate('search_product_or_service'),
+                onChange: (val) {
+                  search = val;
+                },
+                onSearch: () async {
+                  currentSearchTerm = search;
+                  await refresh();
+                },
+                searchMode: true,
+                margin: 0,
+              ),
+              SizedBox(height: 16 * fem),
+
+              // Main category tabs
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Row(
+                child: Row(
                   children: [
-                    _topButton(fem, ''),
-                    _topButton(fem, 'services'),
-                    _topButton(fem, 'produits'),
+                    _buildMainCategoryTab(fem, ''),
+                    _buildMainCategoryTab(fem, 'services'),
+                    _buildMainCategoryTab(fem, 'produits'),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          // Only show subcategories if a main category (produits/services) is selected
-          if (category == 'produits' || category == 'services')
-            Container(
-              height: 45 * fem,
-              padding: EdgeInsets.symmetric(vertical: 10 * fem),
-              child: ListView(scrollDirection: Axis.horizontal, children: [
-                _subcategButton(fem, ''), // Add "All" for subcategories
-                ...subCategories // Use spread operator
-                    .map((val) => _subcategButton(fem, val))
-                    .toList(),
-              ]),
-            ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: refresh,
-              child: Container(
-                color: Colors.white,
-                // Use the helper method to build the list view
-                child: _buildProductList(context),
+        ),
+
+        // Subcategories horizontal list
+        if (category == 'produits' || category == 'services')
+          Container(
+            height: 48 * fem,
+            padding:
+                EdgeInsets.symmetric(vertical: 8 * fem, horizontal: 8 * fem),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.shade200),
               ),
             ),
+            child: ListView(scrollDirection: Axis.horizontal, children: [
+              _buildSubcategoryChip(fem, ''), // Add "All" for subcategories
+              ...subCategories
+                  .map((val) => _buildSubcategoryChip(fem, val))
+                  .toList(),
+            ]),
           ),
-        ],
+
+        // Product grid
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: refresh,
+            child: Container(
+              color: Colors.white,
+              child: _buildProductList(context),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMainCategoryTab(double fem, String catg) {
+    final value =
+        catg == '' ? context.translate('all') : context.translate(catg);
+
+    return Expanded(
+      child: InkWell(
+        onTap: () async {
+          setState(() {
+            category = catg;
+            subcategory = '';
+          });
+          await refresh();
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 12 * fem),
+          decoration: BoxDecoration(
+            color: category == catg ? AppTheme.primaryBlue : Colors.transparent,
+            borderRadius: BorderRadius.circular(8 * fem),
+          ),
+          child: Text(
+            value,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: category == catg ? Colors.white : Colors.black87,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubcategoryChip(double fem, String subCateg) {
+    subCateg = subCateg.toLowerCase();
+
+    final value = subCateg.isEmpty
+        ? context.translate('all')
+        : context.translate(subCateg);
+
+    return Container(
+      margin: EdgeInsets.only(right: 8 * fem),
+      child: InkWell(
+        onTap: () async {
+          setState(() {
+            subcategory = subCateg;
+          });
+          await refresh();
+        },
+        child: Chip(
+          label: Text(value),
+          backgroundColor: subcategory == subCateg
+              ? AppTheme.primaryBlue.withOpacity(0.1)
+              : Colors.grey.shade100,
+          labelStyle: TextStyle(
+            color:
+                subcategory == subCateg ? AppTheme.primaryBlue : Colors.black87,
+            fontWeight:
+                subcategory == subCateg ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 13,
+          ),
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: subcategory == subCateg
+                  ? AppTheme.primaryBlue.withOpacity(0.3)
+                  : Colors.transparent,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -404,6 +504,7 @@ class _MarketState extends State<Market> {
         // final imagesUrlList = prdt['imagesUrl'] as List<dynamic>? ?? [];
         // final imageUrl =
         // imagesUrlList.isNotEmpty ? imagesUrlList[0]?.toString() ?? '' : '';
+        final link = prdt['whatsappLink'] as String? ?? '';
 
         // --- New image handling ---
         final imagesList = prdt['images'] as List<dynamic>? ?? [];
@@ -442,12 +543,7 @@ class _MarketState extends State<Market> {
           child: PrdtPost(
             image: imageUrl,
             onContact: () {
-              // TODO: Implement actual contact logic (e.g., navigate to seller profile or chat)
-              showPopupMessage(
-                context,
-                'Contact Seller', // Replace with translation key
-                'Seller: $sellerId - Contact functionality to be implemented.', // Replace
-              );
+              launchUrl(Uri.parse(link));
             },
             prdtId: prdtId,
             sellerId: sellerId, // Pass the correct sellerId
@@ -469,84 +565,6 @@ class _MarketState extends State<Market> {
         // --- End Render Product Item ---
       }),
       padding: EdgeInsets.all(8.0),
-    );
-  }
-
-  InkWell _subcategButton(double fem, String subCateg) {
-    subCateg = subCateg.toLowerCase();
-
-    final value = subCateg.isEmpty
-        ? context.translate('all')
-        : context.translate(subCateg);
-
-    return InkWell(
-      onTap: () async {
-        setState(() {
-          subcategory = subCateg;
-        });
-        await refresh();
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: 5 * fem,
-          horizontal: 5 * fem,
-        ),
-        margin: EdgeInsets.symmetric(horizontal: 4 * fem),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.all(Radius.circular(10 * fem)),
-          color: subcategory == subCateg
-              ? Theme.of(context).colorScheme.primary
-              : Colors.grey[200],
-        ),
-        child: Text(
-          value,
-          textAlign: TextAlign.center,
-          style: SafeGoogleFont(
-            'Mulish',
-            height: 1.255,
-            fontSize: 12.0,
-            color:
-                subcategory == subCateg ? Color(0xffffffff) : Color(0xff000000),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Expanded _topButton(double fem, String catg) {
-    final value =
-        catg == '' ? context.translate('all') : context.translate(catg);
-
-    return Expanded(
-      child: InkWell(
-        onTap: () async {
-          setState(() {
-            category = catg;
-            subcategory = '';
-          });
-          await refresh();
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            vertical: 10 * fem,
-            horizontal: 30 * fem,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(10 * fem)),
-            color:
-                category == catg ? Theme.of(context).colorScheme.primary : null,
-          ),
-          child: Text(
-            value,
-            textAlign: TextAlign.center,
-            style: SafeGoogleFont(
-              'Mulish',
-              height: 1.255,
-              color: category == catg ? Color(0xffffffff) : Color(0xff000000),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:snipper_frontend/localization/app_localizations.dart';
 import 'package:snipper_frontend/router.dart';
+import 'package:snipper_frontend/theme.dart'; // Import our new theme
 
 // Conditional import
 import 'web_url_strategy.dart' if (dart.library.io) 'default_url_strategy.dart';
@@ -72,40 +73,9 @@ class _MyAppState extends State<MyApp> {
       },
       title: 'Snipper Business Center',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        // Enable Material Design 3
-        useMaterial3: true,
-
-        // Use ColorScheme.fromSeed but explicitly define primary, secondary, tertiary
-        colorScheme: ColorScheme.fromSeed(
-          seedColor:
-              const Color(0xff1862f0), // Keep blue as the seed for generation
-          brightness: Brightness.light,
-          // Explicitly set the main colors from the logo
-          primary: const Color(0xff1862f0), // Blue
-          secondary: const Color(0xff92b127), // Lime Green
-          tertiary: const Color(
-              0xffED8B00), // Orange (using the one defined in utils.dart)
-        ),
-
-        // Keep existing scrollbar theme for now, might need adjustment for M3
-        scrollbarTheme: ScrollbarThemeData(
-          thumbVisibility: MaterialStateProperty.all(true),
-          thickness: MaterialStateProperty.all(6.0),
-          radius: const Radius.circular(4.0),
-        ),
-        // Add other M3 theme adjustments if necessary (e.g., textTheme, component themes)
-      ),
-      // Optionally define a dark theme
-      // darkTheme: ThemeData(
-      //   useMaterial3: true,
-      //   colorScheme: ColorScheme.fromSeed(
-      //     seedColor: const Color(0xff1862f0),
-      //     brightness: Brightness.dark,
-      //   ),
-      //   // Add other dark theme adjustments
-      // ),
-      // themeMode: ThemeMode.system, // Or ThemeMode.light, ThemeMode.dark
+      theme: AppTheme.lightTheme(), // Use our new theme
+      // darkTheme: AppTheme.darkTheme(), // Optionally enable dark theme
+      // themeMode: ThemeMode.system,
     );
   }
 }

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/notificationbox.dart';
-import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
+import 'package:snipper_frontend/localization_extension.dart';
 
 class Notifications extends StatefulWidget {
   static const id = 'notifications';
@@ -14,56 +13,97 @@ class Notifications extends StatefulWidget {
 
 class _NotificationsState extends State<Notifications> {
   late SharedPreferences prefs;
+  List<String> list = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    () async {
-      await initSharedPref();
-      setState(() {
-        // Update your UI with the desired changes.
-      });
-    }();
+    _loadNotifications();
   }
 
-  Future<void> initSharedPref() async {
-    prefs = await SharedPreferences.getInstance();
-    final notifs = await getNotifications();
-    list = notifs.map((e) => e['message'] ?? '').toList();
+  Future<void> _loadNotifications() async {
+    setState(() => isLoading = true);
+    try {
+      prefs = await SharedPreferences.getInstance();
+      final notifs = await getNotifications();
+      list = notifs.map((e) => e['message'] ?? '').toList();
+    } catch (e) {
+      print('Error loading notifications: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
-
-  List<String> list = [];
 
   @override
   Widget build(BuildContext context) {
     double baseWidth = 390;
     double fem = MediaQuery.of(context).size.width / baseWidth;
+    double ffem = fem * 0.97;
 
-    return SimpleScaffold(
-      title: context.translate('notifications'), // Localized title
-      child: Container(
-        padding: EdgeInsets.fromLTRB(15 * fem, 20 * fem, 15 * fem, 14 * fem),
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          color: Color(0xffffffff),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          context.translate('notifications'),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
         ),
-        child: list.length > 0
-            ? Column(
-                children: list
-                    .map(
-                      (item) => Column(
-                        children: [
-                          NotifBox(message: item),
-                          SizedBox(
-                            height: 15 * fem,
-                          ),
-                        ],
-                      ),
-                    )
-                    .toList(),
-              )
-            : SizedBox(),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadNotifications,
+              child: list.isEmpty
+                  ? _buildEmptyState(fem, ffem)
+                  : ListView.separated(
+                      padding: EdgeInsets.all(16 * fem),
+                      itemCount: list.length,
+                      separatorBuilder: (context, index) =>
+                          SizedBox(height: 12 * fem),
+                      itemBuilder: (context, index) =>
+                          NotifBox(message: list[index]),
+                    ),
+            ),
+    );
+  }
+
+  Widget _buildEmptyState(double fem, double ffem) {
+    return ListView(
+      children: [
+        SizedBox(height: 100 * fem),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.notifications_off_outlined,
+                size: 80 * fem,
+                color: Colors.grey[400],
+              ),
+              SizedBox(height: 16 * fem),
+              Text(
+                context.translate('no_notifications'),
+                style: TextStyle(
+                  fontSize: 18 * ffem,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

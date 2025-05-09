@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:snipper_frontend/utils.dart'; // For SafeGoogleFont if needed
 import 'package:snipper_frontend/localization_extension.dart'; // For context.translate
@@ -127,7 +128,7 @@ class TransactionDetailModal extends StatelessWidget {
               // Close Button
               Center(
                 child: TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => context.pop(),
                     child: Text(context.translate('close')),
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.symmetric(

@@ -9,7 +9,7 @@ import 'package:http_parser/http_parser.dart'; // Import for MediaType
 
 class ApiService {
   // Use the base URL from your config
-  final String _baseUrl = url; // Use gateway_url from config.dart
+  final String _baseUrl = '${host}api'; // Use gateway_url from config.dart
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -70,7 +70,8 @@ class ApiService {
   Future<Map<String, dynamic>> get(String endpoint,
       {Map<String, String>? headers,
       bool expectJson = true,
-      bool requiresAuth = true}) async {
+      bool requiresAuth = true,
+      Map<String, String>? queryParameters}) async {
     Map<String, String> finalHeaders = {...?headers};
 
     if (requiresAuth) {
@@ -83,7 +84,11 @@ class ApiService {
     }
 
     // Construct the final URL
-    final uri = Uri.parse('$_baseUrl$endpoint');
+    var uri = Uri.parse('$_baseUrl$endpoint');
+    if (queryParameters != null) {
+      uri = uri.replace(queryParameters: queryParameters);
+    }
+
     print("GET Request: ${uri.toString()}"); // Log the request URL
 
     final response = await http.get(
@@ -640,35 +645,28 @@ class ApiService {
   /// Requests an OTP to be sent for verifying an email change.
   /// Requires authentication token.
   /// Takes the user ID (or potentially relies on token). Adjust body if needed.
-  Future<Map<String, dynamic>> requestEmailChangeOtp() async {
-    // Note: Original code used userId in body. The /auth endpoint might not need it
-    // if it uses the token. Sending empty body for now, adjust if backend requires userId.
-    // final prefs = await SharedPreferences.getInstance();
-    // final userId = prefs.getString('id');
-    // if (userId == null) return {'error': 'User ID not found', 'statusCode': 400};
-    // final body = {'userId': userId};
-
-    // Endpoint from profile-modify.dart (createOTPLink)
-    // Assuming createOTPLink resolves to something like /auth/request-email-otp
-    return await post('/auth/create-otp-link', body: {}); // Sending empty body
+  Future<Map<String, dynamic>> requestEmailChangeOtp(String newEmail) async {
+    // Endpoint from userflow2.http
+    // Body requires the new email address
+    return await post('/users/request-change-email',
+        body: {'newEmail': newEmail}, // Send newEmail in body
+        requiresAuth: true // Requires user to be logged in
+        );
   }
 
   /// Verifies the OTP for an email address change.
   /// Requires authentication token.
   Future<Map<String, dynamic>> verifyEmailChange(
       String newEmail, String otp) async {
-    // Endpoint assumption: /auth/verify-email-change or similar
-    // Needs verification with actual backend implementation.
-    // Assumes backend uses token to identify user, only needs new email and OTP.
-    final endpoint = '/auth/verify-email-change';
+    // Endpoint from userflow2.http
+    // Body requires newEmail and otpCode
+    final endpoint = '/users/confirm-change-email';
     return await post(
       endpoint,
       body: {
-        'email': newEmail, // The new email address being verified
-        'otpCode': otp,
-        // 'id': userId, // Add if backend requires user ID explicitly
+        'newEmail': newEmail, // Key expected by API
+        'otpCode': otp, // Key expected by API
       },
-      // This action requires the user to be logged in, so requiresAuth is true.
       requiresAuth: true,
     );
   }
@@ -796,6 +794,17 @@ class ApiService {
     return await get(endpoint); // Requires auth
   }
 
+  /// Resends an OTP based on email and purpose.
+  /// Does not require authentication token.
+  Future<Map<String, dynamic>> resendOtpByEmail(
+      String email, String purpose) async {
+    return await post(
+      '/users/resend-otp',
+      body: {'email': email, 'purpose': purpose},
+      requiresAuth: false,
+    );
+  }
+
   // --- NEW: Get Current User's Affiliator (Sponsor) ---
   Future<Map<String, dynamic>> getMyAffiliator() async {
     // Use the get helper which handles token, base URL, and basic response processing
@@ -830,5 +839,72 @@ class ApiService {
     final endpoint = '/products/$productId';
     return await delete(
         endpoint); // Assuming a delete helper exists or will be added
+  }
+
+  Future<Map<String, dynamic>> getUserTransactionHistory({
+    int page = 1,
+    int limit = 10,
+    String sortBy = 'createdAt',
+    String sortOrder = 'desc',
+    String? type, // DEPOSIT, WITHDRAWAL, PAYMENT, REFUND
+    String? status, // PENDING, COMPLETED, FAILED, CANCELLED
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final queryParameters = {
+      'page': page.toString(),
+      'limit': limit.toString(),
+      'sortBy': sortBy,
+      'sortOrder': sortOrder,
+    };
+    if (type != null) {
+      queryParameters['type'] = type;
+    }
+    if (status != null) {
+      queryParameters['status'] = status;
+    }
+
+    try {
+      final response = await get(
+        '/transactions/history', // Endpoint from userflow2.http
+        queryParameters: queryParameters,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return response;
+    } catch (e) {
+      print('Error fetching transaction history: $e');
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getPartnerDetails() async {
+    try {
+      // Assuming 'get' handles the actual HTTP request, base URL, headers, etc.
+      final response = await get('partners/me'); // Endpoint for partner details
+
+      // Based on your provided structure:
+      // response is expected to be like:
+      // {
+      //   "success": true,
+      //   "data": {
+      //     "pack": "gold", // or "silver"
+      //     "amount": 12345.67,
+      //     // ... other fields like totalPartnerWithdrawals, user, isActive etc.
+      //   }
+      // }
+      // If 'get' already returns the parsed Map, no further processing is needed here.
+      // If 'get' returns an http.Response, you'd parse it:
+      // if (response.statusCode == 200) {
+      //   return json.decode(response.body) as Map<String, dynamic>;
+      // } else {
+      //   // Handle error, perhaps return a map with success:false
+      //   return {'success': false, 'error': 'Failed to load partner details', 'statusCode': response.statusCode};
+      // }
+
+      return response; // Assuming 'get' returns the parsed Map<String, dynamic>
+    } catch (e) {
+      print('Error in getPartnerDetails: $e');
+      return {'success': false, 'error': 'An exception occurred: $e'};
+    }
   }
 }

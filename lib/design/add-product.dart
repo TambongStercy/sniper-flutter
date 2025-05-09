@@ -5,10 +5,10 @@ import 'package:dotted_border/dotted_border.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/components/dropdown.dart';
-import 'package:snipper_frontend/components/simplescaffold.dart';
 import 'package:snipper_frontend/components/textfield.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/localization_extension.dart';
@@ -27,20 +27,6 @@ class _AjouterProduitState extends State<AjouterProduit> {
   final ApiService apiService = ApiService();
 
   late SharedPreferences prefs;
-
-  Future<void> initSharedPref() async {
-    prefs = await SharedPreferences.getInstance();
-
-    token = prefs.getString('token');
-    email = prefs.getString('email');
-    name = prefs.getString('name');
-    region = prefs.getString('region');
-    phone = prefs.getString('phone');
-    avatar = prefs.getString('avatar') ?? '';
-    isSubscribed = prefs.getBool('isSubscribed') ?? false;
-
-    showSpinner = false;
-  }
 
   String? email;
   String? name;
@@ -63,54 +49,41 @@ class _AjouterProduitState extends State<AjouterProduit> {
   @override
   void initState() {
     super.initState();
-    () async {
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
       await initSharedPref();
       if (mounted) {
         setState(() {});
       }
-    }();
-  }
-
-  refreshPage() {
-    if (mounted) {
-      setState(() {
-        showSpinner = false;
-        initSharedPref();
-      });
+    } catch (e) {
+      print('Error loading user data: $e');
     }
   }
 
-  refresh() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
+  Future<void> initSharedPref() async {
+    prefs = await SharedPreferences.getInstance();
 
-  refreshPageRemove() {
-    if (mounted) {
-      setState(() {
-        showSpinner = false;
-      });
-    }
-  }
-
-  refreshPageWait() {
-    if (mounted) {
-      setState(() {
-        showSpinner = true;
-      });
-    }
+    token = prefs.getString('token');
+    email = prefs.getString('email');
+    name = prefs.getString('name');
+    region = prefs.getString('region');
+    phone = prefs.getString('phone');
+    avatar = prefs.getString('avatar') ?? '';
+    isSubscribed = prefs.getBool('isSubscribed') ?? false;
   }
 
   Future<void> addProduct() async {
-    refreshPageWait();
+    setState(() => showSpinner = true);
 
     try {
       if (!isSubscribed) {
         String msg = context.translate('not_subscribed_message');
         String title = context.translate('error');
         showPopupMessage(context, title, msg);
-        refreshPageRemove();
+        setState(() => showSpinner = false);
         return;
       }
 
@@ -125,7 +98,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
           context.translate('error'),
           context.translate('fill_all_fields_message'),
         );
-        refreshPageRemove();
+        setState(() => showSpinner = false);
         return;
       }
 
@@ -166,8 +139,29 @@ class _AjouterProduitState extends State<AjouterProduit> {
       showPopupMessage(context, title, msg);
       print('Exception in addProduct: $e');
     } finally {
-      refreshPageRemove();
+      setState(() => showSpinner = false);
     }
+  }
+
+  void onChangeCategory(String? newValue) {
+    category = newValue!;
+
+    subcategories.clear();
+    if (category == context.translate('products')) {
+      subcategories.addAll(subProducts);
+    } else if (category == context.translate('services')) {
+      subcategories.addAll(subServices);
+    }
+
+    subcategory = category == context.translate('products')
+        ? context.translate('electronics_and_gadgets')
+        : context.translate('design_services');
+    setState(() {});
+  }
+
+  void onChangeSubCategory(String? newValue) {
+    subcategory = newValue ?? subcategory;
+    setState(() {});
   }
 
   @override
@@ -184,44 +178,57 @@ class _AjouterProduitState extends State<AjouterProduit> {
     double fem = MediaQuery.of(context).size.width / baseWidth;
     double ffem = fem * 0.97;
 
-    return SimpleScaffold(
-      title: 'Ajouter un produit',
-      inAsyncCall: showSpinner,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 0 * fem),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Color(0xffffffff),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          context.translate('add_product'),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              height: 245 * fem,
-              color: Colors.grey.shade200,
-              padding: EdgeInsets.symmetric(vertical: 10 * fem),
-              alignment: Alignment.center,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                shrinkWrap: true,
-                children: [
-                  ...imageDisplay(fem),
-                  if (images.length < 5) addImage(fem),
-                ],
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: ModalProgressHUD(
+        inAsyncCall: showSpinner,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Image selection section
+              Container(
+                height: 245 * fem,
+                color: Colors.grey.shade100,
+                padding: EdgeInsets.symmetric(vertical: 16 * fem),
+                alignment: Alignment.center,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  shrinkWrap: true,
+                  padding: EdgeInsets.symmetric(horizontal: 16 * fem),
+                  children: [
+                    ...imageDisplay(fem),
+                    if (images.length < 5) addImage(fem),
+                  ],
+                ),
               ),
-            ),
-            SizedBox(
-              height: 15 * fem,
-            ),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 28.0, vertical: 10.0),
-              child: Column(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(fem, ffem, context.translate('product_name')),
-                      CustomTextField(
+
+              // Form fields
+              Padding(
+                padding: EdgeInsets.all(24 * fem),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _formField(
+                      label: context.translate('product_name'),
+                      field: CustomTextField(
                         hintText: '',
                         onChange: (val) {
                           prdtName = val;
@@ -229,16 +236,12 @@ class _AjouterProduitState extends State<AjouterProduit> {
                         margin: 0,
                         value: name,
                       ),
-                    ],
-                  ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(fem, ffem, context.translate('category')),
-                      CustomDropdown(
+                      fem: fem,
+                      ffem: ffem,
+                    ),
+                    _formField(
+                      label: context.translate('category'),
+                      field: CustomDropdown(
                         items: categories,
                         value: categories.contains(category)
                             ? category
@@ -246,16 +249,12 @@ class _AjouterProduitState extends State<AjouterProduit> {
                         ffem: ffem,
                         onChange: onChangeCategory,
                       ),
-                    ],
-                  ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(fem, ffem, context.translate('subcategory')),
-                      CustomDropdown(
+                      fem: fem,
+                      ffem: ffem,
+                    ),
+                    _formField(
+                      label: context.translate('subcategory'),
+                      field: CustomDropdown(
                         items: subcategories,
                         value: subcategories.contains(subcategory)
                             ? subcategory
@@ -263,16 +262,12 @@ class _AjouterProduitState extends State<AjouterProduit> {
                         ffem: ffem,
                         onChange: onChangeSubCategory,
                       ),
-                    ],
-                  ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(fem, ffem, context.translate('price')),
-                      CustomTextField(
+                      fem: fem,
+                      ffem: ffem,
+                    ),
+                    _formField(
+                      label: context.translate('price'),
+                      field: CustomTextField(
                         hintText: '',
                         onChange: (val) {
                           price = val;
@@ -280,16 +275,12 @@ class _AjouterProduitState extends State<AjouterProduit> {
                         margin: 0,
                         fieldType: CustomFieldType.number,
                       ),
-                    ],
-                  ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label(fem, ffem, context.translate('description')),
-                      CustomTextField(
+                      fem: fem,
+                      ffem: ffem,
+                    ),
+                    _formField(
+                      label: context.translate('description'),
+                      field: CustomTextField(
                         hintText: '',
                         onChange: (val) {
                           description = val;
@@ -297,72 +288,49 @@ class _AjouterProduitState extends State<AjouterProduit> {
                         margin: 0,
                         fieldType: CustomFieldType.multiline,
                       ),
-                    ],
-                  ),
-                  SizedBox(
-                    height: 15 * fem,
-                  ),
-                ],
+                      fem: fem,
+                      ffem: ffem,
+                    ),
+                    SizedBox(height: 32 * fem),
+                    ReusableButton(
+                      title: context.translate('post'),
+                      lite: false,
+                      onPress: addProduct,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            SizedBox(
-              height: 15 * fem,
-            ),
-            ReusableButton(
-              title: context.translate('post'),
-              lite: false,
-              onPress: () async {
-                try {
-                  await addProduct();
-                } catch (e) {
-                  String msg = e.toString();
-                  String title = context.translate('error');
-                  showPopupMessage(context, title, msg);
-                  print(e);
-                }
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void onChangeCategory(String? newValue) {
-    category = newValue!;
-
-    subcategories.clear();
-    if (category == context.translate('products')) {
-      subcategories.addAll(subProducts);
-    } else if (category == context.translate('services')) {
-      subcategories.addAll(subServices);
-    }
-
-    subcategory = category == context.translate('products')
-        ? context.translate('electronics_and_gadgets')
-        : context.translate('design_services');
-    refresh();
-  }
-
-  void onChangeSubCategory(String? newValue) {
-    subcategory = newValue ?? subcategory;
-
-    refresh();
-  }
-
-  Container _label(double fem, double ffem, title) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(0 * fem, 0 * fem, 0 * fem, 7 * fem),
-      child: Text(
-        title,
-        style: SafeGoogleFont(
-          'Montserrat',
-          fontSize: 12 * ffem,
-          fontWeight: FontWeight.w500,
-          height: 1.3333333333 * ffem / fem,
-          letterSpacing: 0.400000006 * fem,
-          color: Color(0xff6d7d8b),
-        ),
+  Widget _formField({
+    required String label,
+    required Widget field,
+    required double fem,
+    required double ffem,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 24 * fem),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(bottom: 8 * fem),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 16 * ffem,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          field,
+        ],
       ),
     );
   }
@@ -372,12 +340,17 @@ class _AjouterProduitState extends State<AjouterProduit> {
       child: InkWell(
         onTap: () async {
           try {
+            setState(() => showSpinner = true);
+
             final result = await FilePicker.platform.pickFiles(
               type: FileType.image,
               allowMultiple: true,
             );
 
-            if (result == null) return;
+            if (result == null) {
+              setState(() => showSpinner = false);
+              return;
+            }
 
             bool heavy = false;
 
@@ -395,23 +368,24 @@ class _AjouterProduitState extends State<AjouterProduit> {
               images.add(filePath);
             }
 
-            if (heavy)
+            if (heavy) {
               showPopupMessage(
                 context,
                 context.translate('file_too_large'),
                 context.translate('image_size_warning'),
               );
+            }
 
-            refreshPageRemove();
+            setState(() => showSpinner = false);
           } catch (e) {
             print(e);
-            refreshPageRemove();
+            setState(() => showSpinner = false);
           }
         },
         child: Container(
           margin: EdgeInsets.symmetric(
-            vertical: 25 * fem,
-            horizontal: 5 * fem,
+            vertical: 12 * fem,
+            horizontal: 8 * fem,
           ),
           child: DottedBorder(
             borderType: BorderType.RRect,
@@ -423,23 +397,23 @@ class _AjouterProduitState extends State<AjouterProduit> {
               borderRadius: BorderRadius.all(Radius.circular(12)),
               child: Container(
                 color: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.symmetric(
+                    horizontal: 32 * fem, vertical: 24 * fem),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.add,
-                      size: 50,
-                      color: Theme.of(context).colorScheme.primary,
+                      Icons.add_photo_alternate_outlined,
+                      size: 48 * fem,
+                      color: Theme.of(context).primaryColor,
                     ),
+                    SizedBox(height: 12 * fem),
                     Text(
                       context.translate('add_image'),
-                      style: SafeGoogleFont(
-                        'Mulish',
-                        height: 1.255,
+                      style: TextStyle(
+                        fontSize: 16 * fem,
                         fontWeight: FontWeight.w600,
-                        fontSize: 15.0,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).primaryColor,
                       ),
                     )
                   ],
@@ -457,36 +431,40 @@ class _AjouterProduitState extends State<AjouterProduit> {
       return Stack(
         children: [
           Container(
-            width: 122 * fem,
+            width: 150 * fem,
             margin: EdgeInsets.symmetric(
-              vertical: 25 * fem,
-              horizontal: 5 * fem,
+              vertical: 12 * fem,
+              horizontal: 8 * fem,
             ),
-            alignment: Alignment.topLeft,
             decoration: BoxDecoration(
-              border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant),
+              border: Border.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(12 * fem),
               image: DecorationImage(
                   fit: BoxFit.cover, image: productImage(image)),
             ),
           ),
           Positioned(
-            top: 5,
-            right: -10,
-            child: IconButton(
-              onPressed: () {
-                images.remove(image);
-                refresh();
-              },
-              icon: Container(
-                alignment: Alignment.topLeft,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black26),
-                  borderRadius: BorderRadius.circular(12 * fem),
-                  color: Colors.white,
-                ),
-                child: Icon(Icons.close, size: 20),
+            top: 8 * fem,
+            right: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: Icon(Icons.close, size: 20, color: Colors.red),
+                onPressed: () {
+                  setState(() {
+                    images.remove(image);
+                  });
+                },
               ),
             ),
           ),
@@ -498,7 +476,6 @@ class _AjouterProduitState extends State<AjouterProduit> {
   ImageProvider<Object> productImage(String avatarPath) {
     if (kIsWeb) {
       final bytes = base64.decode(avatarPath);
-
       return MemoryImage((bytes));
     }
 

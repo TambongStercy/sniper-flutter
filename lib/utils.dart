@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:intl_phone_field/countries.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -20,8 +21,6 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/localization/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:snipper_frontend/api_service.dart';
-import 'package:http/http.dart'
-    as http; // Keep for now, might be used elsewhere
 
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
   @override
@@ -449,6 +448,18 @@ String generateUniqueFileName(String prefix, String extension) {
   String uniqueFileName = '$prefix-$timestamp-$randomComponent.$extension';
 
   return uniqueFileName;
+}
+
+/// Formats an ISO date string into a specified pattern.
+/// Defaults to 'dd/MM/yyyy'.
+String formatDateString(String isoDateString, {String pattern = 'dd/MM/yyyy'}) {
+  try {
+    final DateTime dateTime = DateTime.parse(isoDateString);
+    return DateFormat(pattern).format(dateTime);
+  } catch (e) {
+    print('Error formatting date string: $isoDateString - $e');
+    return isoDateString; // Return original or a default error string
+  }
 }
 
 Future<void> saveNotification(Map<String, String> newNotification) async {

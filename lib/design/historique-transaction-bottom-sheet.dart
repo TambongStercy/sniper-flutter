@@ -235,23 +235,21 @@ class _BottomHitoryState extends State<BottomHitory> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(25 * fem),
-          topRight: Radius.circular(25 * fem),
+          topLeft: Radius.circular(20 * fem),
+          topRight: Radius.circular(20 * fem),
         ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            margin: EdgeInsets.only(top: 10 * fem, bottom: 15 * fem),
-            padding: EdgeInsets.symmetric(horizontal: 25 * fem),
+          Padding(
+            padding:
+                EdgeInsets.symmetric(vertical: 16 * fem, horizontal: 24 * fem),
             child: Text(
               context.translate('transaction_history'),
-              style: SafeGoogleFont(
-                'Montserrat',
-                fontSize: 20 * ffem,
-                fontWeight: FontWeight.w500,
-                height: 1 * ffem / fem,
+              style: TextStyle(
+                fontSize: 18 * ffem,
+                fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
@@ -261,7 +259,6 @@ class _BottomHitoryState extends State<BottomHitory> {
               onRefresh: refresh,
               child: Container(
                 color: Theme.of(context).colorScheme.surface,
-                padding: EdgeInsets.symmetric(horizontal: 25 * fem),
                 child: ListView.builder(
                   controller: scrollController,
                   itemBuilder: ((context, index) {
@@ -295,7 +292,13 @@ class _BottomHitoryState extends State<BottomHitory> {
                         child: Center(
                           child: hasMore
                               ? const CircularProgressIndicator()
-                              : Text(context.translate('no_more_transactions')),
+                              : Text(
+                                  context.translate('no_more_transactions'),
+                                  style: TextStyle(
+                                    fontSize: 15 * ffem,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
                         ),
                       );
                     }

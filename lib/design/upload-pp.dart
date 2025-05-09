@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import the extension
@@ -31,7 +30,7 @@ class _PpUploadState extends State<PpUpload> {
 
     token = prefs.getString('token');
     email = prefs.getString('email') ?? '';
-    avatar = prefs.getString('avatar') ?? '';
+    avatar = prefs.getString('avatarId') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
   }
 
@@ -71,7 +70,7 @@ class _PpUploadState extends State<PpUpload> {
           await prefs.setString('avatar', newAvatarUrl);
           print("Avatar updated successfully: $newAvatarUrl");
           setState(() {}); // Update UI to show new avatar
-      } else {
+        } else {
           print(
               "API Success, but new avatar URL not found in response: $response");
           showPopupMessage(
@@ -101,9 +100,13 @@ class _PpUploadState extends State<PpUpload> {
       print('Exception in uploadAvatar UI: $e');
     } finally {
       setState(() {
-      showSpinner = false;
+        showSpinner = false;
       });
     }
+  }
+
+  bool ppExist(String avatarUrl) {
+    return avatarUrl.isNotEmpty;
   }
 
   @override
@@ -117,163 +120,150 @@ class _PpUploadState extends State<PpUpload> {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
     return Scaffold(
-      body: SafeArea(
-        child: ModalProgressHUD(
-          inAsyncCall: showSpinner,
-          child: SafeArea(
-            child: SingleChildScrollView(
-              child: Container(
-                width: double.infinity,
-                color: Color(0xffffffff),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      margin: EdgeInsets.fromLTRB(
-                          25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
-                      width: 771.27 * fem,
-                      height: 275.83 * fem,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(
-                            height: 60.0,
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 46 * fem),
-                            child: Text(
-                              'Sniper Business Center',
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Mulish',
-                                fontSize: 30 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.255 * ffem / fem,
-                                color: Color(0xff000000),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                              context.translate('profile_photo'),
-                              textAlign: TextAlign.left,
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 20 * ffem,
-                                fontWeight: FontWeight.w800,
-                                height: 1 * ffem / fem,
-                                color: Color(0xfff49101),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: EdgeInsets.only(top: 34 * fem),
-                            child: Text(
-                              context.translate('provide_profile_photo'),
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 15 * ffem,
-                                fontWeight: FontWeight.w400,
-                                height: 1.4 * ffem / fem,
-                                color: Color(0xff797979),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(
-                          height: 100.0,
-                          width: double.infinity,
-                        ),
-                        SizedBox(
-                          child: InkWell(
-                            onTap: () async {
-                              try {
-                                final result =
-                                    await FilePicker.platform.pickFiles(
-                                  type: FileType.image,
-                                );
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        centerTitle: true,
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Image.asset(
+            'assets/design/images/logo.png',
+            height: 50,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+      ),
+      body: ModalProgressHUD(
+        inAsyncCall: showSpinner,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.translate('profile_photo'),
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context.translate('provide_profile_photo'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 48),
 
-                                if (result == null) return;
+                // Profile photo upload section
+                Center(
+                  child: Column(
+                    children: [
+                      InkWell(
+                        onTap: () async {
+                          try {
+                            final result = await FilePicker.platform.pickFiles(
+                              type: FileType.image,
+                            );
 
-                                setState(() {
-                                  showSpinner = true;
-                                });
+                            if (result == null) return;
 
-                                List<int>? fileBytes =
-                                    result.files.single.bytes;
+                            setState(() {
+                              showSpinner = true;
+                            });
 
-                                final filePath = kIsWeb
-                                    ? base64.encode(fileBytes!)
-                                    : result.files.first.path!;
+                            List<int>? fileBytes = result.files.single.bytes;
 
-                                await uploadAvatar(
-                                  context: context,
-                                  path: filePath,
-                                );
+                            final filePath = kIsWeb
+                                ? base64.encode(fileBytes!)
+                                : result.files.first.path!;
 
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                              } catch (e) {
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                              }
-                            },
-                            child: CircleAvatar(
-                              radius: 100.0,
-                              child: !ppExist(avatar)
-                                  ? const Icon(
-                                      Icons.photo_camera_rounded,
-                                      color: Colors.grey,
-                                      size: 120.0,
-                                    )
-                                  : null,
-                              // backgroundImage: profileImage(avatar),
-                              backgroundColor: Colors.blueGrey[100],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: ElevatedButton(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5.0,
-                            vertical: 8.0,
-                          ),
-                          child: Text(
-                            !ppExist(avatar)
-                                ? context.translate('skip')
-                                : context.translate('next'),
-                            style: TextStyle(fontSize: 17.0),
-                          ),
-                        ),
-                        onPressed: () {
-                          if (isSubscribed) {
-                            context.go('/');
-                          } else {
-                            context.goNamed(Subscrition.id);
+                            await uploadAvatar(
+                              context: context,
+                              path: filePath,
+                            );
+                          } catch (e) {
+                            setState(() {
+                              showSpinner = false;
+                            });
+                            print('Error selecting image: $e');
                           }
                         },
+                        child: Container(
+                          width: 200,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                spreadRadius: 0,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: !ppExist(avatar)
+                                ? Icon(
+                                    Icons.add_a_photo,
+                                    color: Colors.grey[500],
+                                    size: 64,
+                                  )
+                                : ClipOval(
+                                    child: Image(image: profileImage(avatar)),
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        !ppExist(avatar)
+                            ? context.translate('tap_to_upload')
+                            : context.translate('tap_to_change'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 64),
+
+                // Continue button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (isSubscribed) {
+                        context.go('/');
+                      } else {
+                        context.goNamed(Subscrition.id);
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Text(
+                        !ppExist(avatar)
+                            ? context.translate('skip')
+                            : context.translate('next'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

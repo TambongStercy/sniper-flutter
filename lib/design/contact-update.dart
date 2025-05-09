@@ -12,6 +12,7 @@ import 'package:contacts_service/contacts_service.dart';
 import 'package:snipper_frontend/design/accueil.dart'
     show allProfessions, allInterests, allLanguages;
 import 'package:snipper_frontend/constants/countries.dart';
+import 'package:snipper_frontend/theme.dart';
 
 // Define lists for filter dropdowns (reuse from accueil.dart or define here)
 final List<String> filterSexOptions = ['Male', 'Female', 'Other'];
@@ -115,6 +116,15 @@ class _ContactUpdateState extends State<ContactUpdate>
   Map<String, dynamic> _getCurrentFilters() {
     final Map<String, dynamic> filters = {};
     if (_searchQuery.isNotEmpty) filters['name'] = _searchQuery;
+
+    if (isCibleSubscribed) {
+      if (startDate != null) {
+        filters['startDate'] = formatDate(startDate);
+      }
+      if (endDate != null) {
+        filters['endDate'] = formatDate(endDate);
+      }
+    }
 
     if (selectedCountry != null) filters['country'] = selectedCountry;
     if (selectedSex != null) filters['sex'] = selectedSex;
@@ -511,30 +521,56 @@ class _ContactUpdateState extends State<ContactUpdate>
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          title: Text(context.translate('contacts')),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          title: Text(
+            context.translate('contacts'),
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.black87),
+            onPressed: () => Navigator.pop(context),
+          ),
           bottom: TabBar(
             controller: _tabController,
+            labelColor: Theme.of(context).primaryColor,
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: Theme.of(context).primaryColor,
+            indicatorWeight: 3,
+            labelStyle: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
             tabs: [
               Tab(text: context.translate('search_contacts')),
               Tab(text: context.translate('export_contacts')),
             ],
           ),
         ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildSearchContactsTab(context, fem, ffem),
-            _buildExportContactsTab(context, fem, ffem),
-          ],
+        body: SafeArea(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              // Contacts Tab
+              _buildContactsTab(fem, ffem),
+
+              // Filters Tab
+              _buildFiltersTab(fem, ffem),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSearchContactsTab(
-      BuildContext context, double fem, double ffem) {
-    final bool hasAdvancedSubscription = isCibleSubscribed;
+  Widget _buildContactsTab(double fem, double ffem) {
     return Column(
       children: [
         Padding(
@@ -567,7 +603,7 @@ class _ContactUpdateState extends State<ContactUpdate>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildFilterWidgets(
-                      context, hasAdvancedSubscription, false, fem, ffem),
+                      context, isCibleSubscribed, false, fem, ffem),
                   const SizedBox(height: 20),
                   _buildContactList(context, fem, ffem),
                   if (isLoadingContacts && filteredContacts.isNotEmpty)
@@ -590,8 +626,7 @@ class _ContactUpdateState extends State<ContactUpdate>
     );
   }
 
-  Widget _buildExportContactsTab(
-      BuildContext context, double fem, double ffem) {
+  Widget _buildFiltersTab(double fem, double ffem) {
     final bool hasAdvancedSubscription = isCibleSubscribed;
     return SingleChildScrollView(
       padding: EdgeInsets.all(15.0 * fem),

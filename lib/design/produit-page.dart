@@ -1,10 +1,9 @@
-import 'dart:convert';
+
 
 import 'package:another_carousel_pro/another_carousel_pro.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl_phone_field/countries.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/components/button.dart';
@@ -13,7 +12,6 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 import 'package:share_plus/share_plus.dart';
-import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart'; // Import loading HUD
 import 'package:intl/intl.dart';
 
 class ProduitPage extends StatefulWidget {

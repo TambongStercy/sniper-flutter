@@ -1,4 +1,4 @@
-import 'dart:convert';
+
 
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
@@ -67,7 +67,7 @@ class _YourProductsState extends State<YourProducts> {
 
   Future<void> getProductsOnline() async {
     String msg = '';
-    String error = '';
+    // String error = '';
     try {
       // --- Use ApiService ---
       // TODO: Implement pagination if needed by passing page/limit

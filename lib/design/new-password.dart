@@ -17,17 +17,18 @@ import 'package:snipper_frontend/utils.dart';
 import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 import 'package:snipper_frontend/api_service.dart'; // Import ApiService
+import 'package:snipper_frontend/theme.dart';
 
 // ignore: must_be_immutable
 class NewPassword extends StatefulWidget {
   static const id = 'NewPassword';
 
-  NewPassword({
+  const NewPassword({
     super.key,
     required this.email,
   });
 
-  String email;
+  final String email;
 
   @override
   State<NewPassword> createState() => _NewPasswordState();
@@ -81,14 +82,14 @@ class _NewPasswordState extends State<NewPassword> {
             response['data']?['token'] ?? response['token']; // Adjust key
 
         if (user != null && myToken != null) {
-      final name = user['name'];
-      final region = user['region'];
+          final name = user['name'];
+          final region = user['region'];
           final phone = user['phoneNumber']?.toString();
-      final userCode = user['code'];
+          final userCode = user['code'];
           final balance = (user['balance'] as num?)?.floorToDouble();
           final id = user['id'] ?? user['_id']; // Check common ID keys
           avatar = user['avatarUrl'] ?? user['avatar']; // Adjust key
-      isSubscribed = user['isSubscribed'] ?? false;
+          isSubscribed = user['isSubscribed'] ?? false;
 
           // Save all details to prefs for login session
           prefs.setString('id', id ?? '');
@@ -247,193 +248,172 @@ class _NewPasswordState extends State<NewPassword> {
 
   @override
   Widget build(BuildContext context) {
-    double baseWidth = 390;
-    double fem = MediaQuery.of(context).size.width / baseWidth;
-    double ffem = fem * 0.97;
-
     return Scaffold(
-      body: SafeArea(
-        child: ModalProgressHUD(
-          inAsyncCall: showSpinner,
-          child: SingleChildScrollView(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Color(0xffffffff),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    margin: EdgeInsets.fromLTRB(
-                        25 * fem, 0 * fem, 0 * fem, 21.17 * fem),
-                    width: 771.27 * fem,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 40.0),
-                        Container(
-                          margin: EdgeInsets.only(top: 46 * fem),
-                          child: Text(
-                            'Sniper Business Center',
-                            textAlign: TextAlign.left,
-                            style: SafeGoogleFont(
-                              'Mulish',
-                              fontSize: 30 * ffem,
-                              fontWeight: FontWeight.w700,
-                              height: 1.255 * ffem / fem,
-                              color: Color(0xff000000),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          margin: EdgeInsets.only(top: 34 * fem),
-                          child: Text(
-                            context.translate(
-                                'modify_and_validate_password'), // 'Modifier et Valider le mot de passe'
-                            textAlign: TextAlign.left,
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 20 * ffem,
-                              fontWeight: FontWeight.w800,
-                              height: 1 * ffem / fem,
-                              color: Color(0xfff49101),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          margin: EdgeInsets.only(top: 34 * fem),
-                          child: Text(
-                            context.translate('enter_otp_and_password', args: {
-                              'email': email
-                            }), // 'Entrez le code OTP envoyé à $email et votre nouveau mot de passe'
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15 * ffem,
-                              fontWeight: FontWeight.w400,
-                              height: 1.4 * ffem / fem,
-                              color: Color(0xff797979),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Image.asset(
+            'assets/design/images/logo.png',
+            height: 50,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+      ),
+      body: ModalProgressHUD(
+        inAsyncCall: showSpinner,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.translate('modify_and_validate_password'),
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
                   ),
-                  Container(
-                    width: double.infinity,
-                    height: 500 * fem,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _fieldTitle(fem, ffem,
-                            context.translate('otp_code')), // 'Code OTP'
-                        OtpTextField(
-                          numberOfFields: 6,
-                          borderColor: Color(0xFF512DA8),
-                          fieldWidth: 40.0,
-                          margin: EdgeInsets.only(right: 8.0),
-                          showFieldAsBox: true,
-                          keyboardType: TextInputType.text,
-                          onCodeChanged: (String code) {
-                            // Handle code change
-                          },
-                          onSubmit: (String verificationCode) {
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context.translate('enter_otp_and_password',
+                      args: {'email': email}),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // OTP input field
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.translate('otp_code'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OtpTextField(
+                        numberOfFields: 6,
+                        borderColor: AppTheme.primaryBlue,
+                        focusedBorderColor: AppTheme.primaryBlue,
+                        showFieldAsBox: true,
+                        borderWidth: 1.0,
+                        fieldWidth: 45.0,
+                        keyboardType: TextInputType.number,
+                        onSubmit: (String verificationCode) {
+                          setState(() {
                             otp = verificationCode;
-                          },
+                          });
+                        },
+                        onCodeChanged: (String code) {
+                          setState(() {
+                            otp = code;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Password field
+                CustomTextField(
+                  fieldType: CustomFieldType.password,
+                  hintText: context.translate('new_password'),
+                  value: password,
+                  onChange: (val) {
+                    setState(() {
+                      password = val;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 32),
+
+                // Validate button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        setState(() {
+                          showSpinner = true;
+                        });
+
+                        final hasLogged = await changeAndValidate();
+
+                        if (hasLogged) {
+                          await downloadAvatar();
+                          setState(() {
+                            showSpinner = false;
+                          });
+
+                          if (hasPP && isSubscribed) {
+                            context.go('/');
+                            return;
+                          }
+
+                          final pageToGo = hasPP ? Subscrition.id : PpUpload.id;
+                          context.goNamed(pageToGo);
+                          return;
+                        }
+
+                        setState(() {
+                          showSpinner = false;
+                        });
+                      } catch (e) {
+                        showPopupMessage(
+                            context, context.translate('error'), e.toString());
+                        setState(() {
+                          showSpinner = false;
+                        });
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Text(
+                        context.translate('validate'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
-                        SizedBox(height: 20 * fem),
-                        CustomTextField(
-                          hintText: context.translate(
-                              'new_password'), // 'Nouveau mot de passe'
-                          fieldType: CustomFieldType.password,
-                          value: password,
-                          onChange: (val) {
-                            password = val;
-                          },
-                        ),
-                        SizedBox(height: 20 * fem),
-                        ReusableButton(
-                          title: context.translate('validate'), // 'Valider'
-                          lite: false,
-                          onPress: () async {
-                            try {
-                              setState(() {
-                                showSpinner = true;
-                              });
-
-                              final hasLogged = await changeAndValidate();
-
-                              if (hasLogged) {
-                                await downloadAvatar();
-                                setState(() {
-                                  showSpinner = false;
-                                });
-
-                                if (hasPP && isSubscribed) {
-                                  context.go('/');
-                                  return;
-                                }
-
-                                final pageToGo =
-                                    hasPP ? Subscrition.id : PpUpload.id;
-                                context.goNamed(pageToGo);
-                                return;
-                              }
-
-                              setState(() {
-                                showSpinner = false;
-                              });
-                            } catch (e) {
-                              showPopupMessage(context,
-                                  context.translate('error'), e.toString());
-                              setState(() {
-                                showSpinner = false;
-                              });
-                            }
-                          },
-                        ),
-                        SizedBox(height: 20 * fem),
-                        Center(
-                          child: TextButton(
-                            onPressed: () async {
-                              try {
-                                setState(() {
-                                  showSpinner = true;
-                                });
-
-                                await sendFOTP();
-
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                              } catch (e) {
-                                showPopupMessage(context,
-                                    context.translate('error'), e.toString());
-                                setState(() {
-                                  showSpinner = false;
-                                });
-                              }
-                            },
-                            style:
-                                TextButton.styleFrom(padding: EdgeInsets.zero),
-                            child: Text(
-                              context.translate(
-                                  'resend_otp'), // 'Renvoyer le code OTP'
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 16 * ffem,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5 * ffem / fem,
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Resend OTP button
+                Center(
+                  child: TextButton(
+                    onPressed: sendFOTP,
+                    child: Text(
+                      context.translate('resend_otp'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

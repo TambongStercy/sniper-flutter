@@ -11,6 +11,7 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart';
+import 'package:snipper_frontend/theme.dart';
 
 class MarketCard extends StatelessWidget {
   MarketCard({super.key});
@@ -268,16 +269,21 @@ class _HomeState extends State<Home> {
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(10 * fem, 25 * fem, 10 * fem, 14 * fem),
-          width: double.infinity,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16 * fem, 24 * fem, 16 * fem, 24 * fem),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Welcome section
               Card(
-                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                margin: EdgeInsets.only(bottom: 20 * fem),
                 child: Padding(
-                  padding: EdgeInsets.all(16 * fem),
+                  padding: EdgeInsets.all(20 * fem),
                   child: Column(
                     children: [
                       Row(
@@ -290,45 +296,31 @@ class _HomeState extends State<Home> {
                             child: Text(
                               capitalizeWords(name),
                               overflow: TextOverflow.ellipsis,
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                letterSpacing: 0.0 * fem,
-                                fontSize: 25 * ffem,
-                                fontWeight: FontWeight.w600,
-                                height: 1.4 * ffem / fem,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                              style: TextStyle(
+                                fontSize: 24 * ffem,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
                               ),
                             ),
                           ),
                           Text(
                             ',',
-                            overflow: TextOverflow.ellipsis,
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              letterSpacing: 0.0 * fem,
-                              fontSize: 22 * ffem,
-                              fontWeight: FontWeight.w700,
-                              height: 1.4 * ffem / fem,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                            style: TextStyle(
+                              fontSize: 24 * ffem,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 10 * fem),
+                      SizedBox(height: 12 * fem),
                       RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
-                          style: SafeGoogleFont(
-                            'Montserrat',
-                            fontSize: 17 * ffem,
+                          style: TextStyle(
+                            fontSize: 16 * ffem,
                             fontWeight: FontWeight.w500,
-                            height: 1.4 * ffem / fem,
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Colors.grey[700],
                           ),
                           children: <TextSpan>[
                             TextSpan(
@@ -336,12 +328,10 @@ class _HomeState extends State<Home> {
                             ),
                             TextSpan(
                               text: 'SBC',
-                              style: SafeGoogleFont(
-                                'Montserrat',
-                                fontSize: 20 * ffem,
-                                fontWeight: FontWeight.w500,
-                                height: 1.4 * ffem / fem,
-                                color: Theme.of(context).colorScheme.secondary,
+                              style: TextStyle(
+                                fontSize: 18 * ffem,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryBlue,
                               ),
                             ),
                             TextSpan(
@@ -354,63 +344,94 @@ class _HomeState extends State<Home> {
                   ),
                 ),
               ),
+
+              // Balance and Benefits Cards
               Card(
-                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                margin: EdgeInsets.only(bottom: 20 * fem),
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8 * fem),
+                  padding: EdgeInsets.all(16 * fem),
                   child: Column(
                     children: [
                       MoneyCard(isSold: true, amount: balance),
+                      SizedBox(height: 12 * fem),
                       MoneyCard(isSold: false, amount: benefice),
                     ],
                   ),
                 ),
               ),
+
+              // Referral Card
               Card(
-                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                margin: EdgeInsets.only(bottom: 20 * fem),
                 child: Padding(
-                  padding: EdgeInsets.all(16 * fem),
+                  padding: EdgeInsets.all(20 * fem),
                   child: Column(
                     children: [
                       Image.asset('assets/assets/images/50 perc.png'),
-                      SizedBox(height: 20.0),
-                      ReusableButton(
-                        title: context.translate('share_link'),
-                        lite: false,
-                        onPress: () {
-                          Share.share(link);
-                        },
+                      SizedBox(height: 20 * fem),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Share.share(link);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16 * fem),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            context.translate('share_link'),
+                            style: TextStyle(
+                              fontSize: 16 * ffem,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
+
+              // About SBC
               Card(
-                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                margin: EdgeInsets.only(bottom: 20 * fem),
                 child: Padding(
-                  padding: EdgeInsets.all(16 * fem),
+                  padding: EdgeInsets.all(20 * fem),
                   child: Column(
                     children: [
                       Text(
                         context.translate('about_sbc'),
-                        style: SafeGoogleFont(
-                          'Montserrat',
-                          letterSpacing: 0.0 * fem,
-                          fontSize: 22 * ffem,
-                          fontWeight: FontWeight.w600,
-                          height: 1.4 * ffem / fem,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        style: TextStyle(
+                          fontSize: 20 * ffem,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
-                      SizedBox(height: 10),
+                      SizedBox(height: 12 * fem),
                       Text(
                         context.translate('sbc_description'),
-                        style: SafeGoogleFont(
-                          'Montserrat',
-                          fontSize: 15 * ffem,
-                          fontWeight: FontWeight.w500,
-                          height: 1.4 * ffem / fem,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        style: TextStyle(
+                          fontSize: 14 * ffem,
+                          color: Colors.grey[700],
+                          height: 1.5,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -418,21 +439,31 @@ class _HomeState extends State<Home> {
                   ),
                 ),
               ),
+
+              // Market Card
               Card(
-                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                margin: EdgeInsets.only(bottom: 20 * fem),
                 child: Padding(
-                  padding: EdgeInsets.only(
-                      top: 16 * fem,
-                      left: 16 * fem,
-                      right: 16 * fem,
-                      bottom: 8 * fem),
+                  padding: EdgeInsets.all(16 * fem),
                   child: MarketCard(),
                 ),
               ),
+
+              // Carousel Card
               Card(
-                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                margin: EdgeInsets.only(bottom: 20 * fem),
                 child: Padding(
-                  padding: EdgeInsets.all(8 * fem),
+                  padding: EdgeInsets.all(16 * fem),
                   child: AdCard(
                     height: 300,
                     buttonTitle: context.translate('learn_more'),
@@ -442,7 +473,7 @@ class _HomeState extends State<Home> {
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: 5 * fem),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceDim,
+                        color: Colors.grey[100],
                         borderRadius: BorderRadius.circular(12 * fem),
                       ),
                       child: AnotherCarousel(
@@ -458,10 +489,17 @@ class _HomeState extends State<Home> {
                   ),
                 ),
               ),
+
+              // Video Card
               Card(
-                margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                margin: EdgeInsets.only(bottom: 20 * fem),
                 child: Padding(
-                  padding: EdgeInsets.all(8 * fem),
+                  padding: EdgeInsets.all(16 * fem),
                   child: AdCard(
                     height: 300,
                     buttonTitle: context.translate('download_document'),
@@ -475,24 +513,18 @@ class _HomeState extends State<Home> {
                       ),
                       child: Container(
                         width: double.infinity,
-                        height: 200 * fem, // Adjust height as needed
+                        height: 200 * fem,
                         decoration: BoxDecoration(
-                          color: Color(0xffc4c4c4),
+                          color: Colors.grey[200],
                           borderRadius: BorderRadius.circular(12 * fem),
                         ),
                         child: (presentationVideoId != null &&
                                 presentationVideoId!.isNotEmpty)
                             ? Builder(builder: (context) {
-                                // Use Builder to create URLs conditionally
                                 final videoUrl =
                                     '$settingsFileBaseUrl$presentationVideoId';
                                 final thumbnailUrl =
-                                    '$settingsThumbnailBaseUrl$presentationVideoId'; // Using video ID for thumbnail too
-
-                                // Log the URLs
-                                print("VideoItem - Video URL: $videoUrl");
-                                print(
-                                    "VideoItem - Thumbnail URL: $thumbnailUrl");
+                                    '$settingsThumbnailBaseUrl$presentationVideoId';
 
                                 return VideoItem(
                                   videoUrl: videoUrl,
@@ -500,8 +532,6 @@ class _HomeState extends State<Home> {
                                 );
                               })
                             : Container(
-                                // Placeholder if video ID is missing
-                                color: Colors.grey[300],
                                 child: Center(
                                     child: Text(context
                                         .translate('video_unavailable'))),
@@ -511,83 +541,84 @@ class _HomeState extends State<Home> {
                   ),
                 ),
               ),
+
+              // Subscription call to action
               if (!isSubscribed)
                 Card(
-                  margin: EdgeInsets.symmetric(vertical: 8 * fem),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  margin: EdgeInsets.only(bottom: 20 * fem),
                   child: Padding(
-                    padding: EdgeInsets.all(16 * fem),
+                    padding: EdgeInsets.all(20 * fem),
                     child: Column(
                       children: [
-                        Container(
-                          margin: EdgeInsets.fromLTRB(
-                              7 * fem, 0 * fem, 0 * fem, 9 * fem),
-                          child: Text(
-                            context.translate('join_community'),
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 16 * ffem,
-                              fontWeight: FontWeight.w600,
-                              height: 1.25 * ffem / fem,
-                              color: Theme.of(context).colorScheme.tertiary,
-                            ),
+                        Text(
+                          context.translate('join_community'),
+                          style: TextStyle(
+                            fontSize: 18 * ffem,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryBlue,
                           ),
                         ),
+                        SizedBox(height: 12 * fem),
                         Container(
-                          padding: EdgeInsets.all(7 * fem),
+                          padding: EdgeInsets.all(12 * fem),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(5 * fem),
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(8 * fem),
+                            color: Colors.grey[100],
                           ),
                           child: Text(
                             context.translate('subscription_not_active'),
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15 * ffem,
-                              fontWeight: FontWeight.w500,
-                              height: 1.4 * ffem / fem,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                            style: TextStyle(
+                              fontSize: 14 * ffem,
+                              color: Colors.grey[700],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10.0),
-                        ReusableButton(
-                          title: context.translate('pay_subscription'),
-                          onPress: () {
-                            context.pushNamed(Subscrition.id);
-                          },
-                          lite: false,
+                        SizedBox(height: 16 * fem),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              context.pushNamed(Subscrition.id);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 16 * fem),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              context.translate('pay_subscription'),
+                              style: TextStyle(
+                                fontSize: 16 * ffem,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
+                        SizedBox(height: 16 * fem),
                         Container(
-                          padding: EdgeInsets.all(7 * fem),
+                          padding: EdgeInsets.all(12 * fem),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(5 * fem),
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(8 * fem),
+                            color: Colors.grey[100],
                           ),
                           child: Text(
                             context.translate('invite_friends_message'),
-                            style: SafeGoogleFont(
-                              'Montserrat',
-                              fontSize: 15 * ffem,
-                              fontWeight: FontWeight.w500,
-                              height: 1.4 * ffem / fem,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                            style: TextStyle(
+                              fontSize: 14 * ffem,
+                              color: Colors.grey[700],
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                )
-              else
-                const SizedBox(),
+                ),
             ],
           ),
         ),
