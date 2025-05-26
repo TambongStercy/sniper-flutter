@@ -43,8 +43,8 @@ class _EspacePartenaireState extends State<EspacePartenaire> {
     try {
       final response = await _apiService.getPartnerDetails();
 
-      if (response['success'] == true && response['data'] != null) {
-        final data = response['data'] as Map<String, dynamic>;
+      if (response.apiReportedSuccess && response.body['data'] != null) {
+        final data = response.body['data'] as Map<String, dynamic>;
         final fetchedPack = data['pack'] as String? ?? '';
         final fetchedAmount = (data['amount'] as num?)?.toDouble() ?? 0.0;
 
@@ -57,9 +57,7 @@ class _EspacePartenaireState extends State<EspacePartenaire> {
           await prefs.setDouble('partnerAmount', fetchedAmount);
         }
       } else {
-        final msg = response['message'] ??
-            response['error'] ??
-            context.translate('error_loading_partner_data');
+        final msg = response.message;
         if (mounted) {
           setState(() {
             errorMessage = msg;

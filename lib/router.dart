@@ -10,6 +10,7 @@ import 'package:snipper_frontend/design/contact-update.dart';
 import 'package:snipper_frontend/design/email-oublier.dart';
 import 'package:snipper_frontend/design/espace-partenaire.dart';
 import 'package:snipper_frontend/design/inscription.dart';
+import 'package:snipper_frontend/design/manage_subscription_page.dart';
 import 'package:snipper_frontend/design/modify-email.dart';
 import 'package:snipper_frontend/design/modify-product.dart';
 import 'package:snipper_frontend/design/new-email.dart';
@@ -163,6 +164,11 @@ class AppRouter {
         path: '/${Affiliation.id}',
         name: Affiliation.id,
         builder: (context, state) => Affiliation(),
+      ),
+      GoRoute(
+        path: '/${ManageSubscriptionPage.id}',
+        name: ManageSubscriptionPage.id,
+        builder: (context, state) => ManageSubscriptionPage(),
       ),
       GoRoute(
         path: '/${AjouterProduit.id}',

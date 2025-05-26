@@ -56,14 +56,14 @@ class _PpUploadState extends State<PpUpload> {
       // Call ApiService method
       final response = await apiService.uploadAvatar(path, fileName);
 
-      final statusCode = response['statusCode'];
+      final statusCode = response.statusCode;
 
-      if (statusCode != null && statusCode >= 200 && statusCode < 300) {
+      if (statusCode >= 200 && statusCode < 300 && response.apiReportedSuccess) {
         // Assuming the API returns the new URL in 'data' or 'imageUrl' or similar
         // Adjust the key based on the actual response structure from apiService.uploadAvatar
-        final String? newAvatarUrl = response['data']?['avatarUrl'] ??
-            response['imageUrl'] ??
-            response['imgaeUrl']; // Check multiple keys
+        final String? newAvatarUrl = response.body['data']?['avatarUrl'] ??
+            response.body['imageUrl'] ??
+            response.body['imgaeUrl'];
 
         if (newAvatarUrl != null) {
           avatar = newAvatarUrl;
@@ -82,16 +82,14 @@ class _PpUploadState extends State<PpUpload> {
         }
       } else {
         // Handle API error response
-        String errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('error_occurred');
+        String errorMsg = response.message;
         showPopupMessage(
           context,
           context.translate('error'),
           errorMsg,
         );
         print(
-            'API Error uploadAvatar UI: ${response['statusCode']} - $errorMsg');
+            'API Error uploadAvatar UI: ${response.statusCode} - $errorMsg');
       }
     } catch (e) {
       String msg = e.toString();

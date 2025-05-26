@@ -9,7 +9,7 @@ import 'package:snipper_frontend/components/button.dart';
 import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/utils.dart';
 // import 'package:http/http.dart' as http; // Remove http import
-import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+import 'package:snipper_frontend/components/custom_otp_text_field.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 import 'package:snipper_frontend/api_service.dart'; // Import ApiService
 import 'package:snipper_frontend/theme.dart';
@@ -67,13 +67,11 @@ class _NewEmailState extends State<NewEmail> {
       // Call ApiService to verify email change
       final response = await apiService.verifyEmailChange(email.trim(), otp);
 
-      final msg = response['message'] ?? '';
+      final msg = response.message;
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         // Email change successful on backend.
-        final user = response['data']?['user'] ?? response['data'];
+        final user = response.body['data']?['user'] ?? response.body['data'];
 
         if (user != null) {
           // Update local prefs with new email
@@ -98,7 +96,7 @@ class _NewEmailState extends State<NewEmail> {
         showPopupMessage(context, context.translate('error'),
             msg.isNotEmpty ? msg : context.translate('email_update_failed'));
         print(
-            'API Error changeAndValidate (Email): ${response['statusCode']} - $msg');
+            'API Error changeAndValidate (Email): ${response.statusCode} - $msg');
       }
     } catch (e) {
       print('Exception in changeAndValidate (Email): $e');
@@ -123,17 +121,15 @@ class _NewEmailState extends State<NewEmail> {
     try {
       // Call ApiService to resend OTP using email and purpose
       final response = await apiService.resendOtpByEmail(email, 'changeEmail');
-      final msg = response['message'] ?? '';
+      final msg = response.message;
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         showPopupMessage(context, context.translate('otp_sent'),
             msg.isNotEmpty ? msg : context.translate('otp_sent_instructions'));
       } else {
         showPopupMessage(context, context.translate('error'),
             msg.isNotEmpty ? msg : context.translate('otp_request_failed'));
-        print('API Error modifyEmailOTP: ${response['statusCode']} - $msg');
+        print('API Error modifyEmailOTP: ${response.statusCode} - $msg');
       }
     } catch (e) {
       print('Exception in modifyEmailOTP: $e');
@@ -226,21 +222,42 @@ class _NewEmailState extends State<NewEmail> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      OtpTextField(
+                      CustomOtpTextField(
                         numberOfFields: 6,
-                        borderColor: AppTheme.primaryBlue,
-                        focusedBorderColor: AppTheme.primaryBlue,
-                        showFieldAsBox: true,
-                        borderWidth: 1.0,
                         fieldWidth: 45.0,
+                        fieldHeight: 50.0,
                         autoFocus: true,
-                        keyboardType: TextInputType.number,
+                        textStyle: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black),
+                        decoration: InputDecoration(
+                          counterText: "",
+                          contentPadding: EdgeInsets.all(10.0),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide(
+                                color: AppTheme.primaryBlue, width: 1.0),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide(
+                                color: AppTheme.primaryBlue, width: 1.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide(
+                                color: AppTheme.primaryBlue, width: 2.0),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
                         onSubmit: (String verificationCode) {
                           setState(() {
                             otp = verificationCode;
                           });
                         },
-                        onCodeChanged: (String code) {
+                        onChanged: (String code) {
                           setState(() {
                             otp = code;
                           });

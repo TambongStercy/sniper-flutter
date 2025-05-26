@@ -41,6 +41,7 @@ class _MyAppState extends State<MyApp> {
   final _router = AppRouter.router;
 
   @override
+  
   Widget build(BuildContext context) {
     return MaterialApp.router(
       routerConfig: _router,

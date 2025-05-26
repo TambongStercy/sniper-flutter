@@ -14,14 +14,17 @@ import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/main.dart';
 import 'package:snipper_frontend/theme.dart';
 import 'package:snipper_frontend/utils.dart';
-// import 'package:http/http.dart' as http; // Remove http import
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:snipper_frontend/api_service.dart'; // Import ApiService
-import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart'; // Added import for ModalProgressHUD
+import 'package:snipper_frontend/api_service.dart';
+import 'package:snipper_frontend/design/supscrition.dart';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:contacts_service/contacts_service.dart';
-import 'package:snipper_frontend/design/sponsor_info_page.dart'; // Import the new sponsor page
+import 'package:snipper_frontend/design/sponsor_info_page.dart';
+import 'package:snipper_frontend/design/manage_subscription_page.dart';
+import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 class Profile extends StatefulWidget {
   static const id = 'profile';
@@ -32,17 +35,15 @@ class Profile extends StatefulWidget {
 
 class _ProfileState extends State<Profile> {
   bool showSpinner = false;
-  final ApiService apiService = ApiService(); // Instantiate ApiService
+  final ApiService apiService = ApiService();
 
   late SharedPreferences prefs;
 
   String telegramLink = 'https://t.me/+huMT6BLYR9sxOTg0';
   String whatsappLink = 'https://chat.whatsapp.com/IlGvSZtVYEkLRDFStFuQMT';
 
-  // Add state variable for subscription type
   bool isCibleSubscribed = false;
 
-  // Add state variables for dynamic URLs
   String? dynamicTelegramUrl;
   String? dynamicWhatsappUrl;
 
@@ -58,14 +59,11 @@ class _ProfileState extends State<Profile> {
     avatar = prefs.getString('avatar') ?? '';
     isSubscribed = prefs.getBool('isSubscribed') ?? false;
 
-    // Determine subscription type from activeSubscriptions list
     List<String> activeSubscriptions =
         prefs.getStringList('activeSubscriptions') ?? [];
-    // Check if the list contains 'cible' (adjust key if necessary)
     isCibleSubscribed =
         activeSubscriptions.any((sub) => sub.toLowerCase() == 'cible');
 
-    // Load dynamic URLs from App Settings
     dynamicTelegramUrl = prefs.getString('appSettings_telegramUrl');
     dynamicWhatsappUrl = prefs.getString('appSettings_whatsappUrl');
 
@@ -88,12 +86,11 @@ class _ProfileState extends State<Profile> {
     try {
       final response = await apiService.requestContactsExportOtp();
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
-        // Adjust key based on actual API response structure for the OTP
-        otp = response['data']?['otp']?.toString() ??
-            response['otp']?.toString() ??
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          response.apiReportedSuccess) {
+        otp = response.body['data']?['otp']?.toString() ??
+            response.body['otp']?.toString() ??
             '';
         if (otp.isEmpty) {
           print(
@@ -102,12 +99,10 @@ class _ProfileState extends State<Profile> {
               context.translate('otp_retrieval_failed'));
         }
       } else {
-        String errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('otp_request_failed');
+        String errorMsg = response.message;
         showPopupMessage(context, context.translate('error'), errorMsg);
         print(
-            'API Error createContactsOTP: ${response['statusCode']} - $errorMsg');
+            'API Error createContactsOTP: ${response.statusCode} - $errorMsg');
       }
     } catch (e) {
       String title = context.translate('error');
@@ -125,8 +120,6 @@ class _ProfileState extends State<Profile> {
   }
 
   Future<void> logoutUser() async {
-    // final email = prefs.getString('email'); // Not needed
-    // final token = prefs.getString('token'); // Handled by ApiService
     final avatar = prefs.getString('avatar');
 
     setState(() {
@@ -136,27 +129,25 @@ class _ProfileState extends State<Profile> {
     try {
       final response = await apiService.logoutUser();
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          response.apiReportedSuccess) {
         await deleteFile(avatar ?? '');
-        await prefs.clear(); // Clear all prefs on successful logout
+        await prefs.clear();
         await deleteNotifications();
         await deleteAllKindTransactions();
 
-        String msg =
-            response['message'] ?? context.translate('logged_out_successfully');
+        String msg = response.message.isNotEmpty
+            ? response.message
+            : context.translate('logged_out_successfully');
         String title = context.translate('logout');
-        // Show message *before* navigation might be better UX
         showPopupMessage(context, title, msg);
         if (mounted) context.go('/');
       } else {
-        String errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('logout_failed');
+        String errorMsg = response.message;
         showPopupMessage(context, context.translate('error'), errorMsg);
         print(
-            'API Error logoutUser (Profile): ${response['statusCode']} - $errorMsg');
+            'API Error logoutUser (Profile): ${response.statusCode} - $errorMsg');
       }
     } catch (e) {
       print('Exception in logoutUser (Profile): $e');
@@ -183,47 +174,62 @@ class _ProfileState extends State<Profile> {
 
   Future<String?> downloadVCF(BuildContext context) async {
     if (kIsWeb) {
-      // Web-specific download logic, similar to contact-update.dart
       if (!mounted) return null;
       setState(() {
         showSpinner = true;
       });
       try {
-        final response = await apiService.exportContacts({}); // No filters
-        final statusCode = response['statusCode'];
-        final vcfData = response['data'];
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token');
+        final headers = {
+          'Accept': 'text/vcard',
+          'Content-Type': 'application/json',
+        };
+        if (token != null) {
+          headers['Authorization'] = 'Bearer $token';
+        }
 
-        if (statusCode != null &&
-            statusCode >= 200 &&
+        final uri = Uri.parse('${host}api/contacts/export');
+
+        final response = await http.get(uri, headers: headers);
+        final statusCode = response.statusCode;
+        final String vcfDataString = response.body;
+
+        if (statusCode >= 200 &&
             statusCode < 300 &&
-            vcfData is String &&
-            vcfData.isNotEmpty) {
-          final timestamp = formatDateString(
-            DateTime.now().toString(),
-            pattern: 'yyyyMMdd_HHmmss',
-          );
+            vcfDataString.isNotEmpty &&
+            vcfDataString.trim().startsWith('BEGIN:VCARD')) {
+          final timestamp =
+              DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
           final fileName = 'sbc_contacts_profile_$timestamp.vcf';
-          downloadFileWeb(vcfData,
-              fileName); // Assumes downloadFileWeb is globally accessible or in utils
+          downloadFileWeb(vcfDataString, fileName);
           if (mounted) {
             showPopupMessage(context, context.translate('success'),
                 context.translate('download_started'));
           }
         } else {
-          String errorMsg = response['message'] ??
-              response['error'] ??
-              context.translate('vcf_download_failed');
-          if (vcfData == null || (vcfData is String && vcfData.isEmpty)) {
-            errorMsg = context.translate('vcf_data_empty');
+          String effectiveErrorMessage;
+          if (!(statusCode >= 200 && statusCode < 300)) {
+            effectiveErrorMessage =
+                response.reasonPhrase ?? context.translate('network_error');
+            print(
+                'API Error downloadVCF (Web - HTTP Direct): $statusCode - ${response.reasonPhrase} - Body: ${vcfDataString.substring(0, (vcfDataString.length < 200 ? vcfDataString.length : 200))}');
+          } else if (vcfDataString.isEmpty) {
+            effectiveErrorMessage = context.translate('vcf_data_empty');
+          } else {
+            effectiveErrorMessage =
+                context.translate('invalid_vcf_data_received');
+            print(
+                'Error: Invalid VCF data received (Web - HTTP Direct). Expected VCF, got: "${vcfDataString.substring(0, (vcfDataString.length < 200 ? vcfDataString.length : 200))}"');
           }
+
           if (mounted) {
-            showPopupMessage(context, context.translate('error'), errorMsg);
+            showPopupMessage(
+                context, context.translate('error'), effectiveErrorMessage);
           }
-          print(
-              'API Error downloadVCF (Web - Profile): ${response['statusCode']} - $errorMsg');
         }
       } catch (e) {
-        print('Exception in downloadVCF (Web - Profile): $e');
+        print('Exception in downloadVCF (Web - HTTP Direct): $e');
         if (mounted) {
           showPopupMessage(context, context.translate('error'),
               context.translate('error_occurred'));
@@ -235,35 +241,28 @@ class _ProfileState extends State<Profile> {
           });
         }
       }
-      return null; // No local path for web downloads
+      return null;
     }
 
-    // Existing mobile download logic starts here
-    if (!mounted) return null; // Check mounted for mobile path too
+    if (!mounted) return null;
     setState(() {
       showSpinner = true;
     });
     String? permanentPath;
 
     try {
-      // Call ApiService.exportContacts - pass empty filters for now
-      // If filters are needed based on UI, pass them here.
       final response = await apiService.exportContacts({});
 
-      final statusCode = response['statusCode'];
-      final vcfData = response['data']; // Data is expected to be raw VCF string
+      final statusCode = response.statusCode;
+      final vcfData = response.body['data'] as String?;
 
-      if (statusCode != null &&
-          statusCode >= 200 &&
+      if (statusCode >= 200 &&
           statusCode < 300 &&
-          vcfData is String &&
+          response.apiReportedSuccess &&
+          vcfData != null &&
           vcfData.isNotEmpty) {
         try {
-          // Decode VCF data (it might be base64 encoded or plain text)
-          // Assuming plain text based on exportContacts implementation detail
-          // If it's base64, uncomment the decode line
-          // final vcfBytes = base64Decode(vcfData);
-          final vcfBytes = utf8.encode(vcfData); // Encode plain string to bytes
+          final vcfBytes = utf8.encode(vcfData);
 
           String fileName = 'contacts.vcf';
           String folder = 'VCF Files';
@@ -277,15 +276,12 @@ class _ProfileState extends State<Profile> {
           permanentPath = null;
         }
       } else {
-        // Handle API or data error
-        String errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('vcf_download_failed');
-        if (vcfData == null || (vcfData is String && vcfData.isEmpty)) {
+        String errorMsg = response.message;
+        if (vcfData == null || vcfData.isEmpty) {
           errorMsg = context.translate('vcf_data_empty');
         }
         showPopupMessage(context, context.translate('error'), errorMsg);
-        print('API Error downloadVCF: ${response['statusCode']} - $errorMsg');
+        print('API Error downloadVCF: ${response.statusCode} - $errorMsg');
       }
     } catch (e) {
       print('Exception in downloadVCF: $e');
@@ -304,12 +300,9 @@ class _ProfileState extends State<Profile> {
   void initState() {
     super.initState();
 
-    // Create anonymous function:
     () async {
       await initSharedPref();
-      setState(() {
-        // Update your UI with the desired changes.
-      });
+      setState(() {});
     }();
   }
 
@@ -368,7 +361,6 @@ class _ProfileState extends State<Profile> {
               ],
             ),
             onPressed: () {
-              // Toggle between English and French
               Locale newLocale =
                   Localizations.localeOf(context).languageCode == 'en'
                       ? Locale('fr')
@@ -389,7 +381,6 @@ class _ProfileState extends State<Profile> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Profile Header
                         Center(
                           child: Column(
                             children: [
@@ -449,10 +440,7 @@ class _ProfileState extends State<Profile> {
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 32),
-
-                        // Profile Menu Items
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -475,6 +463,17 @@ class _ProfileState extends State<Profile> {
                                 () {
                                   context
                                       .pushNamed(ProfileMod.id)
+                                      .then((value) => refreshPage());
+                                },
+                              ),
+                              const Divider(height: 1),
+                              _buildMenuItem(
+                                context,
+                                Icons.subscriptions,
+                                context.translate('manage_subscription'),
+                                () {
+                                  context
+                                      .pushNamed(ManageSubscriptionPage.id)
                                       .then((value) => refreshPage());
                                 },
                               ),
@@ -518,7 +517,7 @@ class _ProfileState extends State<Profile> {
                                 Icons.person_pin_rounded,
                                 context.translate('partner_space'),
                                 () {
-                                  if (!isSubscribed && partnerPack != null) {
+                                  if (isSubscribed && partnerPack != null) {
                                     context.pushNamed(EspacePartenaire.id);
                                   } else {
                                     showPopupMessage(
@@ -547,10 +546,7 @@ class _ProfileState extends State<Profile> {
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 24),
-
-                        // Social Media Links
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -638,10 +634,7 @@ class _ProfileState extends State<Profile> {
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 32),
-
-                        // Logout Button
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -679,10 +672,7 @@ class _ProfileState extends State<Profile> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 24),
-
-                        // Footer
                         Center(
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -714,7 +704,6 @@ class _ProfileState extends State<Profile> {
   }
 
   Future<String> getVcfFilePath() async {
-    // Get the directory where you can store the VCF file
     Directory appDocDir = await getApplicationDocumentsDirectory();
     String vcfPath = '${appDocDir.path}/contacts.vcf';
     return vcfPath;
@@ -731,16 +720,8 @@ class _ProfileState extends State<Profile> {
   }
 
   Future<List<Contact>> readVcfFileFromAsset(String vcfPath) async {
-    // as Uint8List ;
-    // File file = File(vcfPath);
-
     final content = await rootBundle.loadString(vcfPath);
-    // String content = await file.readAsString();
     return parseVcfContent(content);
-    // if (await file.exists()) {
-    // } else {
-    //   throw Exception('VCF file not found');
-    // }
   }
 
   List<Contact> parseVcfContent(String content) {
@@ -757,12 +738,10 @@ class _ProfileState extends State<Profile> {
       }
 
       if (contact == null) {
-        // Skip lines if 'BEGIN:VCARD' is not encountered
         continue;
       }
 
       if (line.startsWith('FN')) {
-        // Parse display name
         final realName = line.split(':')[1].replaceFirst(' SBC', '');
         contact.displayName = realName;
         contact.suffix = realName;
@@ -770,14 +749,13 @@ class _ProfileState extends State<Profile> {
       }
 
       if (line.startsWith('TEL')) {
-        // Parse phone number
         String phoneNumber = line.split(':')[1];
         contact.phones?.add(Item(label: 'mobile', value: phoneNumber));
       }
 
       if (line.startsWith('END:VCARD')) {
         contacts.add(contact);
-        contact = null; // Reset contact after adding to the list
+        contact = null;
       }
     }
 

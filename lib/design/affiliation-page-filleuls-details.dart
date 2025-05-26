@@ -91,12 +91,15 @@ class _FilleulsState extends State<Filleuls> {
 
       final response = await apiService.getReferredUsers(filters);
 
-      String msg = response['message'] ?? '';
-      int? statusCode = response['statusCode'];
+      String msg = response.message;
+      int? statusCode = response.statusCode;
 
-      if (statusCode != null && statusCode >= 200 && statusCode < 300) {
+      if (statusCode != null &&
+          statusCode >= 200 &&
+          statusCode < 300 &&
+          response.apiReportedSuccess) {
         // Extract data using new keys
-        final responseData = response['data'] ?? {};
+        final responseData = response.body['data'] ?? {};
         final List<dynamic> fetchedUsers = responseData['referredUsers'] ?? [];
         final int totalPages = responseData['totalPages'] ?? page;
 
@@ -112,7 +115,7 @@ class _FilleulsState extends State<Filleuls> {
           if (hasMore) page++;
         });
       } else {
-        String error = response['error'] ?? 'Failed to fetch referred users';
+        String error = response.message;
         if (error == 'Accès refusé') {
           showPopupMessage(context, "Erreur. Accès refusé.", msg);
           await logoutUser();

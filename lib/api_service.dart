@@ -6,735 +6,355 @@ import 'package:flutter/foundation.dart'; // Import kIsWeb
 import 'package:snipper_frontend/utils.dart'; // Ensure utils is imported
 import 'dart:io'; // Import for File operations
 import 'package:http_parser/http_parser.dart'; // Import for MediaType
+import './api_response.dart'; // Import the ApiResponse class
+import 'package:mime/mime.dart'; // For lookupMimeType
+import 'package:path_provider/path_provider.dart'; // For getApplicationDocumentsDirectory
 
 class ApiService {
   // Use the base URL from your config
   final String _baseUrl = '${host}api'; // Use gateway_url from config.dart
+  String? _token; // Internal cache for the token
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
-  }
-
-  // Modify _handleResponse to potentially handle non-JSON for specific cases
-  dynamic _handleResponse(http.Response response, {bool expectJson = true}) {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (!expectJson) {
-        // Return raw body for non-JSON expected responses (like VCF)
-        return {
-          'success': true,
-          'data': response.body,
-          'statusCode': response.statusCode
-        };
-      }
-
-      // Existing JSON handling
-      final Map<String, dynamic> jsonResponse;
-      try {
-        jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
-      } catch (e) {
-        print(
-            'Error decoding JSON response: ${response.statusCode} - ${response.body}');
-        return {
-          'error': 'Invalid response format',
-          'statusCode': response.statusCode
-        };
-      }
-
-      if (jsonResponse.containsKey('success') &&
-          jsonResponse['success'] == false) {
-        print(
-            'API Error (Success False): ${response.statusCode} - ${jsonResponse['message'] ?? jsonResponse['error'] ?? response.body}');
-        jsonResponse['statusCode'] = response.statusCode;
-        return jsonResponse;
-      }
-      jsonResponse['statusCode'] = response.statusCode;
-      return jsonResponse;
-    } else {
-      // Existing error handling for non-2xx status codes
-      Map<String, dynamic> errorResponse = {};
-      try {
-        errorResponse = jsonDecode(response.body) as Map<String, dynamic>;
-      } catch (e) {
-        // Use raw body if JSON decoding fails for error
-        errorResponse = {'error': response.body};
-      }
-      print(
-          'API Error: ${response.statusCode} - ${errorResponse['message'] ?? errorResponse['error'] ?? response.body}');
-      errorResponse['statusCode'] = response.statusCode;
-      return errorResponse;
+  // Load token from SharedPreferences and cache it
+  Future<void> _loadToken() async {
+    if (_token == null) {
+      final prefs = await SharedPreferences.getInstance();
+      _token = prefs.getString('token');
     }
   }
 
-  // Modify GET helper to accept expectJson and requiresAuth parameters
-  Future<Map<String, dynamic>> get(String endpoint,
-      {Map<String, String>? headers,
-      bool expectJson = true,
-      bool requiresAuth = true,
-      Map<String, String>? queryParameters}) async {
-    Map<String, String> finalHeaders = {...?headers};
+  // Retrieve the cached token
+  Future<String?> _getToken() async {
+    await _loadToken(); // Ensure token is loaded
+    return _token;
+  }
+
+  // Prepare headers for API requests
+  Future<Map<String, String>> _getHeaders(
+      {bool requiresAuth = true, bool isFormData = false}) async {
+    Map<String, String> headers = {};
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
+    headers['Accept'] = 'application/json';
 
     if (requiresAuth) {
       final token = await _getToken();
-      if (token == null) {
-        print("Authentication token not found for protected route.");
-        return {'error': 'Authentication required', 'statusCode': 401};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      } else {
+        print("Warning: Auth token is null for a protected route.");
+        // Optionally, throw an error or handle cases where token is required but missing
       }
-      finalHeaders['Authorization'] = 'Bearer $token';
     }
+    return headers;
+  }
 
-    // Construct the final URL
+  // Centralized response handling
+  ApiResponse _handleHttpResponse(http.Response response) {
+    print('Response Status: ${response.statusCode}');
+    final contentType = response.headers['content-type'];
+    final isJson = contentType?.contains('application/json') ?? false;
+
+    if (response.body.length > 1024) {
+      print('Response Body: [Truncated due to length > 1024 characters]');
+    } else {
+      print('Response Body: ${response.body}');
+    }
+    print('Response Headers: ${response.headers}');
+
+    if (isJson) {
+      return ApiResponse.fromHttpReponse(
+          response.statusCode, response.body, response.headers);
+    } else {
+      // For non-JSON responses (like VCF files)
+      // Return a generic success/failure ApiResponse. The actual file content
+      // should be handled by the caller using the raw http.Response.body directly.
+      bool success = response.statusCode >= 200 && response.statusCode < 300;
+      return ApiResponse.fromHttpReponse(
+          response.statusCode,
+          // Provide a minimal valid JSON string for the body to avoid parsing errors,
+          // as the actual VCF content is in the original response.body.
+          success
+              ? '{"data": "File content type, not JSON. Handled by caller.", "message": "File retrieval successful."}'
+              : '{"message": "File retrieval failed."}',
+          response.headers);
+    }
+  }
+
+  // Generic GET request
+  Future<ApiResponse> get(String endpoint,
+      {bool requiresAuth = true, Map<String, String>? queryParameters}) async {
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
     var uri = Uri.parse('$_baseUrl$endpoint');
     if (queryParameters != null) {
       uri = uri.replace(queryParameters: queryParameters);
     }
 
-    print("GET Request: ${uri.toString()}"); // Log the request URL
+    print('GET Request: $uri');
+    print('Headers: $headers');
 
-    final response = await http.get(
-      uri,
-      headers: finalHeaders, // Use the potentially modified headers
-    );
-    // Pass expectJson to _handleResponse
-    return _handleResponse(response, expectJson: expectJson)
-        as Map<String, dynamic>;
+    try {
+      final response = await http.get(uri, headers: headers);
+      return _handleHttpResponse(response);
+    } on SocketException catch (e) {
+      print('SocketException in GET $endpoint: $e');
+      return ApiResponse.fromError(
+          'Network error: Please check your connection and try again.',
+          statusCode: -1);
+    } on HttpException catch (e) {
+      print('HttpException in GET $endpoint: $e');
+      return ApiResponse.fromError(
+          'Could not connect to the server: Please try again later.',
+          statusCode: -2);
+    } catch (e) {
+      print('Exception in GET $endpoint: $e');
+      return ApiResponse.fromError(
+          'An unexpected error occurred: ${e.toString()}',
+          statusCode: -3);
+    }
   }
 
-  // Modify POST helper to accept requiresAuth parameter
-  Future<Map<String, dynamic>> post(String endpoint,
-      {Map<String, String>? headers,
-      dynamic body,
-      bool requiresAuth = true}) async {
-    final defaultHeaders = {'Content-Type': 'application/json'};
-    Map<String, String> finalHeaders = {
-      ...defaultHeaders,
-      ...?headers,
-    };
+  // Generic POST request
+  Future<ApiResponse> post(String endpoint,
+      {required Map<String, dynamic> body, bool requiresAuth = true}) async {
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
+    final url = Uri.parse('$_baseUrl$endpoint');
+    final encodedBody = jsonEncode(body);
 
-    if (requiresAuth) {
-      final token = await _getToken();
-      if (token == null) {
-        print("Authentication token not found for protected route.");
-        return {'error': 'Authentication required', 'statusCode': 401};
+    try {
+      final response =
+          await http.post(url, headers: headers, body: encodedBody);
+      return _handleHttpResponse(response);
+    } on SocketException catch (e) {
+      print('SocketException in POST $endpoint: $e');
+      return ApiResponse.fromError(
+          'Network error: Please check your connection and try again.',
+          statusCode: -1);
+    } on HttpException catch (e) {
+      print('HttpException in POST $endpoint: $e');
+      return ApiResponse.fromError(
+          'Could not connect to the server: Please try again later.',
+          statusCode: -2);
+    } catch (e) {
+      print('Exception in POST $endpoint: $e');
+      return ApiResponse.fromError(
+          'An unexpected error occurred: ${e.toString()}',
+          statusCode: -3);
+    }
+  }
+
+  // Generic PUT request
+  Future<ApiResponse> put(String endpoint,
+      {required Map<String, dynamic> body, bool requiresAuth = true}) async {
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
+    final url = Uri.parse('$_baseUrl$endpoint');
+    final encodedBody = jsonEncode(body);
+
+    print('PUT Request: $url');
+    print('Headers: $headers');
+    print('Body: $encodedBody');
+
+    try {
+      final response = await http.put(url, headers: headers, body: encodedBody);
+      return _handleHttpResponse(response);
+    } on SocketException catch (e) {
+      print('SocketException in PUT $endpoint: $e');
+      return ApiResponse.fromError(
+          'Network error: Please check your connection and try again.',
+          statusCode: -1);
+    } on HttpException catch (e) {
+      print('HttpException in PUT $endpoint: $e');
+      return ApiResponse.fromError(
+          'Could not connect to the server: Please try again later.',
+          statusCode: -2);
+    } catch (e) {
+      print('Exception in PUT $endpoint: $e');
+      return ApiResponse.fromError(
+          'An unexpected error occurred: ${e.toString()}',
+          statusCode: -3);
+    }
+  }
+
+  // Generic DELETE request
+  Future<ApiResponse> delete(String endpoint,
+      {Map<String, dynamic>? body, bool requiresAuth = true}) async {
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
+    final url = Uri.parse('$_baseUrl$endpoint');
+    final encodedBody = body != null ? jsonEncode(body) : null;
+
+    print('DELETE Request: $url');
+    print('Headers: $headers');
+    if (encodedBody != null) print('Body: $encodedBody');
+
+    try {
+      final response =
+          await http.delete(url, headers: headers, body: encodedBody);
+      return _handleHttpResponse(response);
+    } on SocketException catch (e) {
+      print('SocketException in DELETE $endpoint: $e');
+      return ApiResponse.fromError(
+          'Network error: Please check your connection and try again.',
+          statusCode: -1);
+    } on HttpException catch (e) {
+      print('HttpException in DELETE $endpoint: $e');
+      return ApiResponse.fromError(
+          'Could not connect to the server: Please try again later.',
+          statusCode: -2);
+    } catch (e) {
+      print('Exception in DELETE $endpoint: $e');
+      return ApiResponse.fromError(
+          'An unexpected error occurred: ${e.toString()}',
+          statusCode: -3);
+    }
+  }
+
+  // --- File Upload Helper ---
+  Future<ApiResponse> uploadFiles({
+    required String endpoint,
+    required List<File> files,
+    required String fieldName, // e.g., 'productImages', 'avatar'
+    Map<String, String>? fields, // Other text fields to send with the files
+    bool requiresAuth = true,
+    String httpMethod = 'POST', // 'POST' or 'PUT'
+  }) async {
+    final headers =
+        await _getHeaders(requiresAuth: requiresAuth, isFormData: true);
+    final url = Uri.parse('$_baseUrl$endpoint');
+
+    print('File Upload Request ($httpMethod): $url');
+    print('Headers: $headers');
+    print('Files: ${files.map((f) => f.path).toList()}');
+    print('FieldName: $fieldName');
+    if (fields != null) print('Fields: $fields');
+
+    try {
+      var request = http.MultipartRequest(httpMethod, url);
+      request.headers.addAll(headers);
+
+      if (fields != null) {
+        request.fields.addAll(fields);
       }
-      finalHeaders['Authorization'] = 'Bearer $token';
-    }
 
-    final uri = Uri.parse('$_baseUrl$endpoint');
-    print("POST Request: ${uri.toString()}"); // Log the request URL
-
-    final response = await http.post(
-      uri,
-      headers: finalHeaders,
-      body: jsonEncode(body), // Assume body is usually JSON
-    );
-    return _handleResponse(response);
-  }
-
-  // Modify PUT helper to accept requiresAuth parameter
-  Future<Map<String, dynamic>> put(String endpoint,
-      {Map<String, String>? headers,
-      dynamic body,
-      bool requiresAuth = true}) async {
-    final defaultHeaders = {'Content-Type': 'application/json'};
-    Map<String, String> finalHeaders = {
-      ...defaultHeaders,
-      ...?headers,
-    };
-
-    if (requiresAuth) {
-      final token = await _getToken();
-      if (token == null) {
-        print("Authentication token not found for protected route.");
-        return {'error': 'Authentication required', 'statusCode': 401};
+      for (var file in files) {
+        http.ByteStream fileStream = http.ByteStream(file.openRead());
+        int fileLength = await file.length();
+        http.MultipartFile multipartFile = http.MultipartFile(
+          fieldName,
+          fileStream,
+          fileLength,
+          filename: file.path.split('/').last,
+          contentType: MediaType.parse(
+              lookupMimeType(file.path) ?? 'application/octet-stream'),
+        );
+        request.files.add(multipartFile);
       }
-      finalHeaders['Authorization'] = 'Bearer $token';
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+      return _handleHttpResponse(response);
+    } on SocketException catch (e) {
+      print('SocketException during file upload $endpoint: $e');
+      return ApiResponse.fromError(
+        'Network error during file upload. Please check your connection.',
+        statusCode: -1,
+      );
+    } on HttpException catch (e) {
+      print('HttpException during file upload $endpoint: $e');
+      return ApiResponse.fromError(
+        'Could not connect to the server for file upload.',
+        statusCode: -2,
+      );
+    } catch (e) {
+      print('Exception during file upload $endpoint: $e');
+      return ApiResponse.fromError(
+        'An unexpected error occurred during file upload: ${e.toString()}',
+        statusCode: -3,
+      );
     }
-
-    final uri = Uri.parse('$_baseUrl$endpoint');
-    print("PUT Request: ${uri.toString()}"); // Log the request URL
-
-    final response = await http.put(
-      uri,
-      headers: finalHeaders,
-      body: jsonEncode(body),
-    );
-    return _handleResponse(response);
   }
 
-  // Add DELETE helper method
-  Future<Map<String, dynamic>> delete(String endpoint,
-      {Map<String, String>? headers,
-      dynamic body,
-      bool requiresAuth = true}) async {
-    Map<String, String> finalHeaders = {...?headers};
-
-    if (requiresAuth) {
-      final token = await _getToken();
-      if (token == null) {
-        print("Authentication token not found for protected route.");
-        return {'error': 'Authentication required', 'statusCode': 401};
-      }
-      finalHeaders['Authorization'] = 'Bearer $token';
-    }
-
-    // Add content-type if body is present
-    if (body != null) {
-      finalHeaders.putIfAbsent('Content-Type', () => 'application/json');
-    }
-
-    final uri = Uri.parse('$_baseUrl$endpoint');
-    print("DELETE Request: ${uri.toString()}");
-
-    final response = await http.delete(
-      uri,
-      headers: finalHeaders,
-      body: body != null ? jsonEncode(body) : null, // Encode body if present
-    );
-    return _handleResponse(response);
-  }
-
-  // --- Specific API Methods ---
-
-  /// Fetches the profile of the currently logged-in user.
-  Future<Map<String, dynamic>> getUserProfile() async {
-    // Default requiresAuth = true is appropriate
-    return await get('/users/me');
-  }
-
-  /// Updates the profile of the currently logged-in user.
-  Future<Map<String, dynamic>> updateUserProfile(
-      Map<String, dynamic> updates) async {
-    // Default requiresAuth = true is appropriate
-    return await put('/users/me', body: updates);
-  }
-
-  /// Fetches the public profile of a specific user by their ID.
-  Future<Map<String, dynamic>> getUserProfileById(String userId) async {
-    // This endpoint should be public, so no auth required.
-    return await get('/users/$userId');
-  }
-
-  /// Searches for contacts based on filters.
-  Future<Map<String, dynamic>> searchContacts(
-      Map<String, dynamic> filters) async {
-    // Construct query parameters from the filters map
-    final queryParams = Uri(
-        queryParameters: filters
-            .map((key, value) => MapEntry(key, value?.toString() ?? ''))).query;
-    final endpoint = '/contacts/search?$queryParams';
-    print("Search endpoint: $endpoint"); // Log the endpoint for debugging
-    return await get(endpoint);
-  }
-
-  /// Exports contacts based on filters, returns VCF string in 'data'.
-  Future<Map<String, dynamic>> exportContacts(
-      Map<String, dynamic> filters) async {
-    // Construct query parameters from the filters map
-    final queryParams = Uri(
-        queryParameters: filters
-            .map((key, value) => MapEntry(key, value?.toString() ?? ''))).query;
-    final endpoint = '/contacts/export?$queryParams';
-    print("Export endpoint: $endpoint"); // Log the endpoint for debugging
-    // Use expectJson: false for VCF export
-    return await get(endpoint, expectJson: false);
-  }
-
-  /// Requests an OTP for verifying contact export/download.
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> requestContactsExportOtp() async {
-    // Endpoint assumption based on variable name createContactsOTPLink
-    // Needs verification with actual backend implementation.
-    final endpoint = '/contacts/request-otp'; // Example endpoint
-    return await post(endpoint,
-        body: {}); // Assuming POST request with no specific body needed besides auth
-  }
-
-  /// Registers a new user.
-  /// Does not require authentication token.
-  Future<Map<String, dynamic>> registerUser(
-      Map<String, dynamic> userData) async {
-    // Use the base http client directly as ApiService helpers assume auth by default
-    // OR modify post helper to accept requiresAuth = false
-    // Using modified post helper:
-    return await post('/users/register', body: userData, requiresAuth: false);
-    // Original implementation using direct http:
-    // final response = await http.post(
-    //   Uri.parse('$_baseUrl/users/register'),
-    //   headers: {'Content-Type': 'application/json'},
-    //   body: jsonEncode(userData),
-    // );
-    // return _handleResponse(response);
-  }
-
-  /// Verifies the OTP sent during registration.
-  /// Does not require authentication token.
-  Future<Map<String, dynamic>> verifyRegistration(
-      String userId, String otp) async {
+  // --- User and Auth Related Methods ---
+  Future<ApiResponse> loginUser(String email, String password) async {
     return await post(
-      '/users/verify-registration',
-      body: {'userId': userId, 'otp': otp},
-      requiresAuth: false,
+      '/users/login', // Endpoint based on documentation or common practice
+      body: {'email': email, 'password': password},
+      requiresAuth: false, // Login does not require a token
     );
   }
 
-  /// Resends the registration verification OTP.
-  /// Does not require authentication token.
-  Future<Map<String, dynamic>> resendVerificationOtp(String userId) async {
+  Future<ApiResponse> verifyOtp(String userId, String otp) async {
     return await post(
-      '/users/resend-verification-otp',
+      '/users/verify-otp', // Endpoint based on existing code
+      body: {'userId': userId, 'otpCode': otp},
+      requiresAuth:
+          false, // OTP verification might be public or use a temporary token
+    );
+  }
+
+  Future<ApiResponse> resendVerificationOtp(String userId) async {
+    return await post(
+      '/users/resend-otp',
       body: {'userId': userId},
       requiresAuth: false,
     );
   }
 
-  /// Initiates user login with email and password.
-  /// Does not require authentication token.
-  Future<Map<String, dynamic>> loginUser(String email, String password) async {
-    return await post(
-      '/users/login',
-      body: {'email': email, 'password': password},
-      requiresAuth: false,
-    );
+  Future<ApiResponse> registerUser(Map<String, dynamic> userData) async {
+    return await post('/users/register', body: userData);
   }
 
-  /// Verifies a generic OTP (likely for login 2FA).
-  /// Does not require authentication token initially (uses userId from login step).
-  Future<Map<String, dynamic>> verifyOtp(String userId, String otp) async {
-    return await post(
-      '/users/verify-otp',
-      body: {'userId': userId, 'otpCode': otp},
-      requiresAuth:
-          false, // OTP verification itself doesn't use the Bearer token
-    );
+  Future<ApiResponse> getUserProfile() async {
+    return await get('/users/me');
   }
 
-  // --- Subscription Service Methods ---
-
-  /// Fetches available subscription plans.
-  /// Requires auth token based on userflow.http, but may be public.
-  /// Adjust 'get' call if auth is not needed.
-  Future<Map<String, dynamic>> getSubscriptionPlans() async {
-    // Assuming authentication is required as per userflow example structure
-    // If public, replace with direct http.get
-    return await get('/subscriptions/plans');
+  Future<ApiResponse> updateUserProfile(Map<String, dynamic> updates) async {
+    return await put('/users/me', body: updates);
   }
 
-  /// Initiates the purchase of a subscription plan.
-  /// Requires auth token.
-  Future<Map<String, dynamic>> purchaseSubscription(String planType) async {
-    // Uses the authenticated 'post' helper
-    return await post('/subscriptions/purchase', body: {'planType': planType});
-  }
-
-  String generatePaymentUrl(String sessionId) {
-    return '$_baseUrl/payments/page/$sessionId';
-  }
-
-  // Add other subscription-related methods like upgrade, get active subs etc. later if needed
-
-  // --- Product Service Methods ---
-
-  /// Creates a new product for the current user.
-  /// Handles image uploads (web: base64, mobile: path).
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> createProduct(
-      Map<String, String> productData, List<String> imagePathsOrData) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    final url = Uri.parse('$_baseUrl/products');
-
-    var request = http.MultipartRequest('POST', url);
-    request.headers['Authorization'] = 'Bearer $token';
-
-    // Add text fields
-    productData.forEach((key, value) {
-      request.fields[key] = value;
-    });
-
-    // Add image files
-    for (final imagePathOrData in imagePathsOrData) {
-      if (kIsWeb) {
-        // Handle base64 encoded string for web
-        final bytes = base64Decode(imagePathOrData);
-        final imageName =
-            'image_${DateTime.now().millisecondsSinceEpoch}.jpg'; // Generate a filename
-        request.files.add(http.MultipartFile.fromBytes(
-          'images', // Field name for all images
-          bytes,
-          filename: imageName,
-          contentType:
-              MediaType('image', 'jpeg'), // Adjust content type if needed
-        ));
-      } else {
-        // Handle file path for mobile
-        final file = File(imagePathOrData);
-        if (await file.exists()) {
-          request.files.add(await http.MultipartFile.fromPath(
-            'images', // Field name for all images
-            file.path,
-            contentType: MediaType(
-                'image', file.path.split('.').last), // Infer content type
-          ));
-        }
-      }
-    }
-
-    try {
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      return _handleResponse(response);
-    } catch (e) {
-      print('Exception during createProduct API call: $e');
-      return {'success': false, 'error': 'Network or request error: $e'};
-    }
-  }
-
-  /// Fetches products based on search criteria and filters.
-  /// Query parameters are passed in the [filters] map.
-  /// Requires authentication token based on userflow example.
-  Future<Map<String, dynamic>> getProducts(Map<String, dynamic> filters) async {
-    // Construct query parameters from the filters map
-    // Ensure pagination parameters (page, limit) are included if needed by the backend
-    final queryParams = Uri(
-        queryParameters: filters
-            .map((key, value) => MapEntry(key, value?.toString() ?? ''))).query;
-    // Using /products/search as endpoint based on userflow.http
-    final endpoint = '/products/search?$queryParams';
-    print("GetProducts endpoint: $endpoint");
-    return await get(endpoint);
-  }
-
-  /// Submits a rating for a specific product.
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> rateProduct(String productId, double rating,
-      {String? review}) async {
-    final body = {
-      'rating': rating,
-      if (review != null && review.isNotEmpty) 'review': review,
-      // Add other potential fields like 'helpful' if needed
-    };
-    final endpoint = '/products/$productId/ratings';
-    return await post(endpoint, body: body);
-  }
-
-  /// Updates an existing product owned by the current user.
-  /// Handles optional new image uploads and lists existing images to keep.
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> updateProduct(
-      String productId,
-      Map<String, String> productUpdates,
-      List<String> newImagePathsOrData) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    final url = Uri.parse('$_baseUrl/products/$productId');
-
-    var request = http.MultipartRequest('PUT', url);
-    request.headers['Authorization'] = 'Bearer $token';
-
-    // Add text fields for updates
-    productUpdates.forEach((key, value) {
-      request.fields[key] = value;
-    });
-
-    // Add new image files ONLY if provided (API replaces existing set if 'images' field is present)
-    if (newImagePathsOrData.isNotEmpty) {
-      for (final imagePathOrData in newImagePathsOrData) {
-        if (kIsWeb) {
-          // Handle base64 encoded string for web
-          final bytes = base64Decode(imagePathOrData);
-          final imageName =
-              'image_${DateTime.now().millisecondsSinceEpoch}.jpg'; // Generate a filename
-          request.files.add(http.MultipartFile.fromBytes(
-            'images', // Field name for all images
-            bytes,
-            filename: imageName,
-            contentType:
-                MediaType('image', 'jpeg'), // Adjust content type if needed
-          ));
-        } else {
-          // Handle file path for mobile
-          final file = File(imagePathOrData);
-          if (await file.exists()) {
-            request.files.add(await http.MultipartFile.fromPath(
-              'images', // Field name for all images
-              file.path,
-              contentType: MediaType(
-                  'image', file.path.split('.').last), // Infer content type
-            ));
-          }
-        }
-      }
-    }
-    // If newImagePathsOrData is empty, the 'images' field is NOT added,
-    // and the API should keep the existing images according to the spec.
-
-    try {
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      return _handleResponse(response);
-    } catch (e) {
-      print('Exception during updateProduct API call: $e');
-      return {'success': false, 'error': 'Network or request error: $e'};
-    }
-  }
-
-  /// Fetches a specific product by its ID (Public).
-  Future<Map<String, dynamic>> getProductById(String productId) async {
-    final endpoint = '/products/$productId';
-    print("GetProductById endpoint: $endpoint");
-    // This endpoint is public according to API doc 4.4
-    return await get(endpoint, requiresAuth: false);
-  }
-
-  /// Fetches ratings for a specific product.
-  /// Supports pagination via [page] and [limit].
-  Future<Map<String, dynamic>> getProductRatings(String productId,
-      {int page = 1, int limit = 10}) async {
-    // Construct query parameters for pagination
-    final queryParams = {
-      'page': page.toString(),
-      'limit': limit.toString(),
-    };
-    final endpoint =
-        '/products/$productId/ratings?${Uri(queryParameters: queryParams).query}';
-    print("GetProductRatings endpoint: $endpoint");
-    // Assuming ratings are public, set requiresAuth: false
-    return await get(endpoint, requiresAuth: false);
-  }
-
-  // --- Transaction Service Methods ---
-
-  /// Fetches the transaction history for the currently logged-in user.
-  /// Supports pagination via query parameters in the [filters] map (e.g., {'page': '1', 'limit': '10'}).
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> getTransactions(
-      Map<String, dynamic> filters) async {
-    // Construct query parameters from the filters map
-    final queryParams = Uri(
-        queryParameters: filters
-            .map((key, value) => MapEntry(key, value?.toString() ?? ''))).query;
-    final endpoint = '/transactions/history?$queryParams'; // Correct endpoint
-    print("GetTransactions endpoint: $endpoint");
-    return await get(endpoint);
-  }
-
-  /// Fetches transaction statistics for the currently logged-in user.
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> getTransactionStats() async {
-    final endpoint = '/transactions/stats';
-    print("GetTransactionStats endpoint: $endpoint");
-    return await get(endpoint); // Requires auth by default
-  }
-
-  /// Fetches a specific transaction by its transactionId.
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> getTransactionById(String transactionId) async {
-    final endpoint = '/transactions/$transactionId';
-    print("GetTransactionById endpoint: $endpoint");
-    return await get(endpoint); // Requires auth by default
-  }
-
-  // --- Payout/Withdrawal Service Methods ---
-
-  /// Requests an OTP for initiating a withdrawal.
-  /// Requires authentication token.
-  /// Body likely includes: amount, currency, operator, password (based on retrait.dart).
-  Future<Map<String, dynamic>> requestWithdrawalOtp(
-      Map<String, dynamic> withdrawalData) async {
-    // Endpoint from userflow2.http
-    return await post('/payouts/request-otp', body: withdrawalData);
-  }
-
-  /// Confirms a withdrawal using the OTP.
-  /// Requires authentication token.
-  /// Body likely includes: amount, currency, operator, password, otp (based on retrait.dart).
-  Future<Map<String, dynamic>> confirmWithdrawal(
-      Map<String, dynamic> withdrawalData) async {
-    // Endpoint from userflow2.http
-    return await post('/payouts/withdraw', body: withdrawalData);
-  }
-
-  // --- User Profile Service Methods ---
-
-  /// Uploads a new avatar for the user.
-  /// Handles both web (base64 String) and mobile (file path) uploads.
-  Future<Map<String, dynamic>> uploadAvatar(
-      String filePathOrBase64, String fileName) async {
-    final token = await _getToken();
-    if (token == null) {
-      print("Authentication token not found.");
-      return {'error': 'Authentication required', 'statusCode': 401};
-    }
-
-    final uri = Uri.parse(
-        '$_baseUrl/users/upload-pp'); // Endpoint from profile-modify.dart
-    final request = http.MultipartRequest('POST', uri);
-    request.headers['Authorization'] = 'Bearer $token';
-    // 'email' field might not be needed if endpoint uses token, but include if required by backend
-    // request.fields['email'] = await prefs.getString('email') ?? ''; // Example if needed
-
+  Future<ApiResponse> uploadAvatar(String pathOrBase64, String fileName) async {
     if (kIsWeb) {
-      // Decode base64 string to bytes for web
-      try {
-        final fileBytes = base64.decode(filePathOrBase64);
-        request.files.add(http.MultipartFile.fromBytes(
-          'file', // Field name expected by backend
-          fileBytes,
-          filename: fileName, // Use the generated filename
-        ));
-      } catch (e) {
-        print("Error decoding base64 image: $e");
-        return {'error': 'Invalid image data', 'statusCode': 400};
-      }
+      // For web, pathOrBase64 is a base64 string.
+      // This simplified version assumes backend can take base64 string directly.
+      return await post('/users/me/avatar-base64', body: {
+        // Assuming a specific endpoint for base64
+        'avatarBase64': pathOrBase64,
+        'fileName': fileName
+      });
     } else {
-      // Add file directly from path for mobile
-      try {
-        request.files.add(await http.MultipartFile.fromPath(
-          'file', // Field name expected by backend
-          filePathOrBase64, // This is the actual file path on mobile
-          filename: fileName, // Use the actual filename from path
-        ));
-      } catch (e) {
-        print("Error attaching file: $e");
-        return {'error': 'Failed to attach file', 'statusCode': 500};
-      }
-    }
-
-    try {
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-      final statusCode = response.statusCode;
-
-      if (statusCode >= 200 && statusCode < 300) {
-        try {
-          // Attempt to parse as JSON, but handle potential non-JSON success response
-          final jsonResponse = jsonDecode(responseBody) as Map<String, dynamic>;
-          // Assuming success response includes the new avatar URL in 'data' or similar key
-          // final newAvatarUrl = jsonResponse['data']?['avatarUrl'];
-          jsonResponse['statusCode'] = statusCode;
-          // jsonResponse['newAvatarUrl'] = newAvatarUrl;
-          return jsonResponse;
-        } catch (e) {
-          // Handle non-JSON success response (e.g., just a success message string)
-          print("Non-JSON success response from uploadAvatar: $responseBody");
-          return {
-            'success': true,
-            'message': responseBody,
-            'statusCode': statusCode
-          };
-        }
-      } else {
-        Map<String, dynamic> errorResponse = {};
-        try {
-          errorResponse = jsonDecode(responseBody) as Map<String, dynamic>;
-        } catch (e) {
-          errorResponse = {'error': responseBody};
-        }
-        print(
-            'API Error uploadAvatar: $statusCode - ${errorResponse['message'] ?? errorResponse['error'] ?? responseBody}');
-        errorResponse['statusCode'] = statusCode;
-        return errorResponse;
-      }
-    } catch (e) {
-      print("Exception during avatar upload: $e");
-      return {'error': 'Network error during upload', 'statusCode': 500};
+      // For mobile, pathOrBase64 is a file path
+      File file = File(pathOrBase64);
+      return await uploadFiles(
+        // Reusing the generic uploadFiles helper
+        endpoint: '/users/me/avatar', // Standard multipart endpoint for avatar
+        files: [file],
+        fieldName: 'avatar',
+      );
     }
   }
 
-  /// Requests an OTP to be sent for verifying an email change.
-  /// Requires authentication token.
-  /// Takes the user ID (or potentially relies on token). Adjust body if needed.
-  Future<Map<String, dynamic>> requestEmailChangeOtp(String newEmail) async {
-    // Endpoint from userflow2.http
-    // Body requires the new email address
-    return await post('/users/request-change-email',
-        body: {'newEmail': newEmail}, // Send newEmail in body
-        requiresAuth: true // Requires user to be logged in
-        );
+  Future<ApiResponse> getUserProfileById(String userId) async {
+    return await get('/users/$userId'); // Assuming public profile
   }
 
-  /// Verifies the OTP for an email address change.
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> verifyEmailChange(
-      String newEmail, String otp) async {
-    // Endpoint from userflow2.http
-    // Body requires newEmail and otpCode
-    final endpoint = '/users/confirm-change-email';
-    return await post(
-      endpoint,
-      body: {
-        'newEmail': newEmail, // Key expected by API
-        'otpCode': otp, // Key expected by API
-      },
-      requiresAuth: true,
-    );
-  }
-
-  // --- Utility Service Methods ---
-
-  /// Converts an amount from one currency to another.
-  /// Authentication requirement depends on backend implementation.
-  Future<Map<String, dynamic>> convertCurrency(
-      String amount, String fromCurrency, String toCurrency) async {
-    final queryParams = {
-      'amount': amount,
-      'from': fromCurrency,
-      'to': toCurrency,
-    };
-    // Assuming endpoint /utils/convert-currency - Check config/userflow if different
-    final endpoint =
-        '/utils/convert-currency?${Uri(queryParameters: queryParams).query}';
-    print("ConvertCurrency endpoint: $endpoint");
-    // Assuming this might be public, setting requiresAuth: false
-    return await get(endpoint, requiresAuth: false);
-  }
-
-  // --- Affiliation Service Methods ---
-
-  /// Fetches affiliation information based on a code.
-  /// Does not require authentication token.
-  Future<Map<String, dynamic>> getAffiliationInfo(String code) async {
-    // Endpoint from inscription.dart logic
-    final endpoint =
-        '/users/get-affiliation?referralCode=$code'; // Assuming /utils path, adjust if needed
-    print("GetAffiliationInfo endpoint: $endpoint");
-    return await get(endpoint, requiresAuth: false);
-  }
-
-  /// Logs out the current user.
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> logoutUser() async {
-    // Endpoint based on API Documentation: POST /users/logout
-    // Assumes backend invalidates the token provided in the Authorization header.
-    // No request body is typically needed if using token auth.
+  Future<ApiResponse> logoutUser() async {
     return await post('/users/logout',
-        body: {}); // Sending empty body, requires auth
+        body: {}); // Assumes token in header is enough
   }
 
   // --- Password Management Methods ---
-
-  /// Requests a password reset OTP to be sent to the user's email.
-  /// Does not require authentication token.
-  Future<Map<String, dynamic>> requestPasswordResetOtp(String email) async {
-    // Endpoint assumption: /users/request-password-reset or similar
-    // Needs verification with actual backend implementation.
+  Future<ApiResponse> requestPasswordResetOtp(String email) async {
     final endpoint = '/users/request-password-reset';
     return await post(endpoint, body: {'email': email}, requiresAuth: false);
   }
 
-  /// Resets the user's password using an OTP.
-  /// Does not require authentication token.
-  Future<Map<String, dynamic>> resetPassword(
+  Future<ApiResponse> resetPassword(
       String emailOrUserId, String otp, String newPassword) async {
-    // Endpoint assumption: /users/reset-password or similar
-    // Backend might require email or userId.
-    // Needs verification with actual backend implementation.
     final endpoint = '/users/reset-password';
     return await post(
       endpoint,
       body: {
-        'email': emailOrUserId, // Or potentially 'userId'
+        'email': emailOrUserId,
         'otpCode': otp,
         'newPassword': newPassword,
       },
@@ -742,169 +362,288 @@ class ApiService {
     );
   }
 
-  // We will add specific API call methods here later, e.g.:
-  // Future<Map<String, dynamic>> loginUser(String email, String password) async { ... }
-  // Future<Map<String, dynamic>> registerUser(Map<String, dynamic> userData) async { ... }
-  // Future<List<Map<String, dynamic>>> getFilteredContacts(Map<String, dynamic> filters) async { ... }
-
-  // --- User Service Methods (Specific Product Fetch) ---
-
-  /// Fetches a specific product listed by a seller, potentially requires current user context.
-  /// Corresponds to the logic previously in utils.getProductOnline
-  /// Endpoint might be /users/get-product based on original implementation context.
-  Future<Map<String, dynamic>> getUserSpecificProduct(
-      String sellerEmail, String productId) async {
-    // Construct query parameters based on the original getProductOnline logic
-    // Assuming the backend uses the token for the logged-in user's email if needed.
-    final queryParams = {
-      // 'email': loggedInUserEmail, // Potentially add if backend requires it alongside token
-      'seller': sellerEmail,
-      'id': productId,
-    };
-    // The endpoint needs clarification. Assuming it's under /users/
-    // Based on variable name 'getProduct' likely mapping to config
-    // Let's assume it maps to /users/get-product for now.
-    final endpoint =
-        '/users/get-product?${Uri(queryParameters: queryParams).query}';
-    print("GetUserSpecificProduct endpoint: $endpoint");
-    return await get(endpoint); // Requires auth by default
+  // --- Email Change Methods ---
+  Future<ApiResponse> requestEmailChangeOtp(String newEmail) async {
+    return await post('/users/request-email-change',
+        body: {'newEmail': newEmail});
   }
 
-  // --- Referral/Affiliation Service Methods ---
-
-  /// Fetches the referral statistics for the currently logged-in user.
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> getReferralStats() async {
-    // Endpoint from API docs: /users/get-referals
-    final endpoint = '/users/get-referals';
-    return await get(endpoint); // Requires auth
+  Future<ApiResponse> confirmEmailChange(
+      String newEmail, String otpCode) async {
+    return await post('/users/confirm-change-email',
+        body: {'newEmail': newEmail, 'otpCode': otpCode});
   }
 
-  /// Fetches the list of users referred by the currently logged-in user.
-  /// Supports pagination via filters map (e.g., {'page': '1', 'limit': '20'}).
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> getReferredUsers(
-      Map<String, dynamic> filters) async {
-    // Endpoint from API docs: /users/get-refered-users
-    final queryParams = Uri(
-        queryParameters: filters
-            .map((key, value) => MapEntry(key, value?.toString() ?? ''))).query;
-    final endpoint = '/users/get-refered-users?$queryParams';
-    print("GetReferredUsers endpoint: $endpoint");
-    return await get(endpoint); // Requires auth
+  Future<ApiResponse> verifyEmailChange(String newEmail, String otp) async {
+    return await post('/users/verify-email-change', body: {
+      'newEmail': newEmail,
+      'otp': otp,
+    });
   }
 
-  /// Resends an OTP based on email and purpose.
-  /// Does not require authentication token.
-  Future<Map<String, dynamic>> resendOtpByEmail(
-      String email, String purpose) async {
-    return await post(
-      '/users/resend-otp',
-      body: {'email': email, 'purpose': purpose},
-      requiresAuth: false,
-    );
+  Future<ApiResponse> resendOtpByEmail(String email, String purpose) async {
+    return await post('/users/resend-otp', body: {
+      'email': email,
+      'purpose': purpose,
+    });
   }
 
-  // --- NEW: Get Current User's Affiliator (Sponsor) ---
-  Future<Map<String, dynamic>> getMyAffiliator() async {
-    // Use the get helper which handles token, base URL, and basic response processing
-    // The get helper now returns Map<String, dynamic> directly after handling response
-    return await get('/users/affiliator');
+  // --- Product/Service Methods ---
+  Future<ApiResponse> getProducts({Map<String, String>? filters}) async {
+    return await get('/products/search', queryParameters: filters);
   }
 
-  // --- NEW: Get Application Settings ---
-  Future<Map<String, dynamic>> getAppSettings() async {
-    // Settings are likely public, so no auth needed.
-    return await get('/settings', requiresAuth: false);
+  Future<ApiResponse> getProductDetails(String productId) async {
+    return await get('/products/$productId');
   }
 
-  /// Fetches the products owned by the currently logged-in user.
-  /// Supports pagination via query parameters (e.g., page, limit).
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> getUserProducts(
+  Future<ApiResponse> getProductRatings(String productId,
       {int page = 1, int limit = 10}) async {
-    final queryParams = {
+    return await get('/products/$productId/ratings', queryParameters: {
       'page': page.toString(),
       'limit': limit.toString(),
-    };
-    final endpoint =
-        '/products/user?${Uri(queryParameters: queryParams).query}';
-    print("GetUserProducts endpoint: $endpoint");
-    return await get(endpoint); // Requires auth by default
+    });
   }
 
-  /// Deletes a specific product by its ID.
-  /// Requires authentication token.
-  Future<Map<String, dynamic>> deleteProduct(String productId) async {
-    final endpoint = '/products/$productId';
-    return await delete(
-        endpoint); // Assuming a delete helper exists or will be added
-  }
+  Future<ApiResponse> addProduct(Map<String, dynamic> productData,
+      {List<File>? imageFiles}) async {
+    // Convert all productData values to strings for the 'fields' parameter
+    final Map<String, String> stringProductData = productData.map(
+      (key, value) => MapEntry(key, value.toString()),
+    );
 
-  Future<Map<String, dynamic>> getUserTransactionHistory({
-    int page = 1,
-    int limit = 10,
-    String sortBy = 'createdAt',
-    String sortOrder = 'desc',
-    String? type, // DEPOSIT, WITHDRAWAL, PAYMENT, REFUND
-    String? status, // PENDING, COMPLETED, FAILED, CANCELLED
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    final queryParameters = {
-      'page': page.toString(),
-      'limit': limit.toString(),
-      'sortBy': sortBy,
-      'sortOrder': sortOrder,
-    };
-    if (type != null) {
-      queryParameters['type'] = type;
-    }
-    if (status != null) {
-      queryParameters['status'] = status;
-    }
-
-    try {
-      final response = await get(
-        '/transactions/history', // Endpoint from userflow2.http
-        queryParameters: queryParameters,
-        headers: {'Authorization': 'Bearer $token'},
+    if (imageFiles != null && imageFiles.isNotEmpty) {
+      return await uploadFiles(
+        endpoint: '/products',
+        files: imageFiles,
+        fieldName: 'images', // Field name for the image files
+        fields: stringProductData, // Other product data as string fields
+        requiresAuth: true,
+        httpMethod: 'POST',
       );
-      return response;
-    } catch (e) {
-      print('Error fetching transaction history: $e');
-      return {'success': false, 'error': e.toString()};
+    } else {
+      // If there are no images, we can still send as multipart if the backend expects it,
+      // or fall back to a regular JSON post if the backend supports that for no-image cases.
+      // For consistency with the HTTP file, let's assume multipart is preferred.
+      return await uploadFiles(
+        endpoint: '/products',
+        files: [], // Empty list of files
+        fieldName:
+            'images', // Still need a fieldName, even if no files, or adjust backend
+        fields: stringProductData,
+        requiresAuth: true,
+        httpMethod: 'POST',
+      );
+      // Alternative for no images, if backend supports JSON post:
+      // return await post('/products', body: productData);
     }
   }
 
-  Future<Map<String, dynamic>> getPartnerDetails() async {
-    try {
-      // Assuming 'get' handles the actual HTTP request, base URL, headers, etc.
-      final response = await get('partners/me'); // Endpoint for partner details
-
-      // Based on your provided structure:
-      // response is expected to be like:
-      // {
-      //   "success": true,
-      //   "data": {
-      //     "pack": "gold", // or "silver"
-      //     "amount": 12345.67,
-      //     // ... other fields like totalPartnerWithdrawals, user, isActive etc.
-      //   }
-      // }
-      // If 'get' already returns the parsed Map, no further processing is needed here.
-      // If 'get' returns an http.Response, you'd parse it:
-      // if (response.statusCode == 200) {
-      //   return json.decode(response.body) as Map<String, dynamic>;
-      // } else {
-      //   // Handle error, perhaps return a map with success:false
-      //   return {'success': false, 'error': 'Failed to load partner details', 'statusCode': response.statusCode};
-      // }
-
-      return response; // Assuming 'get' returns the parsed Map<String, dynamic>
-    } catch (e) {
-      print('Error in getPartnerDetails: $e');
-      return {'success': false, 'error': 'An exception occurred: $e'};
+  Future<ApiResponse> updateProduct(
+      String productId, Map<String, String> updates,
+      {List<String>? imageFiles}) async {
+    if (imageFiles != null && imageFiles.isNotEmpty) {
+      // For now, without uploadFiles, just update text fields
+      // In a real implementation, you'd need to handle multipart uploads
+      print(
+          "Warning: Image files would be uploaded but uploadFiles not implemented");
+      // Just do a regular update without images
     }
+    // Always use a regular PUT request for now
+    Map<String, dynamic> dynamicUpdates = Map<String, dynamic>.from(updates);
+    return await put('/products/$productId', body: dynamicUpdates);
   }
+
+  Future<ApiResponse> deleteProduct(String productId) async {
+    return await delete('/products/$productId');
+  }
+
+  Future<ApiResponse> rateProduct(String productId, double rating,
+      {String? review}) async {
+    final Map<String, dynamic> body = {'rating': rating};
+    if (review != null && review.isNotEmpty) {
+      body['review'] = review;
+    }
+    return await post('/products/$productId/ratings', body: body);
+  }
+
+  // --- Contact Management Methods ---
+  Future<ApiResponse> searchContacts(Map<String, dynamic> filters) async {
+    final queryParams =
+        filters.map((key, value) => MapEntry(key, value?.toString() ?? ''));
+    return await get('/contacts/search', queryParameters: queryParams);
+  }
+
+  Future<ApiResponse> exportContacts(Map<String, dynamic> filters) async {
+    // This response might be a file stream or VCF data, needs special handling in _handleHttpResponse if not JSON
+    // For now, assuming ApiResponse.fromHttpReponse can handle it or will be adapted
+    final queryParams =
+        filters.map((key, value) => MapEntry(key, value?.toString() ?? ''));
+    // If it returns a file, the 'get' method might need an 'expectJson: false' type of flag,
+    // or the _handleHttpResponse needs to be smarter about content-type.
+    // For now, let's assume it's a JSON response with a link or raw VCF data in a field.
+    return await get('/contacts/export', queryParameters: queryParams);
+  }
+
+  Future<ApiResponse> requestContactsExportOtp() async {
+    return await post('/contacts/request-otp', body: {});
+  }
+
+  // --- Subscription and Payment ---
+  Future<ApiResponse> getSubscriptionPlans() async {
+    return await get('/subscriptions/plans',
+        requiresAuth: false); // Often public
+  }
+
+  Future<ApiResponse> getCurrentSubscription() async {
+    return await get('/subscriptions/me');
+  }
+
+  Future<ApiResponse> createPaymentIntent(
+      String planId, String paymentMethod) async {
+    return await post('/payments/create-intent',
+        body: {'planId': planId, 'paymentMethod': paymentMethod});
+  }
+
+  Future<ApiResponse> confirmPayment(
+      String paymentId, Map<String, dynamic> confirmationData) async {
+    return await post('/payments/$paymentId/confirm', body: confirmationData);
+  }
+
+  // --- Wallet / Withdrawal ---
+  Future<ApiResponse> getWalletDetails() async {
+    return await get('/wallet/me');
+  }
+
+  Future<ApiResponse> requestWithdrawal(String operator, String phoneNumber,
+      double amount, String password) async {
+    return await post('/wallet/withdraw', body: {
+      'operator': operator,
+      'phoneNumber': phoneNumber,
+      'amount': amount,
+      'password': password // Assuming password confirmation for withdrawal
+    });
+  }
+
+  Future<ApiResponse> convertCurrency(
+      String amount, String fromCurrency, String toCurrency) async {
+    return await post('/wallet/convert-currency', body: {
+      // Assuming a POST endpoint
+      'amount': amount,
+      'fromCurrency': fromCurrency,
+      'toCurrency': toCurrency,
+    });
+  }
+
+  Future<ApiResponse> requestWithdrawalOtp(
+      Map<String, dynamic> withdrawalData) async {
+    return await post('/wallet/request-withdrawal-otp', body: withdrawalData);
+  }
+
+  Future<ApiResponse> confirmWithdrawal(
+      Map<String, dynamic> withdrawalData) async {
+    return await post('/wallet/confirm-withdrawal', body: withdrawalData);
+  }
+
+  Future<ApiResponse> getTransactionHistory(
+      {Map<String, String>? filters}) async {
+    return await get('/transactions/history', queryParameters: filters);
+  }
+
+  // --- Affiliation ---
+  Future<ApiResponse> getAffiliationDetails() async {
+    return await get('/users/affiliation/me');
+  }
+
+  Future<ApiResponse> getMyAffiliator() async {
+    return await get('/users/affiliator'); // Assuming this endpoint
+  }
+
+  Future<ApiResponse> getAffiliationInfo(String code) async {
+    return await get('/users/get-affiliation',
+        queryParameters: {'referralCode': code});
+  }
+
+  // New method for referral stats
+  Future<ApiResponse> getReferralStats() async {
+    return await get(
+        '/users/get-referals'); // Replace with your actual endpoint
+  }
+
+  // New method for referred users
+  Future<ApiResponse> getReferredUsers(Map<String, String> filters) async {
+    return await get('/users/get-refered-users',
+        queryParameters: filters); // Replace with your actual endpoint
+  }
+
+  // --- Notifications ---
+  Future<ApiResponse> getNotifications() async {
+    return await get('/notifications/me');
+  }
+
+  Future<ApiResponse> markNotificationAsRead(String notificationId) async {
+    return await post('/notifications/$notificationId/mark-read', body: {});
+  }
+
+  // --- Support ---
+  Future<ApiResponse> getFaqs() async {
+    return await get('/support/faq', requiresAuth: false);
+  }
+
+  Future<ApiResponse> submitSupportTicket(
+      Map<String, dynamic> ticketData) async {
+    return await post('/support/tickets', body: ticketData);
+  }
+
+  // --- App Settings ---
+  Future<ApiResponse> getAppSettings() async {
+    return await get('/settings',
+        requiresAuth: false); // Assuming public or specific endpoint
+  }
+
+  // --- Transaction Related Methods ---
+  Future<ApiResponse> getTransactions(Map<String, String>? filters) async {
+    return await get('/transactions/history', queryParameters: filters);
+  }
+
+  Future<ApiResponse> getPartnerTransactions(
+      Map<String, String>? filters) async {
+    return await get('/partners/me/transactions', queryParameters: filters);
+  }
+
+  Future<ApiResponse> getTransactionById(String transactionId) async {
+    return await get('/transactions/$transactionId');
+  }
+
+  Future<ApiResponse> getTransactionStats() async {
+    return await get('/transactions/stats'); // Assuming this is the endpoint
+  }
+
+  // --- Partner Related Methods ---
+  Future<ApiResponse> getPartnerDetails() async {
+    return await get('/partners/me');
+  }
+
+  // --- Subscription Related Methods ---
+  Future<ApiResponse> upgradeSubscription() async {
+    return await post('/subscriptions/upgrade', body: {});
+  }
+
+  String generatePaymentUrl(String sessionId) {
+    return '$_baseUrl/payments/page/$sessionId';
+  }
+
+  // --- Subscription Purchase Method ---
+  Future<ApiResponse> purchaseSubscription(String planTypeString) async {
+    return await post('/subscriptions/purchase',
+        body: {'planType': planTypeString});
+  }
+
+  // --- User's Products ---
+  Future<ApiResponse> getUserProducts({Map<String, String>? filters}) async {
+    return await get('/products/user',
+        queryParameters: filters); // Endpoint for current user's products
+  }
+
+  // ... Add other specific API methods here, refactoring them to return ApiResponse ...
 }

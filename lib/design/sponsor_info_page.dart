@@ -35,20 +35,17 @@ class _SponsorInfoPageState extends State<SponsorInfoPage> {
 
       if (!mounted) return;
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['success'] == true &&
-          response['statusCode'] < 300 &&
-          response['data'] != null) {
+      if (response.statusCode >= 200 &&
+          response.apiReportedSuccess &&
+          response.statusCode < 300 &&
+          response.body['data'] != null) {
         setState(() {
-          sponsorData = response['data'] as Map<String, dynamic>;
+          sponsorData = response.body['data'] as Map<String, dynamic>;
           showSpinner = false;
         });
       } else {
         setState(() {
-          errorMessage = response['message'] ??
-              response['error'] ??
-              context.translate('sponsor_not_found');
+          errorMessage = response.message;
           showSpinner = false;
         });
       }

@@ -43,11 +43,9 @@ class _EmailOublieState extends State<EmailOublie> {
 
     try {
       final response = await apiService.requestPasswordResetOtp(email.trim());
-      final msg = response['message'] ?? '';
+      final msg = response.message;
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         String title = context.translate('code_sent'); // Translated
         showPopupMessage(context, title,
             msg.isNotEmpty ? msg : context.translate('otp_sent_instructions'));
@@ -62,7 +60,7 @@ class _EmailOublieState extends State<EmailOublie> {
         showPopupMessage(context, title,
             msg.isNotEmpty ? msg : context.translate('otp_request_failed'));
         print(
-            'API Error sendFOTP (EmailOublie): ${response['statusCode']} - $msg');
+            'API Error sendFOTP (EmailOublie): ${response.statusCode} - $msg');
       }
     } catch (e) {
       print('Exception in sendFOTP (EmailOublie): $e');

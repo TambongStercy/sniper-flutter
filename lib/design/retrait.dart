@@ -9,6 +9,7 @@ import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart';
+import 'package:snipper_frontend/components/custom_otp_text_field.dart';
 
 class Retrait extends StatefulWidget {
   static const id = 'retrait';
@@ -158,8 +159,8 @@ class _RetraitState extends State<Retrait> {
       try {
         final response = await _apiService.convertCurrency(
             currentAmount, selectedCurrency, 'XAF');
-        if (response['success'] == true && response['data'] != null) {
-          final conversionData = response['data'];
+        if (response.apiReportedSuccess && response.body['data'] != null) {
+          final conversionData = response.body['data'];
           if (mounted) {
             setState(() {
               if (conversionData is Map &&
@@ -175,8 +176,7 @@ class _RetraitState extends State<Retrait> {
             });
           }
         } else {
-          print(
-              "Currency conversion failed: ${response['message'] ?? response['error']}");
+          print("Currency conversion failed: ${response.message}");
           if (mounted) {
             showPopupMessage(context, context.translate('error'),
                 context.translate('currency_conversion_failed'));
@@ -219,8 +219,9 @@ class _RetraitState extends State<Retrait> {
         try {
           final convResponse = await _apiService.convertCurrency(
               amount, selectedCurrency, 'XAF');
-          if (convResponse['success'] == true && convResponse['data'] != null) {
-            final conversionData = convResponse['data'];
+          if (convResponse.apiReportedSuccess &&
+              convResponse.body['data'] != null) {
+            final conversionData = convResponse.body['data'];
             if (conversionData is Map && conversionData.containsKey('amount')) {
               checkAmountInXAF =
                   (conversionData['amount'] as num?)?.toDouble() ?? 0.0;
@@ -256,9 +257,9 @@ class _RetraitState extends State<Retrait> {
       };
 
       final response = await _apiService.requestWithdrawalOtp(withdrawalData);
-      final msg = response['message'] ?? response['error'] ?? '';
+      final msg = response.message;
 
-      if (response['success'] == true) {
+      if (response.apiReportedSuccess) {
         setState(() {
           otpRequested = true;
         });
@@ -304,8 +305,9 @@ class _RetraitState extends State<Retrait> {
         try {
           final convResponse = await _apiService.convertCurrency(
               amount, selectedCurrency, 'XAF');
-          if (convResponse['success'] == true && convResponse['data'] != null) {
-            final conversionData = convResponse['data'];
+          if (convResponse.apiReportedSuccess &&
+              convResponse.body['data'] != null) {
+            final conversionData = convResponse.body['data'];
             if (conversionData is Map && conversionData.containsKey('amount')) {
               checkAmountInXAF =
                   (conversionData['amount'] as num?)?.toDouble() ?? 0.0;
@@ -340,9 +342,9 @@ class _RetraitState extends State<Retrait> {
       };
 
       final response = await _apiService.confirmWithdrawal(withdrawalData);
-      final msg = response['message'] ?? response['error'] ?? '';
+      final msg = response.message;
 
-      if (response['success'] == true) {
+      if (response.apiReportedSuccess) {
         setState(() {
           otpRequested = false;
           otp = '';
@@ -350,10 +352,11 @@ class _RetraitState extends State<Retrait> {
           password = '';
         });
         _apiService.getUserProfile().then((profileResponse) {
-          if (profileResponse['success'] == true &&
-              profileResponse['data'] != null) {
+          if (profileResponse.apiReportedSuccess &&
+              profileResponse.body['data'] != null) {
             final fetchedBalance =
-                (profileResponse['data']?['balance'] as num?)?.toDouble() ??
+                (profileResponse.body['data']?['balance'] as num?)
+                        ?.toDouble() ??
                     balance;
             prefs.setDouble('balance', fetchedBalance);
             if (mounted)
@@ -508,16 +511,49 @@ class _RetraitState extends State<Retrait> {
                                     ),
                                   ),
                                 ),
-                                OtpTextField(
+                                CustomOtpTextField(
                                   numberOfFields: 6,
-                                  borderColor: Theme.of(context).primaryColor,
                                   fieldWidth: 40.0,
-                                  margin: EdgeInsets.only(right: 8.0),
-                                  showFieldAsBox: true,
-                                  keyboardType: TextInputType.text,
-                                  onCodeChanged: (String code) {},
+                                  fieldHeight: 50.0,
+                                  autoFocus: true,
+                                  textStyle: TextStyle(
+                                      fontSize: 18, color: Colors.black),
+                                  decoration: InputDecoration(
+                                    counterText: "",
+                                    contentPadding: EdgeInsets.all(10.0),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      borderSide: BorderSide(
+                                          color: Theme.of(context).primaryColor,
+                                          width: 1.0),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      borderSide: BorderSide(
+                                          color: Theme.of(context).primaryColor,
+                                          width: 1.0),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      borderSide: BorderSide(
+                                          color: Theme.of(context)
+                                              .primaryColorDark,
+                                          width: 2.0),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                  ),
                                   onSubmit: (String verificationCode) {
-                                    otp = verificationCode;
+                                    setState(() {
+                                      otp = verificationCode;
+                                    });
+                                    // Optionally, automatically confirm OTP if needed
+                                    // if (otp.length == 6) confirmWithdrawalOTP(); 
+                                  },
+                                  onChanged: (String code) {
+                                    setState(() {
+                                      otp = code;
+                                    });
                                   },
                                 ),
                                 SizedBox(height: 16.0),

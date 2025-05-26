@@ -628,19 +628,17 @@ Future<dynamic> getProductOnline(
 
   try {
     // Call the ApiService method
-    final response =
-        await apiService.getUserSpecificProduct(sellerEmail, prdtId);
+    final response = await apiService.getProductDetails(prdtId);
 
-    String msg = response['message'] ?? '';
-    int? statusCode = response['statusCode'];
+    String msg = response.message;
+    int? statusCode = response.statusCode;
 
-    if (statusCode != null && statusCode >= 200 && statusCode < 300) {
-      // Return the product data, usually found in response['data'] or a specific key
-      return response['userPrdt'] ??
-          response['data']; // Adjust key based on actual API response
+    if (statusCode >= 200 && statusCode < 300 && response.apiReportedSuccess) {
+      // Return the product data, usually found in response.body['data']
+      return response.body['data'];
     } else {
       // Handle error response
-      String error = response['error'] ?? 'Unknown error';
+      String error = response.message;
       if (error == 'Accès refusé') {
         // Example specific error handling
         String title = "Erreur. Accès refusé.";

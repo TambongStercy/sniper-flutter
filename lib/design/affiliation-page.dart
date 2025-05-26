@@ -88,11 +88,14 @@ class _AffiliationState extends State<Affiliation> {
 
       final response = await apiService.getReferralStats();
 
-      String msg = response['message'] ?? '';
-      int? statusCode = response['statusCode'];
+      String msg = response.message;
+      int? statusCode = response.statusCode;
 
-      if (statusCode != null && statusCode >= 200 && statusCode < 300) {
-        final responseData = response['data'] ?? {};
+      if (statusCode != null &&
+          statusCode >= 200 &&
+          statusCode < 300 &&
+          response.apiReportedSuccess) {
+        final responseData = response.body['data'] ?? {};
         directCount = responseData['level1Count'] ?? 0;
         indirectCount = (responseData['level2Count'] ?? 0) +
             (responseData['level3Count'] ?? 0);
@@ -102,7 +105,7 @@ class _AffiliationState extends State<Affiliation> {
 
         print('Referral stats fetched successfully');
       } else {
-        String error = response['error'] ?? 'Failed to fetch stats';
+        String error = response.message;
         if (error == 'Accès refusé') {
           showPopupMessage(context, "Erreur. Accès refusé.", msg);
           await logoutUser();
@@ -149,13 +152,9 @@ class _AffiliationState extends State<Affiliation> {
     final directSubL = directSubCount;
     final indirectSubL = indirectSubCount;
 
-    final basic = (directSubL / basicRequirements) *
-        100;
-    final pro =
-        (directSubL / proRequirements) *
-            100;
-    final gold = (directSubL / goldRequirements) *
-        100;
+    final basic = (directSubL / basicRequirements) * 100;
+    final pro = (directSubL / proRequirements) * 100;
+    final gold = (directSubL / goldRequirements) * 100;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -392,15 +391,17 @@ class _AffiliationState extends State<Affiliation> {
                   ),
                 ),
               )
-            : Center(
-                child: Text(
-                  context.translate('no_affiliation_code'),
-                  style: TextStyle(
-                    fontSize: 16 * ffem,
-                    color: Colors.black54,
-                  ),
-                ),
-              ),
+            : (code == null)
+                ? Center(
+                    child: Text(
+                      context.translate('no_affiliation_code'),
+                      style: TextStyle(
+                        fontSize: 16 * ffem,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  )
+                : SizedBox(),
       ),
     );
   }

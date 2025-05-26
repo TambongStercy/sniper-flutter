@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+The otp text field is always a text keyboard. Do not modify it to number.

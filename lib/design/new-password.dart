@@ -14,10 +14,11 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/utils.dart';
-import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+import 'package:snipper_frontend/components/custom_otp_text_field.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 import 'package:snipper_frontend/api_service.dart'; // Import ApiService
 import 'package:snipper_frontend/theme.dart';
+import 'package:snipper_frontend/api_response.dart'; // Import ApiResponse
 
 // ignore: must_be_immutable
 class NewPassword extends StatefulWidget {
@@ -62,85 +63,42 @@ class _NewPasswordState extends State<NewPassword> {
     setState(() {
       showSpinner = true;
     });
-    bool success = false;
+    bool loggedInSuccessfully = false;
 
     try {
-      // Call ApiService to reset password
-      final response = await apiService.resetPassword(email, otp, password);
+      final ApiResponse apiResponse =
+          await apiService.resetPassword(email, otp, password);
 
-      final msg = response['message'] ?? '';
+      final String msg = apiResponse.message;
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
-        // Password reset successful on backend.
-        // The API might return user data and a *new token* after reset, or just success.
-        // Assuming it returns user data and token for immediate login:
-        final user =
-            response['data']?['user'] ?? response['data']; // Adjust key
-        final myToken =
-            response['data']?['token'] ?? response['token']; // Adjust key
-
-        if (user != null && myToken != null) {
-          final name = user['name'];
-          final region = user['region'];
-          final phone = user['phoneNumber']?.toString();
-          final userCode = user['code'];
-          final balance = (user['balance'] as num?)?.floorToDouble();
-          final id = user['id'] ?? user['_id']; // Check common ID keys
-          avatar = user['avatarUrl'] ?? user['avatar']; // Adjust key
-          isSubscribed = user['isSubscribed'] ?? false;
-
-          // Save all details to prefs for login session
-          prefs.setString('id', id ?? '');
-          prefs.setString('token', myToken);
-          prefs.setString('email', email);
-          prefs.setString('name', name ?? '');
-          prefs.setString('region', region ?? '');
-          prefs.setString('phone', phone ?? '');
-          prefs.setString('code', userCode ?? '');
-          prefs.setString('avatar', avatar ?? '');
-          if (balance != null) prefs.setDouble('balance', balance);
-          prefs.setBool('isSubscribed', isSubscribed);
-
-          // We might not need to call downloadAvatar separately if URL is returned.
-          // await downloadAvatar(); // Re-evaluate if this call is needed
-          hasPP = avatar != null && avatar!.isNotEmpty;
-
-          success = true;
-          showPopupMessage(
-              context,
-              context.translate('success'),
-              msg.isNotEmpty
-                  ? msg
-                  : context.translate('password_reset_success'));
-        } else {
-          // Handle case where API succeeded but didn't return expected data for login
-          success = false; // Treat as failure for login flow
-          print(
-              "Password reset API success, but no user/token returned: $response");
-          showPopupMessage(context, context.translate('error'),
-              context.translate('password_reset_incomplete'));
-        }
+      if (apiResponse.isOverallSuccess) {
+        // Password reset was successful according to API (status code and 'success': true)
+        // No auto-login attempt here. User should be redirected to login page.
+        showPopupMessage(context, context.translate('success'),
+            context.translate('password_reset_success_login_prompt'));
+        loggedInSuccessfully = true; // Indicates password reset was successful
       } else {
-        // Handle API error
+        // API call failed (non-2xx status or 'success': false, or network error)
         showPopupMessage(context, context.translate('error'),
             msg.isNotEmpty ? msg : context.translate('password_reset_failed'));
-        print('API Error changeAndValidate: ${response['statusCode']} - $msg');
-        success = false;
+        print(
+            'API Error changeAndValidate: ${apiResponse.statusCode} - $msg. Raw Error: ${apiResponse.rawError}');
+        loggedInSuccessfully = false;
       }
     } catch (e) {
+      // Catch-all for unexpected errors during the process (not network/API related from ApiService)
       print('Exception in changeAndValidate: $e');
       showPopupMessage(context, context.translate('error'),
           context.translate('error_occurred'));
-      success = false;
+      loggedInSuccessfully = false;
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           showSpinner = false;
         });
+      }
     }
-    return success;
+    return loggedInSuccessfully; // This variable now more accurately reflects if a login or next step is expected
   }
 
   Future<void> downloadAvatar() async {
@@ -210,29 +168,30 @@ class _NewPasswordState extends State<NewPassword> {
     });
 
     try {
-      // Call ApiService to request OTP
-      final response = await apiService.requestPasswordResetOtp(email);
-      final msg = response['message'] ?? '';
+      final ApiResponse apiResponse =
+          await apiService.requestPasswordResetOtp(email);
+      final String msg = apiResponse.message;
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (apiResponse.isOverallSuccess) {
         showPopupMessage(context, context.translate('otp_sent'),
             msg.isNotEmpty ? msg : context.translate('otp_sent_instructions'));
       } else {
         showPopupMessage(context, context.translate('error'),
             msg.isNotEmpty ? msg : context.translate('otp_request_failed'));
-        print('API Error sendFOTP: ${response['statusCode']} - $msg');
+        print(
+            'API Error sendFOTP: ${apiResponse.statusCode} - $msg. Raw Error: ${apiResponse.rawError}');
       }
     } catch (e) {
+      // Catch-all for unexpected errors
       print('Exception in sendFOTP: $e');
       showPopupMessage(context, context.translate('error'),
           context.translate('error_occurred'));
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           showSpinner = false;
         });
+      }
     }
   }
 
@@ -307,21 +266,43 @@ class _NewPasswordState extends State<NewPassword> {
                           color: Colors.grey[700],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      OtpTextField(
+                      const SizedBox(height: 8.0),
+                      CustomOtpTextField(
                         numberOfFields: 6,
-                        borderColor: AppTheme.primaryBlue,
-                        focusedBorderColor: AppTheme.primaryBlue,
-                        showFieldAsBox: true,
-                        borderWidth: 1.0,
                         fieldWidth: 45.0,
-                        keyboardType: TextInputType.number,
+                        fieldHeight: 50.0,
+                        autoFocus: true,
+                        textStyle: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black),
+                        decoration: InputDecoration(
+                          counterText: "",
+                          contentPadding: EdgeInsets.all(10.0),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide(
+                                color: AppTheme.primaryBlue, width: 1.0),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide(
+                                color: AppTheme.primaryBlue, width: 1.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide(
+                                color: AppTheme.primaryBlue, width: 2.0),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
                         onSubmit: (String verificationCode) {
                           setState(() {
                             otp = verificationCode;
                           });
                         },
-                        onCodeChanged: (String code) {
+                        onChanged: (String code) {
                           setState(() {
                             otp = code;
                           });
@@ -355,33 +336,31 @@ class _NewPasswordState extends State<NewPassword> {
                           showSpinner = true;
                         });
 
-                        final hasLogged = await changeAndValidate();
+                        final passwordResetSuccessful =
+                            await changeAndValidate();
 
-                        if (hasLogged) {
-                          await downloadAvatar();
+                        if (passwordResetSuccessful) {
+                          // No avatar download or other checks here.
+                          // Navigate directly to the login page.
+                          if (mounted) {
+                            context.goNamed(
+                                'connexion'); // Assuming 'connexion' is the route name for Connexion.id
+                          }
+                        }
+                      } catch (e) {
+                        // Error is handled within changeAndValidate or by the generic catch here.
+                        // Ensure spinner is handled.
+                        if (mounted) {
+                          showPopupMessage(context, context.translate('error'),
+                              e.toString());
+                        }
+                      } finally {
+                        // Ensure spinner is always turned off if mounted
+                        if (mounted) {
                           setState(() {
                             showSpinner = false;
                           });
-
-                          if (hasPP && isSubscribed) {
-                            context.go('/');
-                            return;
-                          }
-
-                          final pageToGo = hasPP ? Subscrition.id : PpUpload.id;
-                          context.goNamed(pageToGo);
-                          return;
                         }
-
-                        setState(() {
-                          showSpinner = false;
-                        });
-                      } catch (e) {
-                        showPopupMessage(
-                            context, context.translate('error'), e.toString());
-                        setState(() {
-                          showSpinner = false;
-                        });
                       }
                     },
                     child: Padding(

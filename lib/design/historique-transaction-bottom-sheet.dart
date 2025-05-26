@@ -76,24 +76,31 @@ class _BottomHitoryState extends State<BottomHitory> {
         'page': page.toString(),
         'limit': '10',
         'sortBy': 'createdAt',
-        'sortOrder': 'desc',
-        if (widget.type != null && widget.type!.isNotEmpty)
-          'type': widget.type!,
+        'sortOrder': 'desc'
       };
 
-      final response = await _apiService.getTransactions(filters);
+      final response = widget.type == 'partner'
+          ? await _apiService.getPartnerTransactions(filters)
+          : await _apiService.getTransactions(filters);
 
-      if (response['success'] == true && response['transactions'] != null) {
-        final List<dynamic> jsonTransactions = response['transactions'];
-        final pagination = response['pagination'] as Map<String, dynamic>?;
+      if (response.apiReportedSuccess &&
+          (response.body['data'] != null ||
+              response.body['transactions'] != null)) {
+        final List<dynamic> jsonTransactions =
+            response.body['data'] ?? response.body['transactions'];
+        final pagination = response.body['pagination'] as Map<String, dynamic>?;
 
         List<Map<String, dynamic>> newTrans = jsonTransactions.map((item) {
           if (item is Map<String, dynamic>) {
             try {
+              final transType =
+                  widget.type == 'partner' ? item['transType'] : item['type'];
+
               item['date'] = DateTime.parse(item['createdAt']);
-              item['isDeposit'] = item['type'] == 'deposit';
+              item['isDeposit'] = transType == 'deposit';
               item['pending'] = item['status'] == 'pending';
               item['amount'] = (item['amount'] as num?)?.toDouble() ?? 0.0;
+              item['transactionId'] = item['_id']?.toString();
               return item;
             } catch (e) {
               print("Error processing transaction item: $item, Error: $e");
@@ -121,30 +128,46 @@ class _BottomHitoryState extends State<BottomHitory> {
 
         newTrans.removeWhere((t) => t['type'] == 'error');
 
+        print(newTrans);
+
         if (mounted) {
           setState(() {
             transactions.addAll(newTrans);
             itemCount = transactions.length;
 
             if (pagination != null) {
-              final int totalItems = pagination['total'] ?? 0;
-              final int limit = pagination['limit'] ?? 10;
-              final int totalPages = (totalItems / limit).ceil();
-              final int skip = pagination['skip'] ?? (page - 1) * limit;
-              final int currentPageFromApi = (skip / limit).floor() + 1;
+              final int apiLimit = pagination['limit'] as int? ?? 10;
+              // Try to get current page from API, fallback to the page number that was sent in the request
+              int currentPageFromApi = pagination['currentPage'] as int? ??
+                  pagination['page'] as int? ??
+                  page;
+              // Try to get total pages from API
+              int apiTotalPages = pagination['totalPages'] as int? ??
+                  pagination['pages'] as int? ??
+                  0;
 
-              hasMore = currentPageFromApi < totalPages;
-              page = currentPageFromApi + 1;
+              if (apiTotalPages > 0) {
+                // If API provides a valid total number of pages
+                hasMore = currentPageFromApi < apiTotalPages;
+              } else {
+                // Fallback if total pages isn't available or is invalid from API
+                hasMore = newTrans.length == apiLimit;
+              }
+
+              if (hasMore) {
+                page = currentPageFromApi + 1; // Set page for the NEXT request
+              }
             } else {
-              hasMore = newTrans.length == 10;
-              if (hasMore) page++;
+              // No pagination object from API, fallback to limit check
+              hasMore = newTrans.length == 10; // Assuming default limit of 10
+              if (hasMore) {
+                page = page + 1; // Increment current page for next request
+              }
             }
           });
         }
       } else {
-        final msg = response['message'] ??
-            response['error'] ??
-            'Failed to load transactions';
+        final msg = response.message;
         errorMessage = msg;
         if (mounted)
           setState(() {
@@ -198,8 +221,9 @@ class _BottomHitoryState extends State<BottomHitory> {
       final response = await _apiService.getTransactionById(transactionId);
       Navigator.pop(context); // Close loading indicator
 
-      if (response['success'] == true && response['transaction'] != null) {
-        final transactionData = response['transaction'] as Map<String, dynamic>;
+      if (response.apiReportedSuccess && response.body['transaction'] != null) {
+        final transactionData =
+            response.body['transaction'] as Map<String, dynamic>;
         // Show the details modal
         showModalBottomSheet(
           context: context,
@@ -210,9 +234,7 @@ class _BottomHitoryState extends State<BottomHitory> {
         );
       } else {
         // Show error popup if fetch failed
-        final errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('error_fetching_details');
+        final errorMsg = response.message;
         showPopupMessage(context, context.translate('error'), errorMsg);
       }
     } catch (e) {

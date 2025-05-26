@@ -14,6 +14,46 @@ import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/components/transaction_detail_modal.dart';
 import 'package:intl/intl.dart';
+import 'package:snipper_frontend/api_response.dart';
+
+// Top-level function for number formatting
+String formatNumberWithSuffix(double number, {String currency = 'FCFA'}) {
+  if (number.isInfinite || number.isNaN) {
+    return '0 $currency'; // Handle invalid numbers
+  }
+  String suffix = '';
+  double displayNum = number;
+
+  if (number >= 1000000000) {
+    displayNum = number / 1000000000;
+    suffix = 'B';
+  } else if (number >= 1000000) {
+    displayNum = number / 1000000;
+    suffix = 'M';
+  } else if (number >= 1000) {
+    displayNum = number / 1000;
+    suffix = 'K';
+  }
+
+  String formattedNum;
+  // Ensure one decimal place for K, M, B if not a whole number after division,
+  // and no decimal places for numbers < 1000 or whole K, M, B.
+  if (suffix.isNotEmpty) {
+    // K, M, B
+    if (displayNum.truncateToDouble() == displayNum) {
+      // e.g., 1.0M becomes 1M
+      formattedNum = displayNum.toStringAsFixed(0);
+    } else {
+      // e.g., 1.23M becomes 1.2M
+      formattedNum = displayNum.toStringAsFixed(1);
+    }
+  } else {
+    // Less than 1000
+    formattedNum = displayNum.toStringAsFixed(0);
+  }
+
+  return '$formattedNum$suffix $currency';
+}
 
 class Wallet extends StatefulWidget {
   static const id = 'wallet';
@@ -87,15 +127,15 @@ class _WalletState extends State<Wallet> {
         'sortOrder': 'desc',
       });
 
-      if (completedResponse['success'] == true &&
-          completedResponse['transactions'] != null) {
+      if (completedResponse.apiReportedSuccess &&
+          completedResponse.body['transactions'] != null) {
         final List<dynamic> jsonTransactions =
-            completedResponse['transactions'];
+            completedResponse.body['transactions'];
         _recentTransactions
             .addAll(_processFetchedTransactions(jsonTransactions));
       } else {
         print(
-            'Error fetching completed transactions: ${completedResponse['message'] ?? completedResponse['error']}');
+            'Error fetching completed transactions: ${completedResponse.message}');
         // Optionally show a specific error message to the user for recent transactions
       }
 
@@ -107,14 +147,15 @@ class _WalletState extends State<Wallet> {
         'sortOrder': 'desc',
       });
 
-      if (pendingResponse['success'] == true &&
-          pendingResponse['transactions'] != null) {
-        final List<dynamic> jsonTransactions = pendingResponse['transactions'];
+      if (pendingResponse.apiReportedSuccess &&
+          pendingResponse.body['transactions'] != null) {
+        final List<dynamic> jsonTransactions =
+            pendingResponse.body['transactions'];
         _pendingTransactions
             .addAll(_processFetchedTransactions(jsonTransactions));
       } else {
         print(
-            'Error fetching pending transactions: ${pendingResponse['message'] ?? pendingResponse['error']}');
+            'Error fetching pending transactions: ${pendingResponse.message}');
         // Optionally show a specific error message to the user for pending transactions
       }
     } catch (e) {
@@ -208,36 +249,19 @@ class _WalletState extends State<Wallet> {
 
       // Fetch both profile and transaction stats concurrently
       final profileFuture = _apiService.getUserProfile();
-      final statsFuture = _apiService.getTransactionStats().catchError((e) {
-        print('Error fetching transaction stats: $e');
-        // Return a default response structure to avoid breaking the UI
-        return {
-          'success': false,
-          'error': 'Failed to load transaction stats',
-          'stats': {
-            'deposit': {
-              'completed': {'count': 0, 'totalAmount': 0},
-              'pending': {'count': 0}
-            },
-            'withdrawal': {
-              'completed': {'count': 0, 'totalAmount': 0},
-              'pending': {'count': 0}
-            }
-          }
-        };
-      });
+      final statsFuture = _apiService.getTransactionStats();
 
       // Wait for both API calls to complete
       final results = await Future.wait([profileFuture, statsFuture]);
-      final profileResponse = results[0] as Map<String, dynamic>;
-      final statsResponse = results[1] as Map<String, dynamic>;
+      final ApiResponse profileResponse = results[0] as ApiResponse;
+      final ApiResponse statsResponse = results[1] as ApiResponse;
 
       String msg = '';
 
       // Process Profile Response
-      if (profileResponse['success'] == true &&
-          profileResponse['data'] != null) {
-        final userData = profileResponse['data'] as Map<String, dynamic>;
+      if (profileResponse.apiReportedSuccess &&
+          profileResponse.body['data'] != null) {
+        final userData = profileResponse.body['data'] as Map<String, dynamic>;
         final fetchedEmail = userData['email'] as String? ?? email;
         final fetchedBalance =
             (userData['balance'] as num?)?.toDouble() ?? balance;
@@ -259,10 +283,8 @@ class _WalletState extends State<Wallet> {
         print('User info updated successfully');
       } else {
         // Handle API error response
-        msg = profileResponse['message'] ??
-            profileResponse['error'] ??
-            'Failed to fetch user info';
-        final statusCode = profileResponse['statusCode'];
+        msg = profileResponse.message;
+        final statusCode = profileResponse.statusCode;
 
         if (statusCode == 401) {
           String title = context.translate('error_access_denied');
@@ -285,8 +307,9 @@ class _WalletState extends State<Wallet> {
       }
 
       // Process Stats Response
-      if (statsResponse['success'] == true && statsResponse['stats'] != null) {
-        final stats = statsResponse['stats'] as Map<String, dynamic>;
+      if (statsResponse.apiReportedSuccess &&
+          statsResponse.body['stats'] != null) {
+        final stats = statsResponse.body['stats'] as Map<String, dynamic>;
 
         // Safely extract stats data
         final depositStats = stats['deposit'] as Map<String, dynamic>?;
@@ -312,9 +335,9 @@ class _WalletState extends State<Wallet> {
         });
 
         print('Transaction stats updated successfully');
-      } else if (!statsResponse['success']) {
+      } else if (!statsResponse.apiReportedSuccess) {
         // Log the error but don't show to user since profile info was updated
-        print('Stats API error: ${statsResponse['error'] ?? 'Unknown error'}');
+        print('Stats API error: ${statsResponse.message}');
       }
     } catch (e) {
       print('Error in getInfos: $e');
@@ -345,8 +368,9 @@ class _WalletState extends State<Wallet> {
       final response = await _apiService.getTransactionById(transactionId);
       Navigator.pop(context); // Close loading indicator
 
-      if (response['success'] == true && response['transaction'] != null) {
-        final transactionData = response['transaction'] as Map<String, dynamic>;
+      if (response.apiReportedSuccess && response.body['transaction'] != null) {
+        final transactionData =
+            response.body['transaction'] as Map<String, dynamic>;
         // Show the details modal
         showModalBottomSheet(
           context: context,
@@ -357,9 +381,7 @@ class _WalletState extends State<Wallet> {
         );
       } else {
         // Show error popup if fetch failed
-        final errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('error_fetching_details');
+        final errorMsg = response.message;
         if (mounted) {
           showPopupMessage(context, context.translate('error'), errorMsg);
         }
@@ -610,13 +632,9 @@ class TransactionStatsDisplay extends StatelessWidget {
       {required String label, required int count, double? amount}) {
     String valueText = '$count';
     if (amount != null) {
-      // Format amount with currency symbol
-      final formattedAmount = NumberFormat.currency(
-        locale: 'fr_FR', // Adjust locale as needed for FCFA formatting
-        symbol: '$currencySymbol ',
-        decimalDigits: 0, // No decimal digits for FCFA in this context
-      ).format(amount);
-      valueText += ' ($formattedAmount)';
+      // Format amount with currency symbol using the new function
+      valueText +=
+          ' (${formatNumberWithSuffix(amount, currency: currencySymbol)})';
     }
 
     return Padding(

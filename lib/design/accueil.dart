@@ -185,6 +185,7 @@ class _AccueilState extends State<Accueil> {
   String? whatsappUrl;
 
   late SharedPreferences prefs;
+  String? _avatarIdForAppBar;
   TextEditingController phoneNumberController = TextEditingController();
   final ApiService _apiService = ApiService(); // Instantiate ApiService
 
@@ -297,6 +298,7 @@ class _AccueilState extends State<Accueil> {
     profession = prefs.getString('profession');
     interests = prefs.getStringList('interests') ?? [];
     region = prefs.getString('region'); // Load region
+    _avatarIdForAppBar = prefs.getString('avatarId');
 
     // Load App Settings from Prefs (they might be loaded later by getInfos/getAppSettings)
     appLogoUrl = prefs.getString('appSettings_logoUrl'); // Store full URL now
@@ -340,8 +342,10 @@ class _AccueilState extends State<Accueil> {
       // Use ApiService to get user profile
       final response = await _apiService.getUserProfile();
 
-      if (response['statusCode'] == 200 && response['success'] == true) {
-        final responseData = response['data'] as Map<String, dynamic>?;
+      if (response.statusCode == 200 && response.apiReportedSuccess) {
+        final responseData = response.body['data'] as Map<String, dynamic>?;
+
+        print(responseData);
 
         if (responseData != null) {
           // --- Extract fields directly from responseData ---
@@ -413,7 +417,10 @@ class _AccueilState extends State<Accueil> {
           if (userRole != null) prefs.setString('role', userRole);
           if (userCode != null) prefs.setString('code', userCode);
           if (balance != null) prefs.setDouble('balance', balance);
-          if (partnerPack != null) prefs.setString('partnerPack', partnerPack);
+          if (partnerPack != null) {
+            prefs.setString('partnerPack', partnerPack);
+            isPartner = true;
+          }
           if (totalBenefits != null)
             prefs.setDouble(
                 'benefit', totalBenefits); // Save totalBenefits as benefit
@@ -427,6 +434,8 @@ class _AccueilState extends State<Accueil> {
               'isSubscribed', derivedIsSubscribed); // Save derived value
           prefs.setStringList('activeSubscriptions',
               activeSubscriptions.map((s) => s.toString()).toList());
+
+          _avatarIdForAppBar = avatarId;
 
           // --- NEW Comprehensive Mandatory Info Check ---
           bool isLanguageMissing = language.isEmpty;
@@ -451,10 +460,6 @@ class _AccueilState extends State<Accueil> {
             return; // Stop further processing until info is provided
           }
 
-          // Partner logic removed as it's not in /users/me response
-          isPartner = false;
-          prefs.remove('partnerAmount');
-          prefs.remove('partnerPack');
 
           // --- Handle Subscription Redirect ---
           if (!isSubscribed) {
@@ -481,8 +486,8 @@ class _AccueilState extends State<Accueil> {
         }
       } else {
         // Handle errors returned by ApiService
-        msg = response['message'] ?? response['error'] ?? 'Unknown error';
-        final statusCode = response['statusCode'];
+        msg = response.message; // Use ApiResponse.message
+        final statusCode = response.statusCode; // Use ApiResponse.statusCode
 
         if (statusCode == 401) {
           // Specific handling for unauthorized
@@ -840,9 +845,9 @@ class _AccueilState extends State<Accueil> {
 
       final response = await _apiService.updateUserProfile(updateBody);
 
-      final msg = response['message'] ?? response['error'] ?? '';
+      final msg = response.message; // Use ApiResponse.message
 
-      if (response['statusCode'] == 200 && response['success'] == true) {
+      if (response.statusCode == 200 && response.apiReportedSuccess) {
         print('Mandatory info saved to backend.');
       } else {
         String title = context.translate('error');
@@ -1242,11 +1247,9 @@ class _AccueilState extends State<Accueil> {
       final response = await _apiService.updateUserProfile(updateBody);
       // ********************************************
 
-      msg = response['message'] ?? response['error'] ?? 'Unknown error';
+      msg = response.message; // Use ApiResponse.message
 
-      final title = (response['statusCode'] != null &&
-              response['statusCode'] >= 200 &&
-              response['statusCode'] < 300)
+      final title = (response.statusCode >= 200 && response.statusCode < 300)
           ? context.translate('success')
           : context.translate('error');
 
@@ -1255,9 +1258,7 @@ class _AccueilState extends State<Accueil> {
       await prefs.setString('momoCorrespondent', correspondent);
 
       // Update the parent state variables AFTER successful save
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         setState(() {
           momoNumber = fullPhoneNumber; // Update parent state
           momoCor = correspondent; // Update parent state
@@ -1287,9 +1288,10 @@ class _AccueilState extends State<Accueil> {
     try {
       final settingsResponse = await _apiService.getAppSettings();
 
-      if (settingsResponse['success'] == true &&
-          settingsResponse['data'] != null) {
-        final settingsData = settingsResponse['data'] as Map<String, dynamic>;
+      if (settingsResponse.apiReportedSuccess &&
+          settingsResponse.body['data'] != null) {
+        final settingsData =
+            settingsResponse.body['data'] as Map<String, dynamic>;
 
         final fetchedTelegramUrl = settingsData['telegramGroupUrl'] as String?;
         final fetchedWhatsappUrl = settingsData['whatsappGroupUrl'] as String?;
@@ -1328,7 +1330,7 @@ class _AccueilState extends State<Accueil> {
         print("App settings loaded and saved.");
       } else {
         print(
-            "Failed to fetch app settings: ${settingsResponse['message'] ?? settingsResponse['error']}");
+            "Failed to fetch app settings: ${settingsResponse.message}"); // Use settingsResponse.message
       }
     } catch (e) {
       print("Exception fetching app settings: $e");
@@ -1411,7 +1413,7 @@ class _AccueilState extends State<Accueil> {
                     color: Colors.grey[300],
                     image: DecorationImage(
                       fit: BoxFit.cover,
-                      image: profileImage(prefs.getString('avatarId')),
+                      image: profileImage(_avatarIdForAppBar),
                     ),
                   ),
                 ),

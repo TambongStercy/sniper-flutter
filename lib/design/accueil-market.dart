@@ -100,10 +100,12 @@ class _MarketState extends State<Market> {
 
       print("Fetching products with filters: $filters");
 
-      final response = await _apiService.getProducts(filters);
+      final response = await _apiService.getProducts(
+          filters:
+              filters.map((key, value) => MapEntry(key, value.toString())));
 
-      if (response['success'] == true && response['data'] != null) {
-        final data = response['data'] as Map<String, dynamic>;
+      if (response.apiReportedSuccess && response.body['data'] != null) {
+        final data = response.body['data'] as Map<String, dynamic>;
         final List<dynamic> newItems = data['products'] as List<dynamic>? ?? [];
         final pagination = data['paginationInfo'] as Map<String, dynamic>?;
 
@@ -126,11 +128,9 @@ class _MarketState extends State<Market> {
           });
         }
       } else {
-        msg = response['message'] ??
-            response['error'] ??
-            'Failed to load products or no products found';
+        msg = response.message;
         if (mounted) {
-          if (response['success'] != true) {
+          if (!response.apiReportedSuccess) {
             showPopupMessage(context, context.translate('error'), msg);
           }
           setState(() {
@@ -163,20 +163,20 @@ class _MarketState extends State<Market> {
     });
     String msg = '';
     try {
-      final response = await _apiService.rateProduct(prdtId, rating);
+      final response =
+          await _apiService.rateProduct(prdtId, rating, review: "");
 
-      msg = response['message'] ?? response['error'] ?? 'Rating failed';
-      final title =
-          (response['statusCode'] == 200 && response['success'] == true)
-              ? context.translate('success')
-              : context.translate('error');
+      msg = response.message;
+      final title = (response.statusCode == 200 && response.apiReportedSuccess)
+          ? context.translate('success')
+          : context.translate('error');
 
       if (mounted) {
         showPopupMessage(context, title, msg);
       }
       print(msg);
 
-      if (response['statusCode'] == 200 && response['success'] == true) {
+      if (response.statusCode == 200 && response.apiReportedSuccess) {
         await refresh();
       }
     } catch (e) {

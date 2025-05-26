@@ -67,11 +67,9 @@ class _ModifyEmailState extends State<ModifyEmail> {
       // we'd need to adjust ApiService.requestEmailChangeOtp to accept it.
       // For now, assuming it only needs the token:
       final response = await apiService.requestEmailChangeOtp(email.trim());
-      final msg = response['message'] ?? '';
+      final msg = response.message;
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         String title = context.translate('code_sent');
         showPopupMessage(context, title,
             msg.isNotEmpty ? msg : context.translate('otp_sent_instructions'));
@@ -87,7 +85,7 @@ class _ModifyEmailState extends State<ModifyEmail> {
         showPopupMessage(context, title,
             msg.isNotEmpty ? msg : context.translate('otp_request_failed'));
         print(
-            'API Error requestEmailModificationOtp: ${response['statusCode']} - $msg');
+            'API Error requestEmailModificationOtp: ${response.statusCode} - $msg');
       }
     } catch (e) {
       print('Exception in requestEmailModificationOtp: $e');

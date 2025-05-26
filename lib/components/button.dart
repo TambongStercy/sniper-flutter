@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/theme.dart';
 
 class ReusableButton extends StatelessWidget {
   ReusableButton({
@@ -30,7 +31,7 @@ class ReusableButton extends StatelessWidget {
     bool isClickable = clickable == null || clickable == true;
 
     Color color = isClickable
-        ? (mainColor ?? Theme.of(context).colorScheme.tertiary)
+        ? (mainColor ?? AppTheme.primaryBlue)
         : Color.fromARGB(255, 153, 184, 242);
     Color white = const Color(0xffffffff);
     bool liteColor = lite ?? true;
@@ -45,7 +46,7 @@ class ReusableButton extends StatelessWidget {
         ),
         child: Container(
           width: double.infinity,
-          height: 44 * fem,
+          height: 48 * fem,
           decoration: BoxDecoration(
             border: Border.all(color: color),
             color: liteColor == false ? color : white,

@@ -90,9 +90,7 @@ class _AjouterProduitState extends State<AjouterProduit> {
       if (images.isEmpty ||
           prdtName.trim().isEmpty ||
           price.trim().isEmpty ||
-          description.trim().isEmpty ||
-          category.trim().isEmpty ||
-          subcategory.trim().isEmpty) {
+          description.trim().isEmpty) {
         showPopupMessage(
           context,
           context.translate('error'),
@@ -106,32 +104,33 @@ class _AjouterProduitState extends State<AjouterProduit> {
         'name': prdtName.trim(),
         'price': price.trim(),
         'description': description.trim(),
-        'category': category.trim(),
-        'subcategory': subcategory.trim(),
+        'category': category.trim().isEmpty ? categories.first : category.trim(),
+        'subcategory': subcategory.trim().isEmpty ? subcategories.first : subcategory.trim(),
       };
 
-      final response = await apiService.createProduct(
-          productData, List<String>.from(images));
+      final response = await apiService.addProduct(productData,
+          imageFiles: List<File>.from(images.map((imgPath) => File(imgPath))));
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          response.apiReportedSuccess) {
         showPopupMessage(
           context,
           context.translate('success'),
-          response['message'] ??
-              context.translate('product_added_successfully'),
+          response.message.isNotEmpty
+              ? response.message
+              : context.translate('product_added_successfully'),
         );
       } else {
-        String errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('try_again_message');
+        String errorMsg = response.message.isNotEmpty
+            ? response.message
+            : context.translate('try_again_message');
         showPopupMessage(
           context,
           context.translate('error'),
           errorMsg,
         );
-        print('API Error addProduct: ${response['statusCode']} - $errorMsg');
+        print('API Error addProduct: ${response.statusCode} - $errorMsg');
       }
     } catch (e) {
       String msg = context.translate('error_occurred') + ': ${e.toString()}';

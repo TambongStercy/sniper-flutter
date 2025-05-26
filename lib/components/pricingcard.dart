@@ -13,10 +13,14 @@ class PricingCard extends StatelessWidget {
 
     /// Called when user presses on "commander maintenant"
     required this.onCommand,
+    this.buttonTitle,
+    this.buttonColor,
   });
 
   final int type;
   final Function() onCommand;
+  final String? buttonTitle;
+  final Color? buttonColor;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +38,7 @@ class PricingCard extends StatelessWidget {
     if (type == 0) {
       categ = context.translate('subscription');
       pointImage = 'assets/design/images/group-45809-oeR.png';
-      price = '2000';
+      price = '2070';
       color = Theme.of(context).colorScheme.primary;
       description.addAll(
         [
@@ -51,7 +55,7 @@ class PricingCard extends StatelessWidget {
     } else if (type == 10) {
       categ = context.translate('classic_subscription');
       pointImage = 'assets/design/images/group-45809-oeR.png';
-      price = '2000';
+      price = '2070';
       color = Theme.of(context).colorScheme.primary;
       description.addAll(
         [
@@ -68,7 +72,7 @@ class PricingCard extends StatelessWidget {
     } else if (type == 11) {
       categ = context.translate('targeted_subscription');
       pointImage = 'assets/design/images/group-45809-Dah.png';
-      price = '5000';
+      price = '5140';
       color = Theme.of(context).colorScheme.tertiary;
       description.addAll(
         [
@@ -122,7 +126,9 @@ class PricingCard extends StatelessWidget {
 
     final String priceQualifier = (type == 10 || type == 11)
         ? context.translate('for_life')
-        : (type > 0 ? '/mo' : context.translate('for_life'));
+        : (type > 0
+            ? context.translate('per_month_short')
+            : context.translate('for_life'));
 
     return Container(
       margin: EdgeInsets.fromLTRB(
@@ -269,9 +275,10 @@ class PricingCard extends StatelessWidget {
             ),
           ),
           ReusableButton(
-            title: context.translate('order_now'),
+            title: buttonTitle ?? context.translate('order_now'),
             onPress: onCommand,
-            mainColor: color,
+            mainColor: buttonColor ?? color,
+            lite: false,
           ),
         ],
       ),

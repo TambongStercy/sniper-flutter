@@ -4,10 +4,11 @@ import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snipper_frontend/api_service.dart';
 import 'package:snipper_frontend/theme.dart';
-import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+import 'package:snipper_frontend/components/custom_otp_text_field.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/components/button.dart';
 
 class VerifyRegistration extends StatefulWidget {
   static const id = 'verify_registration';
@@ -42,11 +43,11 @@ class _VerifyRegistrationState extends State<VerifyRegistration> {
       try {
         final response = await _apiService.verifyOtp(userId, otp);
 
-        final msg = response['message'] ?? response['error'] ?? 'Unknown error';
+        final msg = response.message;
 
-        if (response['statusCode'] == 200 && response['success'] == true) {
-          if (response['data'] is Map<String, dynamic>) {
-            final responseData = response['data'] as Map<String, dynamic>;
+        if (response.statusCode == 200 && response.apiReportedSuccess) {
+          if (response.body['data'] is Map<String, dynamic>) {
+            final responseData = response.body['data'] as Map<String, dynamic>;
             final myToken = responseData['token'] as String?;
             final dynamic userData = responseData['user'];
 
@@ -113,9 +114,9 @@ class _VerifyRegistrationState extends State<VerifyRegistration> {
       });
       try {
         final response = await _apiService.resendVerificationOtp(userId);
-        final msg = response['message'] ?? response['error'] ?? 'Unknown error';
+        final msg = response.message;
 
-        if (response['statusCode'] == 200 && response['success'] == true) {
+        if (response.statusCode == 200 && response.apiReportedSuccess) {
           showPopupMessage(context, context.translate('otp_sent'), msg);
         } else {
           showPopupMessage(context, context.translate('error'), msg);
@@ -198,21 +199,42 @@ class _VerifyRegistrationState extends State<VerifyRegistration> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      OtpTextField(
+                      CustomOtpTextField(
                         numberOfFields: 6,
-                        borderColor: AppTheme.primaryBlue,
-                        focusedBorderColor: AppTheme.primaryBlue,
-                        showFieldAsBox: true,
-                        borderWidth: 1.0,
                         fieldWidth: 45.0,
+                        fieldHeight: 50.0,
                         autoFocus: true,
-                        keyboardType: TextInputType.number,
+                        textStyle: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black),
+                        decoration: InputDecoration(
+                          counterText: "",
+                          contentPadding: EdgeInsets.all(10.0),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide(
+                                color: AppTheme.primaryBlue, width: 1.0),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide(
+                                color: AppTheme.primaryBlue, width: 1.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide(
+                                color: AppTheme.primaryBlue, width: 2.0),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
                         onSubmit: (String verificationCode) {
                           setState(() {
                             otp = verificationCode;
                           });
                         },
-                        onCodeChanged: (String code) {
+                        onChanged: (String code) {
                           setState(() {
                             otp = code;
                           });
@@ -225,21 +247,11 @@ class _VerifyRegistrationState extends State<VerifyRegistration> {
                 const SizedBox(height: 32),
 
                 // Verify button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _verifyOTP,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Text(
-                        context.translate('verify'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
+                ReusableButton(
+                  title: context.translate('verify'),
+                  onPress: _verifyOTP,
+                  lite: false,
+                  mh: 0,
                 ),
 
                 const SizedBox(height: 16),

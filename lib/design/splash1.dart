@@ -6,6 +6,7 @@ import 'package:snipper_frontend/design/inscription.dart';
 import 'package:snipper_frontend/main.dart';
 import 'package:snipper_frontend/theme.dart';
 import 'package:snipper_frontend/localization_extension.dart';
+import 'package:snipper_frontend/components/button.dart';
 
 class Scene extends StatelessWidget {
   static const id = 'splash1';
@@ -16,58 +17,41 @@ class Scene extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-
-    // Define the slides for the carousel
     Widget buildSlide(String image, String title, String subtitle) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              spreadRadius: 1,
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 24),
+            width: 300,
+            height: 300,
+            child: Image.asset(
+              image,
+              fit: BoxFit.contain,
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(bottom: 24),
-              width: 280,
-              height: 280,
-              child: Image.asset(
-                image,
-                fit: BoxFit.contain,
-              ),
+          ),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.tertiaryOrange,
+                ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            constraints: const BoxConstraints(
+              maxWidth: 300,
             ),
-            Text(
-              title,
+            child: Text(
+              subtitle,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.tertiaryOrange,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
                   ),
             ),
-            const SizedBox(height: 16),
-            Container(
-              constraints: const BoxConstraints(
-                maxWidth: 280,
-              ),
-              child: Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -96,168 +80,118 @@ class Scene extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Background gradient - using mint green colors like in the image
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFD4F1D4), // Light mint green
-                    Color(0xFFE8F8E8), // Very light mint green
-                  ],
-                  stops: [0.0, 1.0],
-                ),
+      body: Stack(children: [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: screenSize.height,
+          child: Container(
+            color: Color(0xFFE0F2E9),
+          ),
+        ),
+        SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Image.asset(
+                          'assets/design/images/logo-sbc-final-1-AdP.png',
+                          height: 40,
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0, vertical: 8.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(30.0),
+                          ),
+                          child: TextButton.icon(
+                            icon: Icon(Icons.language,
+                                color: Colors.black87, size: 20),
+                            label: Text(
+                              Localizations.localeOf(context)
+                                  .languageCode
+                                  .toUpperCase(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                            onPressed: () {
+                              Locale newLocale = Localizations.localeOf(context)
+                                          .languageCode ==
+                                      'en'
+                                  ? const Locale('fr')
+                                  : const Locale('en');
+                              MyApp.setLocale(context, newLocale);
+                            },
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              alignment: Alignment.center,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  CustomCarousel(
+                    slides: slides,
+                  ),
+                  const SizedBox(height: 32),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0, vertical: 8.0),
+                    child: ReusableButton(
+                      title: context.translate('login'),
+                      mh: 0,
+                      onPress: () {
+                        context.pushNamed(
+                          Connexion.id,
+                          queryParameters: affiliationCode != null
+                              ? {'affiliationCode': affiliationCode!}
+                              : {},
+                        );
+                      },
+                      lite: false,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0, vertical: 8.0),
+                    child: ReusableButton(
+                      title: context.translate('create_account'),
+                      mh: 0,
+                      onPress: () {
+                        context.pushNamed(
+                          Inscription.id,
+                          queryParameters: affiliationCode != null
+                              ? {'affiliationCode': affiliationCode!}
+                              : {},
+                        );
+                      },
+                      lite: true,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          SafeArea(
-            child: Column(
-              children: [
-                // Top bar with logo and language selector
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 12.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // SBC Logo at top left
-                      Image.asset(
-                        'assets/assets/images/logo-sbc-final-1-14d.png',
-                        height: 40,
-                      ),
-
-                      // Language selector styled like in the image (pill-shaped)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24.0),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: TextButton.icon(
-                          icon: const Icon(Icons.language, size: 18),
-                          label: Text(
-                            Localizations.localeOf(context)
-                                .languageCode
-                                .toUpperCase(),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          onPressed: () {
-                            // Toggle between English and French
-                            Locale newLocale =
-                                Localizations.localeOf(context).languageCode ==
-                                        'en'
-                                    ? const Locale('fr')
-                                    : const Locale('en');
-                            MyApp.setLocale(context, newLocale);
-                          },
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            foregroundColor: Colors.black87,
-                            backgroundColor: Colors.transparent,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Main content - carousel in a card-like container
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    child: CustomCarousel(
-                      slides: slides,
-                    ),
-                  ),
-                ),
-
-                // Buttons at the bottom
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24.0, 8.0, 24.0, 24.0),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            context.pushNamed(
-                              Connexion.id,
-                              queryParameters: affiliationCode != null
-                                  ? {'affiliationCode': affiliationCode!}
-                                  : {},
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            elevation: 1,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16.0),
-                            child: Text(
-                              context.translate('login'),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            context.pushNamed(
-                              Inscription.id,
-                              queryParameters: affiliationCode != null
-                                  ? {'affiliationCode': affiliationCode!}
-                                  : {},
-                            );
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: AppTheme.primaryBlue),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16.0),
-                            child: Text(
-                              context.translate('create_account'),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.primaryBlue,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 }

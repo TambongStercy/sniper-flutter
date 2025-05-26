@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:go_router/go_router.dart';
@@ -73,12 +71,12 @@ class _YourProductsState extends State<YourProducts> {
       // TODO: Implement pagination if needed by passing page/limit
       final response = await _apiService.getUserProducts();
 
-      msg = response['message'] ?? response['error'] ?? '';
+      msg = response.message;
 
-      if (response['success'] == true && response['data'] != null) {
+      if (response.apiReportedSuccess && response.body['data'] != null) {
         // Adjust based on the actual structure returned by getUserProducts
         // Assuming it returns a list of products directly in 'data' or nested like {'products': [...]}
-        final productsData = response['data'];
+        final productsData = response.body['data'];
         final newItems = productsData is List
             ? productsData
             : (productsData?['products'] as List? ?? []);
@@ -87,7 +85,7 @@ class _YourProductsState extends State<YourProducts> {
 
         setState(() {});
       } else {
-        final statusCode = response['statusCode'];
+        final statusCode = response.statusCode;
         if (statusCode == 401) {
           String title = context.translate('error_access_denied');
           showPopupMessage(context, title, msg);
@@ -111,16 +109,16 @@ class _YourProductsState extends State<YourProducts> {
       // --- Use ApiService ---
       final response = await _apiService.deleteProduct(id);
 
-      msg = response['message'] ?? response['error'] ?? '';
+      msg = response.message;
 
-      if (response['success'] == true) {
+      if (response.apiReportedSuccess) {
         // No need to add items, just show success and refresh handles UI update
 
         showPopupMessage(context, context.translate('success'), msg);
 
         // Refresh will be called after this in showDeleteDialog
       } else {
-        final statusCode = response['statusCode'];
+        final statusCode = response.statusCode;
         if (statusCode == 401) {
           String title = context.translate('error_access_denied');
           showPopupMessage(context, title, msg);

@@ -158,14 +158,12 @@ class _ModifyProductState extends State<ModifyProduct> {
       final response = await apiService.updateProduct(
         prdtid,
         productUpdates,
-        List<String>.from(images),
+        imageFiles: images.isNotEmpty ? images : null,
       );
 
-      final msg = response['message'] ?? response['error'] ?? '';
+      final msg = response.message;
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         showPopupMessage(
           context,
           context.translate('success'), // 'Succès'
@@ -177,7 +175,7 @@ class _ModifyProductState extends State<ModifyProduct> {
         // Optionally refresh parent screen or navigate back
         // refresh(); // Might need adjustment
       } else {
-        print('API Error modifyProduct: ${response['statusCode']} - $msg');
+        print('API Error modifyProduct: ${response.statusCode} - $msg');
         showPopupMessage(
           context,
           context.translate('error'), // 'Erreur'

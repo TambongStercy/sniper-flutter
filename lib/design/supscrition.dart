@@ -43,11 +43,10 @@ class _SubscritionState extends State<Subscrition> {
       final response =
           await _apiService.getUserProfile(); // Already fetches profile
 
-      msg =
-          response['message'] ?? response['error'] ?? 'Error fetching profile';
+      msg = response.message; // Use ApiResponse.message
 
-      if (response['success'] == true && response['data'] != null) {
-        final userProfile = response['data'] as Map<String, dynamic>;
+      if (response.apiReportedSuccess && response.body['data'] != null) {
+        final userProfile = response.body['data'] as Map<String, dynamic>;
 
         // Extract data using the correct keys from the profile response
         final name = userProfile['name'] as String?;
@@ -91,7 +90,8 @@ class _SubscritionState extends State<Subscrition> {
           if (mounted) context.go('/');
         }
       } else {
-        print('API Error getInfos: ${response['statusCode']} - $msg');
+        print(
+            'API Error getInfos: ${response.statusCode} - $msg'); // Use ApiResponse.statusCode
         showPopupMessage(
             context,
             context.translate('error'),
@@ -156,6 +156,24 @@ class _SubscritionState extends State<Subscrition> {
         return;
     }
 
+    // Ensure the local token state is up-to-date before checking.
+    await initSharedPref();
+
+    if (token == null || token!.isEmpty) {
+      setState(() {
+        showSpinner = false;
+      });
+      showPopupMessage(
+        context,
+        context.translate('error'),
+        context.translate('auth_error_please_login_again'),
+        callback: () {
+          if (mounted) context.go('/');
+        },
+      );
+      return; // Stop if no token
+    }
+
     setState(() {
       showSpinner = true;
     });
@@ -163,10 +181,11 @@ class _SubscritionState extends State<Subscrition> {
     try {
       final response = await _apiService.purchaseSubscription(planTypeString);
 
-      final msg = response['message'] ?? response['error'] ?? 'Unknown error';
+      final msg = response.message; // Use ApiResponse.message
 
-      if (response['success'] == true) {
-        final responseData = response['data'];
+      if (response.apiReportedSuccess) {
+        // Use ApiResponse.apiReportedSuccess
+        final responseData = response.body['data'];
         final paymentDetails = responseData['paymentDetails'];
         final dynamic rawSessionId =
             paymentDetails['sessionId']; // Get potential sessionId
@@ -197,8 +216,13 @@ class _SubscritionState extends State<Subscrition> {
                   'Error initiating payment session. Session ID missing.');
         }
       } else {
+        // API call was not successful
         String title = context.translate('error');
         showPopupMessage(context, title, msg);
+        // Check for unauthorized status codes and redirect
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          if (mounted) context.go('/'); // Redirect on 401/403 error
+        }
       }
     } catch (e) {
       print('Error initiating subscription: $e');
@@ -223,24 +247,23 @@ class _SubscritionState extends State<Subscrition> {
     try {
       final response = await _apiService.logoutUser();
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.isOverallSuccess) {
+        // Use ApiResponse.isOverallSuccess for status check
         await deleteFile(avatar ?? '');
         await prefs.clear();
 
-        String msg =
-            response['message'] ?? context.translate('logged_out_successfully');
+        String msg = response.message.isNotEmpty
+            ? response.message
+            : context.translate('logged_out_successfully');
         String title = context.translate('logout');
         showPopupMessage(context, title, msg);
 
         if (mounted) context.go('/');
       } else {
-        String errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('logout_failed');
+        String errorMsg = response.message;
         showPopupMessage(context, context.translate('error'), errorMsg);
-        print('API Error logoutUser: ${response['statusCode']} - $errorMsg');
+        print(
+            'API Error logoutUser: ${response.statusCode} - $errorMsg'); // Use ApiResponse.statusCode
       }
     } catch (e) {
       print('Exception in logoutUser: $e');

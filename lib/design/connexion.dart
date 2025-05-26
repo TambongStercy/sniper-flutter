@@ -3,7 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+// import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
+import 'package:snipper_frontend/components/custom_otp_text_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,7 @@ import 'package:snipper_frontend/design/supscrition.dart';
 import 'package:snipper_frontend/design/upload-pp.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
+import 'package:snipper_frontend/theme.dart'; // Ensure AppTheme is imported
 // import 'package:http/http.dart' as http; // Remove unused import
 
 class Connexion extends StatefulWidget {
@@ -64,15 +66,15 @@ class _ConnexionState extends State<Connexion> {
         // --- Initial Login Attempt (Password Check) ---
         if (email.isNotEmpty && password.isNotEmpty) {
           final response = await _apiService.loginUser(email.trim(), password);
-          msg =
-              response['message'] ?? response['error'] ?? 'Unknown login error';
+          msg = response.message;
 
           // If password is correct (status 200), expect userId and prompt for OTP
-          if (response['statusCode'] == 200) {
-            final responseData = response['data'];
+          if (response.statusCode == 200 && response.apiReportedSuccess) {
+            final responseData = response.body['data'];
             final receivedUserId = responseData?['userId']; // Expect userId
 
             if (receivedUserId != null) {
+              msg = context.translate('otp_sent', args: {'email': email});
               print(
                   "Login Step 1 Success. UserID: $receivedUserId. Message: $msg");
               // Always show OTP screen after successful password check
@@ -94,7 +96,7 @@ class _ConnexionState extends State<Connexion> {
             // Login failed (invalid credentials or other error)
             String title = context.translate('error');
             showPopupMessage(context, title, msg);
-            print('API Error Login Step 1: ${response['statusCode']} - $msg');
+            print('API Error Login Step 1: ${response.statusCode} - $msg');
           }
         } else {
           // Fields not filled
@@ -106,11 +108,11 @@ class _ConnexionState extends State<Connexion> {
         // --- OTP Verification Step (Remains largely the same) ---
         if (userId.isNotEmpty && otp.length == 6) {
           final response = await _apiService.verifyOtp(userId, otp);
-          msg = response['message'] ?? response['error'] ?? 'Unknown OTP error';
+          msg = response.message;
 
-          if (response['statusCode'] == 200 && response['success'] == true) {
+          if (response.statusCode == 200 && response.apiReportedSuccess) {
             // OTP Correct: Expect token and user data now
-            final responseData = response['data'];
+            final responseData = response.body['data'];
             final myToken = responseData?['token'];
             final user = responseData?['user'];
             if (myToken != null && user != null) {
@@ -126,7 +128,7 @@ class _ConnexionState extends State<Connexion> {
             String title = context.translate('error');
             showPopupMessage(context, title, msg);
             print(
-                'API Error Login Step 2 (OTP): ${response['statusCode']} - $msg');
+                'API Error Login Step 2 (OTP): ${response.statusCode} - $msg');
           }
         } else {
           // Invalid OTP format or missing userId
@@ -164,9 +166,10 @@ class _ConnexionState extends State<Connexion> {
       // 2. Fetch the full user profile using the new token
       final profileResponse = await _apiService.getUserProfile();
 
-      if (profileResponse['success'] == true &&
-          profileResponse['data'] != null) {
-        final userProfile = profileResponse['data'] as Map<String, dynamic>;
+      if (profileResponse.apiReportedSuccess &&
+          profileResponse.body['data'] != null) {
+        final userProfile =
+            profileResponse.body['data'] as Map<String, dynamic>;
 
         // 3. Extract comprehensive data from the profile response
         final name = userProfile['name'] as String? ?? '';
@@ -244,9 +247,8 @@ class _ConnexionState extends State<Connexion> {
         // Handle failed profile fetch after successful OTP
         print(
             "Error: Failed to fetch user profile after login. Response: $profileResponse");
-        String errorMsg = profileResponse['message'] ??
-            profileResponse['error'] ??
-            context.translate('fetch_profile_error');
+        String errorMsg =
+            profileResponse.message ?? context.translate('fetch_profile_error');
         showPopupMessage(context, context.translate('error'), errorMsg);
       }
     } catch (e) {
@@ -291,7 +293,7 @@ class _ConnexionState extends State<Connexion> {
     // final double collapsedAppBarHeight = kToolbarHeight + MediaQuery.of(context).padding.top; // No longer needed
 
     return Scaffold(
-      backgroundColor: Color(0xFFFFF8F0),
+      backgroundColor: Color(0xFFFFFFFF),
       extendBodyBehindAppBar: true, // To allow gradient to go behind AppBar
       appBar: AppBar(
         // Simplified AppBar
@@ -302,268 +304,263 @@ class _ConnexionState extends State<Connexion> {
         backgroundColor: Colors.transparent, // Transparent AppBar
         elevation: 0, // No shadow
       ),
-      body: Stack(
-        children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: screenSize.height * 0.6,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFF8CE98), // User's manually updated color
-                    Color(0xFFFFF3E0).withOpacity(0.8),
-                  ],
-                  stops: [0.0, 1.0], // User's manually updated stops
+      body: ModalProgressHUD(
+        inAsyncCall: showSpinner,
+        // Replace CustomScrollView with SingleChildScrollView
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+                top: kToolbarHeight +
+                    MediaQuery.of(context).padding.top +
+                    20, // Adjust as needed
+                left: 24.0,
+                right: 24.0,
+                bottom: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Add logo here
+                Padding(
+                  padding: const EdgeInsets.only(top: 20.0, bottom: 30.0),
+                  child: Center(
+                    child: Image.asset(
+                      'assets/design/images/logo-sbc-final-1-AdP.png', // Connexion logo path
+                      height: screenSize.height * 0.12, // Adjust size as needed
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-          ModalProgressHUD(
-            inAsyncCall: showSpinner,
-            // Replace CustomScrollView with SingleChildScrollView
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.only(
-                    top: kToolbarHeight +
-                        MediaQuery.of(context).padding.top +
-                        20, // Adjust as needed
-                    left: 24.0,
-                    right: 24.0,
-                    bottom: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Add logo here
-                    Padding(
-                      padding: const EdgeInsets.only(top: 20.0, bottom: 30.0),
-                      child: Center(
-                        child: Image.asset(
-                          'assets/design/images/logo-sbc-final-1-AdP.png', // Connexion logo path
-                          height:
-                              screenSize.height * 0.12, // Adjust size as needed
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                if (!showOtpScreen) ...[
+                  // Original content starts
+                  Text(
+                    context.translate('login'),
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
                     ),
-                    // Original content starts
-                    Text(
-                      context.translate('login'),
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    context.translate('enter_credentials'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      context.translate('enter_credentials'),
+                  ),
+                  const SizedBox(height: 32),
+                  // Email field
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Text(
+                      context.translate('email'),
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[750],
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    if (!showOtpScreen) ...[
-                      // Email field
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Text(
-                          context.translate('email'),
+                  ),
+                  CustomTextField(
+                    fieldType: CustomFieldType.email,
+                    hintText: context.translate('email_hint'),
+                    value: email,
+                    focusNode: emailFocusNode,
+                    onChange: (value) => setState(() => email = value),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Password field
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Text(
+                      context.translate('password'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[750],
+                      ),
+                    ),
+                  ),
+                  CustomTextField(
+                    fieldType: CustomFieldType.password,
+                    hintText: context.translate('password'),
+                    value: password,
+                    focusNode: passwordFocusNode,
+                    onChange: (value) => setState(() => password = value),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Forgot password button
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        context.goNamed(EmailOublie.id);
+                      },
+                      child: Text(
+                        context.translate('forgot_password'),
+                        style: TextStyle(
+                          color: AppTheme.primaryBlue,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Login button
+                  ReusableButton(
+                    title: context.translate('login'),
+                    onPress: _handleLogin,
+                    lite: false, // For primary button style
+                    mh: 0, // To match splash1.dart and fill parent padding
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Register button
+                  GestureDetector(
+                    onTap: () {
+                      if (widget.affiliationCode != null) {
+                        context.goNamed(
+                          Inscription.id,
+                          queryParameters: {'code': widget.affiliationCode!},
+                        );
+                      } else {
+                        context.goNamed(Inscription.id);
+                      }
+                    },
+                    child: Center(
+                      child: Text.rich(
+                        TextSpan(
+                          text: '${context.translate('no_account')} ',
                           style: TextStyle(
+                            color: Colors.grey[700],
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[750],
                           ),
-                        ),
-                      ),
-                      CustomTextField(
-                        fieldType: CustomFieldType.email,
-                        hintText: context.translate('email_hint'),
-                        value: email,
-                        focusNode: emailFocusNode,
-                        onChange: (value) => setState(() => email = value),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Password field
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Text(
-                          context.translate('password'),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[750],
-                          ),
-                        ),
-                      ),
-                      CustomTextField(
-                        fieldType: CustomFieldType.password,
-                        hintText: context.translate('password'),
-                        value: password,
-                        focusNode: passwordFocusNode,
-                        onChange: (value) => setState(() => password = value),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Forgot password button
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {
-                            context.goNamed(EmailOublie.id);
-                          },
-                          child: Text(
-                            context.translate('forgot_password'),
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Login button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _handleLogin,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16.0),
-                            child: Text(
-                              context.translate('login'),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Register button
-                      GestureDetector(
-                        onTap: () {
-                          if (widget.affiliationCode != null) {
-                            context.goNamed(
-                              Inscription.id,
-                              queryParameters: {
-                                'code': widget.affiliationCode!
-                              },
-                            );
-                          } else {
-                            context.goNamed(Inscription.id);
-                          }
-                        },
-                        child: Center(
-                          child: Text.rich(
+                          children: <TextSpan>[
                             TextSpan(
-                              text: context.translate('no_account_signup'),
+                              text: context.translate('sign_up'),
                               style: TextStyle(
-                                color: Colors.grey[700],
+                                color: AppTheme.primaryBlue,
+                                fontWeight: FontWeight.w600,
                                 fontSize: 14,
                               ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                    ] else ...[
-                      // OTP Verification UI
-                      Text(
-                        context.translate('verify_login'),
-                        style: const TextStyle(
-                          fontSize: 20,
+                    ),
+                  ),
+                ] else ...[
+                  // OTP Verification UI
+                  Text(
+                    context.translate('verify_login'),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Text(
+                    context
+                        .translate('enter_otp_for_email')
+                        .replaceAll('{email}', email),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // OTP input field
+                  CustomOtpTextField(
+                    numberOfFields: 6,
+                    fieldWidth: 40.0,
+                    fieldHeight: 50.0,
+                    autoFocus: true,
+                    textStyle: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black),
+                    decoration: InputDecoration(
+                      counterText: "",
+                      contentPadding: EdgeInsets.all(10.0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide:
+                            BorderSide(color: AppTheme.primaryBlue, width: 1.0),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide:
+                            BorderSide(color: AppTheme.primaryBlue, width: 1.0),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide:
+                            BorderSide(color: AppTheme.primaryBlue, width: 2.0),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    onSubmit: (String verificationCode) {
+                      setState(() {
+                        otp = verificationCode;
+                      });
+                    },
+                    onChanged: (String code) {
+                      setState(() {
+                        otp = code;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Verify button
+                  ReusableButton(
+                    title: context.translate('verify'),
+                    onPress:
+                        _handleLogin, // This should remain _handleLogin as it branches based on showOtpScreen
+                    lite: false,
+                    mh: 0,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Back to login button
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        showOtpScreen = false;
+                        otp = '';
+                      });
+                    },
+                    child: Center(
+                      child: Text(
+                        context.translate('login'),
+                        style: TextStyle(
+                          color: AppTheme.primaryBlue,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-
-                      const SizedBox(height: 16),
-
-                      Text(
-                        context
-                            .translate('enter_otp_for_email')
-                            .replaceAll('{email}', email),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // OTP input field
-                      OtpTextField(
-                        numberOfFields: 6,
-                        borderColor: Theme.of(context).colorScheme.primary,
-                        focusedBorderColor:
-                            Theme.of(context).colorScheme.primary,
-                        showFieldAsBox: true,
-                        onSubmit: (code) {
-                          setState(() {
-                            otp = code;
-                          });
-                        },
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Verify button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _handleLogin,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16.0),
-                            child: Text(
-                              context.translate('verify'),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Back to login button
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            showOtpScreen = false;
-                            otp = '';
-                          });
-                        },
-                        child: Center(
-                          child: Text(
-                            context.translate('back_to_login'),
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 32),
-                  ], // children of Column
-                ), // End of Column widget
-              ), // End of Padding
-            ), // End of SingleChildScrollView
-          ), // This closes ModalProgressHUD
-        ],
-      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 32),
+              ], // children of Column
+            ), // End of Column widget
+          ), // End of Padding
+        ), // End of SingleChildScrollView
+      ), // This closes ModalProgressHUD
     );
   }
 
@@ -585,22 +582,23 @@ class _ConnexionState extends State<Connexion> {
     try {
       final response = await _apiService.verifyOtp(userId, otp);
 
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300 &&
-          response.containsKey('token')) {
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          response.apiReportedSuccess && // check apiReportedSuccess
+          response.body.containsKey('token')) {
+        // check token in body
         // --- Login OTP Verification Success ---
-        final token = response['token'] as String;
+        final token =
+            response.body['token'] as String; // access token from body
         // The login response often contains more user details than registration verify
-        final user = response['user'] as Map<String, dynamic>? ?? {};
+        final user = response.body['user'] as Map<String, dynamic>? ??
+            {}; // access user from body
 
         await completeLoginProcess(
             token, user); // Call the existing processing function
       } else {
         // --- OTP Verification Failed ---
-        String errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('invalid_otp_or_error');
+        String errorMsg = response.message;
         showPopupMessage(context, context.translate('error'), errorMsg);
       }
     } catch (e) {

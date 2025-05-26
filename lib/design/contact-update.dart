@@ -13,6 +13,9 @@ import 'package:snipper_frontend/design/accueil.dart'
     show allProfessions, allInterests, allLanguages;
 import 'package:snipper_frontend/constants/countries.dart';
 import 'package:snipper_frontend/theme.dart';
+import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
+import 'package:http/http.dart' as http;
+import 'package:snipper_frontend/config.dart';
 
 // Define lists for filter dropdowns (reuse from accueil.dart or define here)
 final List<String> filterSexOptions = ['Male', 'Female', 'Other'];
@@ -117,13 +120,11 @@ class _ContactUpdateState extends State<ContactUpdate>
     final Map<String, dynamic> filters = {};
     if (_searchQuery.isNotEmpty) filters['name'] = _searchQuery;
 
-    if (isCibleSubscribed) {
-      if (startDate != null) {
-        filters['startDate'] = formatDate(startDate);
-      }
-      if (endDate != null) {
-        filters['endDate'] = formatDate(endDate);
-      }
+    if (startDate != null) {
+      filters['startDate'] = formatDate(startDate);
+    }
+    if (endDate != null) {
+      filters['endDate'] = formatDate(endDate);
     }
 
     if (selectedCountry != null) filters['country'] = selectedCountry;
@@ -139,36 +140,44 @@ class _ContactUpdateState extends State<ContactUpdate>
   }
 
   Future<String?> downloadVCF(BuildContext context) async {
+    final filters = _getCurrentFilters();
+    final queryParams =
+        filters.map((key, value) => MapEntry(key, value?.toString() ?? ''));
+    final uri = Uri.parse('${host}api/contacts/export')
+        .replace(queryParameters: queryParams);
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final headers = {
+      'Accept': 'text/vcard',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
     if (kIsWeb) {
       setState(() {
         showSpinner = true;
       });
       try {
-        final filters = _getCurrentFilters();
-        final response = await _apiService.exportContacts(filters);
-        final statusCode = response['statusCode'];
-        final vcfData = response['data'];
+        final response = await http.get(uri, headers: headers);
+        final statusCode = response.statusCode;
+        final String vcfData = response.body;
 
-        if (statusCode != null &&
-            statusCode >= 200 &&
-            statusCode < 300 &&
-            vcfData is String &&
-            vcfData.isNotEmpty) {
+        if (statusCode >= 200 && statusCode < 300 && vcfData.isNotEmpty) {
           final timestamp =
               DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
           downloadFileWeb(vcfData, 'sbc_contacts_$timestamp.vcf');
           showPopupMessage(context, context.translate('success'),
               context.translate('download_started'));
         } else {
-          String errorMsg = response['message'] ??
-              response['error'] ??
-              context.translate('vcf_download_failed');
-          if (vcfData == null || (vcfData is String && vcfData.isEmpty)) {
+          String errorMsg = statusCode != 200
+              ? "Request failed with status: $statusCode"
+              : context.translate('vcf_data_empty');
+          if (vcfData.isEmpty && statusCode == 200)
             errorMsg = context.translate('vcf_data_empty');
-          }
           showPopupMessage(context, context.translate('error'), errorMsg);
-          print(
-              'API Error downloadVCF (Web): ${response['statusCode']} - $errorMsg');
+          print('API Error downloadVCF (Web): $statusCode - $errorMsg');
         }
       } catch (e) {
         print('Exception in downloadVCF (Web): $e');
@@ -188,17 +197,11 @@ class _ContactUpdateState extends State<ContactUpdate>
     });
     String? permanentPath;
     try {
-      final filters = _getCurrentFilters();
-      final response = await _apiService.exportContacts(filters);
+      final response = await http.get(uri, headers: headers);
+      final statusCode = response.statusCode;
+      final String vcfData = response.body;
 
-      final statusCode = response['statusCode'];
-      final vcfData = response['data'];
-
-      if (statusCode != null &&
-          statusCode >= 200 &&
-          statusCode < 300 &&
-          vcfData is String &&
-          vcfData.isNotEmpty) {
+      if (statusCode >= 200 && statusCode < 300 && vcfData.isNotEmpty) {
         try {
           final vcfBytes = utf8.encode(vcfData);
           String fileName =
@@ -221,15 +224,13 @@ class _ContactUpdateState extends State<ContactUpdate>
           permanentPath = null;
         }
       } else {
-        String errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('vcf_download_failed');
-        if (vcfData == null || (vcfData is String && vcfData.isEmpty)) {
+        String errorMsg = statusCode != 200
+            ? "Request failed with status: $statusCode"
+            : context.translate('vcf_data_empty');
+        if (vcfData.isEmpty && statusCode == 200)
           errorMsg = context.translate('vcf_data_empty');
-        }
         showPopupMessage(context, context.translate('error'), errorMsg);
-        print(
-            'API Error downloadVCF (Mobile): ${response['statusCode']} - $errorMsg');
+        print('API Error downloadVCF (Mobile): $statusCode - $errorMsg');
       }
     } catch (e) {
       print('Exception in downloadVCF (Mobile): $e');
@@ -426,33 +427,35 @@ class _ContactUpdateState extends State<ContactUpdate>
 
       final response = await _apiService.searchContacts(filters);
 
-      print("Raw Contact Search Response: $response");
-
-      if (response['statusCode'] != null &&
-          response['statusCode'] >= 200 &&
-          response['statusCode'] < 300) {
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          response.apiReportedSuccess) {
         List<dynamic> contactsData = [];
         Map<String, dynamic>? paginationData;
         bool dataExtractionError = false;
 
-        if (response['data'] is List) {
-          contactsData = response['data'];
+        if (response.body['data'] is List) {
+          contactsData = response.body['data'];
         } else {
           print(
-              "Error: Expected 'data' to be a List, but got: ${response['data'].runtimeType}");
+              "Error: Expected body['data'] to be a List, but got: ${response.body['data']?.runtimeType}");
           dataExtractionError = true;
         }
 
-        if (response['pagination'] is Map<String, dynamic>) {
-          paginationData = response['pagination'] as Map<String, dynamic>?;
-        } else if (response['pagination'] != null) {
+        if (response.body['pagination'] is Map<String, dynamic>?) {
+          paginationData = response.body['pagination'] as Map<String, dynamic>?;
+        } else if (response.body['pagination'] != null) {
           print(
-              "Error: Expected 'pagination' to be a Map<String, dynamic>, but got: ${response['pagination'].runtimeType}");
+              "Error: Expected body['pagination'] to be a Map<String, dynamic>, but got: ${response.body['pagination']?.runtimeType}");
         }
 
-        if (dataExtractionError) {
-          showPopupMessage(context, context.translate('error'),
-              context.translate('contact_response_error'));
+        if (dataExtractionError && contactsData.isEmpty) {
+          showPopupMessage(
+              context,
+              context.translate('error'),
+              response.message.isNotEmpty
+                  ? response.message
+                  : context.translate('contact_response_error'));
           setState(() {
             hasMoreContacts = false;
             isLoadingContacts = false;
@@ -469,24 +472,29 @@ class _ContactUpdateState extends State<ContactUpdate>
           if (paginationData != null) {
             final int totalItems = paginationData['totalCount'] is int
                 ? paginationData['totalCount']
-                : 0;
-            final int limit =
-                paginationData['limit'] is int ? paginationData['limit'] : 20;
+                : (paginationData['totalCount'] is String
+                    ? int.tryParse(paginationData['totalCount'].toString()) ?? 0
+                    : 0);
+            final int limit = paginationData['limit'] is int
+                ? paginationData['limit']
+                : (paginationData['limit'] is String
+                    ? int.tryParse(paginationData['limit'].toString()) ?? 20
+                    : 20);
             final int totalPages = paginationData['totalPages'] is int
                 ? paginationData['totalPages']
-                : (totalItems > 0 ? (totalItems / limit).ceil() : 1);
+                : (paginationData['totalPages'] is String
+                    ? int.tryParse(paginationData['totalPages'].toString()) ?? 0
+                    : (totalItems > 0 ? (totalItems / limit).ceil() : 1));
             hasMoreContacts = currentPage <= totalPages;
           } else {
             hasMoreContacts = newContacts.length == 20;
           }
         });
       } else {
-        String errorMsg = response['message'] ??
-            response['error'] ??
-            context.translate('contact_fetch_failed');
+        String errorMsg = response.message;
         showPopupMessage(context, context.translate('error'), errorMsg);
         print(
-            'API Error _fetchFilteredContacts: ${response['statusCode']} - $errorMsg');
+            'API Error _fetchFilteredContacts: ${response.statusCode} - $errorMsg');
         setState(() {
           hasMoreContacts = false;
         });
@@ -554,16 +562,19 @@ class _ContactUpdateState extends State<ContactUpdate>
             ],
           ),
         ),
-        body: SafeArea(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              // Contacts Tab
-              _buildContactsTab(fem, ffem),
+        body: ModalProgressHUD(
+          inAsyncCall: showSpinner,
+          child: SafeArea(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Contacts Tab
+                _buildContactsTab(fem, ffem),
 
-              // Filters Tab
-              _buildFiltersTab(fem, ffem),
-            ],
+                // Filters Tab
+                _buildFiltersTab(fem, ffem),
+              ],
+            ),
           ),
         ),
       ),

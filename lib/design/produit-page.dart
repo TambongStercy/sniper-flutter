@@ -1,5 +1,3 @@
-
-
 import 'package:another_carousel_pro/another_carousel_pro.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
@@ -13,6 +11,7 @@ import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/localization_extension.dart'; // Import for localization
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
+import 'package:snipper_frontend/api_response.dart'; // Added import
 
 class ProduitPage extends StatefulWidget {
   static const id = 'productpage';
@@ -117,8 +116,8 @@ class _ProduitPageState extends State<ProduitPage> {
         limit: 10, // Or your desired page size
       );
 
-      if (response['success'] == true && response['data'] != null) {
-        final data = response['data'] as Map<String, dynamic>;
+      if (response.apiReportedSuccess && response.body['data'] != null) {
+        final data = response.body['data'] as Map<String, dynamic>;
         final List<dynamic> newRatings =
             data['ratings'] as List<dynamic>? ?? [];
         final int totalPages = data['totalPages'] as int? ?? 1;
@@ -134,8 +133,7 @@ class _ProduitPageState extends State<ProduitPage> {
         }
       } else {
         // Handle API error, maybe show a message specific to ratings
-        print(
-            "API Error fetching ratings: ${response['message'] ?? response['error']}");
+        print("API Error fetching ratings: ${response.message}");
         if (mounted) {
           setState(() {
             _hasMoreRatings = false;
@@ -171,33 +169,34 @@ class _ProduitPageState extends State<ProduitPage> {
     try {
       // Fetch product and seller details concurrently
       final results = await Future.wait([
-        _apiService.getProductById(widget.productId),
+        _apiService.getProductDetails(
+            widget.productId), // Changed to getProductDetails
         _apiService.getUserProfileById(widget.sellerId),
       ]);
 
-      final productResponse = results[0];
-      final sellerResponse = results[1];
+      final ApiResponse productResponse =
+          results[0] as ApiResponse; // Added ApiResponse type
+      final ApiResponse sellerResponse =
+          results[1] as ApiResponse; // Added ApiResponse type
 
       // Process Product Response
-      if (productResponse['success'] == true &&
-          productResponse['data'] != null) {
-        _productData = productResponse['data'] as Map<String, dynamic>;
+      if (productResponse.apiReportedSuccess &&
+          productResponse.body['data'] != null) {
+        _productData = productResponse.body['data'] as Map<String, dynamic>;
+        print(_productData);
       } else {
-        _errorMessage = productResponse['message'] ??
-            productResponse['error'] ??
-            context.translate('error_fetching_product');
+        _errorMessage = productResponse.message;
         print("API Error fetching product: $_errorMessage");
         // Potentially stop here if product is essential
       }
 
       // Process Seller Response (only if product fetch was okay or if seller info is optional)
-      if (sellerResponse['success'] == true && sellerResponse['data'] != null) {
-        _sellerData = sellerResponse['data'] as Map<String, dynamic>;
+      if (sellerResponse.apiReportedSuccess &&
+          sellerResponse.body['data'] != null) {
+        _sellerData = sellerResponse.body['data'] as Map<String, dynamic>;
       } else {
         // Append seller error message if product error didn't already exist
-        final sellerError = sellerResponse['message'] ??
-            sellerResponse['error'] ??
-            context.translate('error_fetching_seller');
+        final sellerError = sellerResponse.message;
         print("API Error fetching seller: $sellerError");
         _errorMessage = (_errorMessage == null)
             ? sellerError
@@ -245,17 +244,17 @@ class _ProduitPageState extends State<ProduitPage> {
       final response =
           await _apiService.rateProduct(prdtId, rating, review: review);
 
-      msg = response['message'] ?? response['error'] ?? 'Rating failed';
-      final title =
-          (response['statusCode'] == 200 && response['success'] == true)
-              ? context.translate('success')
-              : context.translate('error');
+      msg = response.message;
+      final title = (response.statusCode == 200 && response.apiReportedSuccess)
+          ? context.translate('success')
+          : context.translate('error');
 
       if (mounted) {
         showPopupMessage(context, title, msg, callback: () {
           // Refetch details after successful rating to update UI
-          if (response['statusCode'] == 200 && response['success'] == true) {
+          if (response.statusCode == 200 && response.apiReportedSuccess) {
             _fetchProductAndSellerDetails();
+            _fetchProductRatings(); // Also refetch ratings
           }
         });
       }

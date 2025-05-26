@@ -97,6 +97,6 @@ const d_PP =
 
 // New base URLs for settings files and thumbnails
 const String settingsFileBaseUrl =
-    '$url/settings/files/'; // Note the trailing slash
+    '${url}settings/files/'; // Note the trailing slash
 const String settingsThumbnailBaseUrl =
-    '$url/settings/thumbnails/'; // Note the trailing slash
+    '${url}settings/thumbnails/'; // Note the trailing slash

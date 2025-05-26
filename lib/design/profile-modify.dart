@@ -235,15 +235,14 @@ class _ProfileModState extends State<ProfileMod> {
       updateBody.removeWhere((key, value) => value == null);
 
       final response = await _apiService.updateUserProfile(updateBody);
-      msg = response['message'] ?? response['error'] ?? '';
+      msg = response.message;
 
-      final title =
-          (response['statusCode'] == 200 && response['success'] == true)
-              ? context.translate('success')
-              : context.translate('error');
+      final title = (response.statusCode == 200 && response.apiReportedSuccess)
+          ? context.translate('success')
+          : context.translate('error');
 
       // Update SharedPreferences on success
-      if (response['statusCode'] == 200 && response['success'] == true) {
+      if (response.statusCode == 200 && response.apiReportedSuccess) {
         if (name != null) prefs.setString('name', name!); // Update name
         if (region != null) prefs.setString('region', region!); // Update region
         prefs.setString('phone', sendPone); // Update full phone
@@ -302,33 +301,37 @@ class _ProfileModState extends State<ProfileMod> {
 
       final response = await _apiService.uploadAvatar(path, fileName);
 
-      if (response['statusCode'] == 200 && response['success'] == true) {
+      if (response.statusCode == 200 && response.apiReportedSuccess) {
         // Assuming the backend returns the new avatar URL upon success
         // Need to confirm the response structure from backend/userflow
-        final responseData = response['data'];
-        final newAvatarUrl =
-            responseData?['avatarUrl'] as String? ?? // Check common keys
-                responseData?['url'] as String? ??
-                response['url'] as String?; // Example keys
+        final responseData = response.body['data'];
+        final newAvatarUrl = responseData?['avatarUrl']
+                as String? ?? // Check common keys
+            responseData?['url'] as String? ??
+            response.body['url'] as String?; // Access body for url as fallback
 
         if (newAvatarUrl != null && newAvatarUrl.isNotEmpty) {
           avatar =
               newAvatarUrl; // Update local state with the new URL from backend
           prefs.setString('avatar', newAvatarUrl); // Save the URL
+          // It seems avatarId is used by profileImage(), if the backend returns avatarId save it too.
+          // Example: prefs.setString('avatarId', responseData?['avatarId'] ?? '');
           setState(() {});
-          showPopupMessage(context, context.translate('success'),
-              response['message'] ?? 'Avatar updated successfully.');
+          showPopupMessage(
+              context,
+              context.translate('success'),
+              response.message.isNotEmpty
+                  ? response.message
+                  : 'Avatar updated successfully.');
         } else {
           // Handle cases where upload succeeded but URL wasn't returned as expected
-          print("Avatar uploaded, but URL not found in response: ${response}");
+          print("Avatar uploaded, but URL not found in response: $response");
           showPopupMessage(context, context.translate('warning'),
               'Avatar uploaded, but failed to refresh display.');
           // Optionally, try reloading the profile to get the URL
         }
       } else {
-        final msg = response['message'] ??
-            response['error'] ??
-            'Failed to upload avatar.';
+        final msg = response.message;
         showPopupMessage(context, context.translate('error'), msg);
       }
     } catch (e) {
