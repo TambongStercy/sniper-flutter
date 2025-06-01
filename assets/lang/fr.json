@@ -384,5 +384,10 @@
   "public_speaking_training": "Formation en prise de parole en public",
   "marketplace_access": "Accès à la marketplace",
   "auth_error_please_login_again": "Erreur d'authentification. Veuillez vous déconnecter et vous reconnecter avant de souscrire.",
-  "invalid_plan_selected": "Plan d'abonnement sélectionné invalide. Veuillez réessayer."
+  "invalid_plan_selected": "Plan d'abonnement sélectionné invalide. Veuillez réessayer.",
+  "upload_success": "Téléversement réussi !",
+  "upload_error": "Échec du téléversement. Veuillez réessayer.",
+  "uploading": "Téléversement...",
+  "swipe_to_dismiss": "Glissez vers le haut pour masquer",
+  "notification": "Notification"
 }

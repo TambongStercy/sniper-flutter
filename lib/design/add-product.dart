@@ -14,6 +14,7 @@ import 'package:snipper_frontend/config.dart';
 import 'package:snipper_frontend/localization_extension.dart';
 import 'package:snipper_frontend/utils.dart';
 import 'package:snipper_frontend/api_service.dart';
+import 'package:snipper_frontend/components/top_notification_banner.dart';
 
 class AjouterProduit extends StatefulWidget {
   static const id = 'addProduct';
@@ -46,6 +47,9 @@ class _AjouterProduitState extends State<AjouterProduit> {
   List<String> subcategories = [];
   String subcategory = '';
 
+  bool isUploading = false; // Track upload status
+  String? uploadStatus; // For showing upload status
+
   @override
   void initState() {
     super.initState();
@@ -76,27 +80,42 @@ class _AjouterProduitState extends State<AjouterProduit> {
   }
 
   Future<void> addProduct() async {
-    setState(() => showSpinner = true);
+    setState(() {
+      isUploading = true;
+      uploadStatus = null;
+    });
 
     try {
       if (!isSubscribed) {
         String msg = context.translate('not_subscribed_message');
         String title = context.translate('error');
         showPopupMessage(context, title, msg);
-        setState(() => showSpinner = false);
+        setState(() => isUploading = false);
         return;
       }
 
       if (images.isEmpty ||
           prdtName.trim().isEmpty ||
           price.trim().isEmpty ||
+          price.trim() == '' ||
           description.trim().isEmpty) {
         showPopupMessage(
           context,
           context.translate('error'),
           context.translate('fill_all_fields_message'),
         );
-        setState(() => showSpinner = false);
+        setState(() => isUploading = false);
+        return;
+      }
+
+      final parsedPrice = num.tryParse(price.trim());
+      if (parsedPrice == null || parsedPrice < 0) {
+        showPopupMessage(
+          context,
+          context.translate('error'),
+          context.translate('invalid_price'),
+        );
+        setState(() => isUploading = false);
         return;
       }
 
@@ -104,16 +123,29 @@ class _AjouterProduitState extends State<AjouterProduit> {
         'name': prdtName.trim(),
         'price': price.trim(),
         'description': description.trim(),
-        'category': category.trim().isEmpty ? categories.first : category.trim(),
-        'subcategory': subcategory.trim().isEmpty ? subcategories.first : subcategory.trim(),
+        'category':
+            category.trim().isEmpty ? categories.first : category.trim(),
+        'subcategory': subcategory.trim().isEmpty
+            ? subcategories.first
+            : subcategory.trim(),
       };
 
-      final response = await apiService.addProduct(productData,
-          imageFiles: List<File>.from(images.map((imgPath) => File(imgPath))));
+      List imagePayload;
+      if (kIsWeb) {
+        imagePayload = List<String>.from(images);
+      } else {
+        imagePayload = List<String>.from(images);
+      }
+
+      final response =
+          await apiService.addProduct(productData, imageFiles: imagePayload);
 
       if (response.statusCode >= 200 &&
           response.statusCode < 300 &&
           response.apiReportedSuccess) {
+        setState(() {
+          uploadStatus = context.translate('product_added_successfully');
+        });
         showPopupMessage(
           context,
           context.translate('success'),
@@ -121,10 +153,19 @@ class _AjouterProduitState extends State<AjouterProduit> {
               ? response.message
               : context.translate('product_added_successfully'),
         );
+        setState(() {
+          images.clear();
+          prdtName = '';
+          price = '';
+          description = '';
+        });
       } else {
         String errorMsg = response.message.isNotEmpty
             ? response.message
             : context.translate('try_again_message');
+        setState(() {
+          uploadStatus = errorMsg;
+        });
         showPopupMessage(
           context,
           context.translate('error'),
@@ -135,10 +176,13 @@ class _AjouterProduitState extends State<AjouterProduit> {
     } catch (e) {
       String msg = context.translate('error_occurred') + ': ${e.toString()}';
       String title = context.translate('error');
+      setState(() {
+        uploadStatus = msg;
+      });
       showPopupMessage(context, title, msg);
       print('Exception in addProduct: $e');
     } finally {
-      setState(() => showSpinner = false);
+      setState(() => isUploading = false);
     }
   }
 
@@ -196,112 +240,134 @@ class _AjouterProduitState extends State<AjouterProduit> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: ModalProgressHUD(
-        inAsyncCall: showSpinner,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Image selection section
-              Container(
-                height: 245 * fem,
-                color: Colors.grey.shade100,
-                padding: EdgeInsets.symmetric(vertical: 16 * fem),
-                alignment: Alignment.center,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  shrinkWrap: true,
-                  padding: EdgeInsets.symmetric(horizontal: 16 * fem),
-                  children: [
-                    ...imageDisplay(fem),
-                    if (images.length < 5) addImage(fem),
-                  ],
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Center(
+              child: Card(
+                margin: EdgeInsets.all(24 * fem),
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(24 * fem),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Image selection section
+                      Container(
+                        height: 245 * fem,
+                        color: Colors.grey.shade100,
+                        padding: EdgeInsets.symmetric(vertical: 16 * fem),
+                        alignment: Alignment.center,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          shrinkWrap: true,
+                          padding: EdgeInsets.symmetric(horizontal: 16 * fem),
+                          children: [
+                            ...imageDisplay(fem),
+                            if (images.length < 5) addImage(fem),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 24 * fem),
+                      _formField(
+                        label: context.translate('product_name'),
+                        field: CustomTextField(
+                          hintText: '',
+                          onChange: (val) {
+                            prdtName = val;
+                          },
+                          margin: 0,
+                          value: prdtName,
+                        ),
+                        fem: fem,
+                        ffem: ffem,
+                      ),
+                      _formField(
+                        label: context.translate('category'),
+                        field: CustomDropdown(
+                          items: categories,
+                          value: categories.contains(category)
+                              ? category
+                              : categories.first,
+                          ffem: ffem,
+                          onChange: onChangeCategory,
+                        ),
+                        fem: fem,
+                        ffem: ffem,
+                      ),
+                      _formField(
+                        label: context.translate('subcategory'),
+                        field: CustomDropdown(
+                          items: subcategories,
+                          value: subcategories.contains(subcategory)
+                              ? subcategory
+                              : subcategories.first,
+                          ffem: ffem,
+                          onChange: onChangeSubCategory,
+                        ),
+                        fem: fem,
+                        ffem: ffem,
+                      ),
+                      _formField(
+                        label: context.translate('price'),
+                        field: CustomTextField(
+                          hintText: '',
+                          onChange: (val) {
+                            price = val;
+                          },
+                          margin: 0,
+                          fieldType: CustomFieldType.number,
+                          value: price,
+                        ),
+                        fem: fem,
+                        ffem: ffem,
+                      ),
+                      _formField(
+                        label: context.translate('description'),
+                        field: CustomTextField(
+                          hintText: '',
+                          onChange: (val) {
+                            description = val;
+                          },
+                          margin: 0,
+                          fieldType: CustomFieldType.multiline,
+                          value: description,
+                        ),
+                        fem: fem,
+                        ffem: ffem,
+                      ),
+                      SizedBox(height: 32 * fem),
+                      ReusableButton(
+                        title: isUploading
+                            ? context.translate('uploading')
+                            : context.translate('post'),
+                        lite: false,
+                        onPress: isUploading
+                            ? () {}
+                            : () {
+                                addProduct();
+                              },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-
-              // Form fields
-              Padding(
-                padding: EdgeInsets.all(24 * fem),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _formField(
-                      label: context.translate('product_name'),
-                      field: CustomTextField(
-                        hintText: '',
-                        onChange: (val) {
-                          prdtName = val;
-                        },
-                        margin: 0,
-                        value: name,
-                      ),
-                      fem: fem,
-                      ffem: ffem,
-                    ),
-                    _formField(
-                      label: context.translate('category'),
-                      field: CustomDropdown(
-                        items: categories,
-                        value: categories.contains(category)
-                            ? category
-                            : categories.first,
-                        ffem: ffem,
-                        onChange: onChangeCategory,
-                      ),
-                      fem: fem,
-                      ffem: ffem,
-                    ),
-                    _formField(
-                      label: context.translate('subcategory'),
-                      field: CustomDropdown(
-                        items: subcategories,
-                        value: subcategories.contains(subcategory)
-                            ? subcategory
-                            : subcategories.first,
-                        ffem: ffem,
-                        onChange: onChangeSubCategory,
-                      ),
-                      fem: fem,
-                      ffem: ffem,
-                    ),
-                    _formField(
-                      label: context.translate('price'),
-                      field: CustomTextField(
-                        hintText: '',
-                        onChange: (val) {
-                          price = val;
-                        },
-                        margin: 0,
-                        fieldType: CustomFieldType.number,
-                      ),
-                      fem: fem,
-                      ffem: ffem,
-                    ),
-                    _formField(
-                      label: context.translate('description'),
-                      field: CustomTextField(
-                        hintText: '',
-                        onChange: (val) {
-                          description = val;
-                        },
-                        margin: 0,
-                        fieldType: CustomFieldType.multiline,
-                      ),
-                      fem: fem,
-                      ffem: ffem,
-                    ),
-                    SizedBox(height: 32 * fem),
-                    ReusableButton(
-                      title: context.translate('post'),
-                      lite: false,
-                      onPress: addProduct,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          if (uploadStatus != null)
+            TopNotificationBanner(
+              message: uploadStatus!,
+              visible: uploadStatus != null,
+              status: uploadStatus ==
+                      context.translate('product_added_successfully')
+                  ? 'success'
+                  : 'error',
+              onDismiss: () => setState(() => uploadStatus = null),
+            ),
+        ],
       ),
     );
   }

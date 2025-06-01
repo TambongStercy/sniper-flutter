@@ -384,5 +384,10 @@
   "public_speaking_training": "Public speaking training",
   "marketplace_access": "Access to marketplace",
   "auth_error_please_login_again": "Authentication error. Please log out and log in again before subscribing.",
-  "invalid_plan_selected": "Invalid subscription plan selected. Please try again."
+  "invalid_plan_selected": "Invalid subscription plan selected. Please try again.",
+  "upload_success": "Upload successful!",
+  "upload_error": "Upload failed. Please try again.",
+  "uploading": "Uploading...",
+  "swipe_to_dismiss": "Swipe up to dismiss",
+  "notification": "Notification"
 }

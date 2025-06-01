@@ -43,7 +43,6 @@ class ApiService {
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       } else {
-        print("Warning: Auth token is null for a protected route.");
         // Optionally, throw an error or handle cases where token is required but missing
       }
     }
@@ -406,37 +405,43 @@ class ApiService {
   }
 
   Future<ApiResponse> addProduct(Map<String, dynamic> productData,
-      {List<File>? imageFiles}) async {
+      {List<dynamic>? imageFiles}) async {
     // Convert all productData values to strings for the 'fields' parameter
     final Map<String, String> stringProductData = productData.map(
       (key, value) => MapEntry(key, value.toString()),
     );
 
-    if (imageFiles != null && imageFiles.isNotEmpty) {
-      return await uploadFiles(
-        endpoint: '/products',
-        files: imageFiles,
-        fieldName: 'images', // Field name for the image files
-        fields: stringProductData, // Other product data as string fields
-        requiresAuth: true,
-        httpMethod: 'POST',
-      );
+    if (kIsWeb) {
+      // On web, imageFiles is List<String> (base64)
+      final Map<String, dynamic> webData =
+          Map<String, dynamic>.from(productData);
+      if (imageFiles != null && imageFiles.isNotEmpty) {
+        webData['images'] = List<String>.from(imageFiles);
+      }
+      return await post('/products', body: webData);
     } else {
-      // If there are no images, we can still send as multipart if the backend expects it,
-      // or fall back to a regular JSON post if the backend supports that for no-image cases.
-      // For consistency with the HTTP file, let's assume multipart is preferred.
-      return await uploadFiles(
-        endpoint: '/products',
-        files: [], // Empty list of files
-        fieldName:
-            'images', // Still need a fieldName, even if no files, or adjust backend
-        fields: stringProductData,
-        requiresAuth: true,
-        httpMethod: 'POST',
-      );
-      // Alternative for no images, if backend supports JSON post:
-      // return await post('/products', body: productData);
+      // On mobile, imageFiles is List<File>
+      if (imageFiles != null && imageFiles.isNotEmpty) {
+        return await uploadFiles(
+          endpoint: '/products',
+          files: List<File>.from(imageFiles),
+          fieldName: 'images',
+          fields: stringProductData,
+          requiresAuth: true,
+          httpMethod: 'POST',
+        );
+      } else {
+        return await uploadFiles(
+          endpoint: '/products',
+          files: [],
+          fieldName: 'images',
+          fields: stringProductData,
+          requiresAuth: true,
+          httpMethod: 'POST',
+        );
+      }
     }
+    throw Exception('Unreachable code in addProduct');
   }
 
   Future<ApiResponse> updateProduct(
